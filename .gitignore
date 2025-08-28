@@ -36,6 +36,11 @@ yarn-error.log*
 .env.development
 .env.production
 
+# Log files and sensitive data
+*.log
+dev.log
+*.log.*
+
 # vercel
 .vercel
 

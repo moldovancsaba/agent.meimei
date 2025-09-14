@@ -197,7 +197,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const mimeType = body.imageData.split(',')[0].split(':')[1].split(';')[0]
     
     // Create File-like object for upload
-    const imageBlob = new Blob([imageBuffer], { type: mimeType })
+    // Convert Node.js Buffer -> ArrayBuffer to satisfy strict lib.dom BlobPart typing.
+    // We allocate a new ArrayBuffer and copy the bytes to guarantee the buffer type
+    // is exactly ArrayBuffer (not ArrayBufferLike/SharedArrayBuffer), matching
+    // TypeScript's DOM definitions used by Next.js during type checking.
+    const imageArrayBuffer = new ArrayBuffer(imageBuffer.byteLength)
+    new Uint8Array(imageArrayBuffer).set(
+      new Uint8Array(imageBuffer.buffer, imageBuffer.byteOffset, imageBuffer.byteLength)
+    )
+    const imageBlob = new Blob([imageArrayBuffer], { type: mimeType })
     const imageFile = new File([imageBlob], body.fileName, { type: mimeType })
 
     console.log('🔄 Uploading image to dual CDN...', {

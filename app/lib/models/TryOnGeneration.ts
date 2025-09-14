@@ -107,6 +107,11 @@ const tryOnGenerationSchema = new Schema<TryOnGenerationDocument>({
     type: String,
     default: 'replicate-idm-vton'
   },
+  engine: {
+    type: String,
+    enum: ['replicate', 'lightx'],
+    required: false
+  },
   processingTimeMs: Number,
 
 }, {

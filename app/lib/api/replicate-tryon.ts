@@ -12,12 +12,27 @@ import axios, { AxiosError } from 'axios'
 // ============================================================================
 
 const REPLICATE_API_URL = 'https://api.replicate.com/v1'
-const TRYON_MODEL = 'cuuupid/idm-vton:906425dbca90663ff5427624839572cc56ea7d380343d13e2a4c4b09d3f0c30f'
+// Default model; can be overridden via REPLICATE_MODEL env var
+const DEFAULT_TRYON_MODEL = 'cuuupid/idm-vton:906425dbca90663ff5427624839572cc56ea7d380343d13e2a4c4b09d3f0c30f'
 const MAX_RETRIES = 3
 const RETRY_DELAY = 2000
-const REQUEST_TIMEOUT = 300000 // 5 minutes for virtual try-on generation
-const POLL_INTERVAL = 3000 // Poll every 3 seconds
-const MAX_POLL_TIME = 300000 // Max 5 minutes polling
+
+/**
+ * Parse integer environment variables with sane defaults and guards.
+ * Why: operational tunability without code changes; prevents NaN or invalid values.
+ */
+function parseEnvInt(name: string, fallback: number): number {
+  const raw = typeof process !== 'undefined' ? process.env[name] : undefined
+  const parsed = raw ? parseInt(raw, 10) : NaN
+  if (Number.isNaN(parsed) || parsed <= 0) return fallback
+  return parsed
+}
+
+// Request timeouts and polling cadence are configurable via env to avoid hard failures when
+// Replicate queues are slow. Defaults chosen to balance UX and reliability.
+const REQUEST_TIMEOUT = parseEnvInt('REPLICATE_REQUEST_TIMEOUT_MS', 300000) // default 5 minutes
+const POLL_INTERVAL = parseEnvInt('REPLICATE_POLL_INTERVAL_MS', 3000) // default 3 seconds
+const MAX_POLL_TIME = parseEnvInt('REPLICATE_MAX_POLL_TIME_MS', 900000) // default 15 minutes
 
 // ============================================================================
 // TYPES
@@ -104,9 +119,10 @@ export class ReplicateTryOnClient {
     }
 
     this.apiToken = config.apiToken
-    this.config = {
+this.config = {
       apiToken: config.apiToken,
-      model: config.model || TRYON_MODEL,
+      // Allow overriding the model via env for flexibility without code changes
+      model: config.model || (typeof process !== 'undefined' ? (process.env.REPLICATE_MODEL || DEFAULT_TRYON_MODEL) : DEFAULT_TRYON_MODEL),
       maxRetries: config.maxRetries || MAX_RETRIES,
       retryDelay: config.retryDelay || RETRY_DELAY
     }
@@ -448,7 +464,9 @@ export function getReplicateTryOnClient(): ReplicateTryOnClient {
       apiToken
     })
 
-    console.log('✅ Replicate client initialized')
+console.log('✅ Replicate client initialized')
+    // Log effective polling/timeout values for diagnostics (ISO 8601 timestamps are handled by log aggregator)
+    console.log(`🔧 Replicate config → pollInterval=${POLL_INTERVAL}ms, maxPollTime=${MAX_POLL_TIME}ms, requestTimeout=${REQUEST_TIMEOUT}ms`)
   }
 
   return replicateClient

@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * Clothes Management Page
+ * People Management Page
  * 
- * Full CRUD interface for managing clothing items
+ * Full CRUD interface for managing people/person profiles
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
@@ -16,25 +16,22 @@ import TagManager, { Tag } from '../components/ui/TagManager'
 // TYPES
 // ============================================================================
 
-interface ClothingItem {
+interface Person {
   _id: string
   name: string
+  nickname?: string
   description?: string
   imageUrl: string
   thumbnailUrl?: string
   lightxUrl?: string
   imgbbId: string
-  category: {
-    id: string
-    name: string
-    slug: string
-    description?: string
-  }
   tags: Tag[]
-  color?: string
-  size?: string
-  brand?: string
-  season: 'spring' | 'summer' | 'autumn' | 'winter' | 'all-season'
+  age?: number
+  gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say'
+  bodyType?: 'slim' | 'average' | 'curvy' | 'athletic' | 'plus-size'
+  skinTone?: 'fair' | 'medium' | 'olive' | 'dark'
+  hairColor?: string
+  eyeColor?: string
   isFavorite: boolean
   isActive: boolean
   uploadedAt: string
@@ -43,12 +40,15 @@ interface ClothingItem {
 
 interface EditFormData {
   name: string
+  nickname: string
   description: string
-  color: string
-  size: string
-  brand: string
-  season: 'spring' | 'summer' | 'autumn' | 'winter' | 'all-season'
   tags: Tag[]
+  age: string
+  gender: string
+  bodyType: string
+  skinTone: string
+  hairColor: string
+  eyeColor: string
   isFavorite: boolean
 }
 
@@ -56,8 +56,8 @@ interface EditFormData {
 // COMPONENT
 // ============================================================================
 
-export default function ManageClothesPage() {
-  const [clothes, setClothes] = useState<ClothingItem[]>([])
+export default function ManagePeoplePage() {
+  const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -69,33 +69,36 @@ export default function ManageClothesPage() {
   
   // Filters
   const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [seasonFilter, setSeasonFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [bodyTypeFilter, setBodyTypeFilter] = useState('')
   const [favoriteFilter, setFavoriteFilter] = useState(false)
   
   // Edit modal
-  const [editItem, setEditItem] = useState<ClothingItem | null>(null)
+  const [editItem, setEditItem] = useState<Person | null>(null)
   const [editForm, setEditForm] = useState<EditFormData>({
     name: '',
+    nickname: '',
     description: '',
-    color: '',
-    size: '',
-    brand: '',
-    season: 'all-season',
     tags: [],
+    age: '',
+    gender: '',
+    bodyType: '',
+    skinTone: '',
+    hairColor: '',
+    eyeColor: '',
     isFavorite: false
   })
   const [isUpdating, setIsUpdating] = useState(false)
   
   // Delete modal
-  const [deleteItem, setDeleteItem] = useState<ClothingItem | null>(null)
+  const [deleteItem, setDeleteItem] = useState<Person | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // ============================================================================
   // DATA LOADING
   // ============================================================================
 
-  const loadClothes = useCallback(async () => {
+  const loadPeople = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -106,47 +109,50 @@ export default function ManageClothesPage() {
       })
       
       if (search) params.append('search', search)
-      if (categoryFilter) params.append('category', categoryFilter)
-      if (seasonFilter) params.append('season', seasonFilter)
-      if (favoriteFilter) params.append('favorite', 'true')
+      if (genderFilter) params.append('gender', genderFilter)
+      if (bodyTypeFilter) params.append('bodyType', bodyTypeFilter)
+      if (favoriteFilter) params.append('isFavorite', 'true')
       
-      const response = await fetch(`/api/clothes?${params}`)
+      const response = await fetch(`/api/people?${params}`)
       const data = await response.json()
       
       if (data.success) {
-        setClothes(data.data)
+        setPeople(data.data)
         setTotalPages(data.pagination.totalPages)
         setHasNextPage(data.pagination.hasNextPage)
         setHasPrevPage(data.pagination.hasPrevPage)
       } else {
-        setError('Failed to load clothes')
+        setError('Failed to load people')
       }
     } catch (err) {
-      setError('Error loading clothes')
-      console.error('Load clothes error:', err)
+      setError('Error loading people')
+      console.error('Load people error:', err)
     } finally {
       setLoading(false)
     }
-  }, [page, search, categoryFilter, seasonFilter, favoriteFilter])
+  }, [page, search, genderFilter, bodyTypeFilter, favoriteFilter])
 
   useEffect(() => {
-    loadClothes()
-  }, [loadClothes])
+    loadPeople()
+  }, [loadPeople])
 
   // ============================================================================
   // EDIT OPERATIONS
   // ============================================================================
 
-  const openEditModal = (item: ClothingItem) => {
+  const openEditModal = (item: Person) => {
     setEditItem(item)
     setEditForm({
       name: item.name,
+      nickname: item.nickname || '',
       description: item.description || '',
-      color: item.color || '',
-      size: item.size || '',
-      brand: item.brand || '',
-      season: item.season,
       tags: item.tags,
+      age: item.age?.toString() || '',
+      gender: item.gender || '',
+      bodyType: item.bodyType || '',
+      skinTone: item.skinTone || '',
+      hairColor: item.hairColor || '',
+      eyeColor: item.eyeColor || '',
       isFavorite: item.isFavorite
     })
   }
@@ -155,12 +161,15 @@ export default function ManageClothesPage() {
     setEditItem(null)
     setEditForm({
       name: '',
+      nickname: '',
       description: '',
-      color: '',
-      size: '',
-      brand: '',
-      season: 'all-season',
       tags: [],
+      age: '',
+      gender: '',
+      bodyType: '',
+      skinTone: '',
+      hairColor: '',
+      eyeColor: '',
       isFavorite: false
     })
   }
@@ -171,19 +180,23 @@ export default function ManageClothesPage() {
     try {
       setIsUpdating(true)
       
-      const response = await fetch(`/api/clothes?id=${editItem._id}`, {
+      const response = await fetch(`/api/people`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          _id: editItem._id,
           name: editForm.name,
+          nickname: editForm.nickname || undefined,
           description: editForm.description || undefined,
-          color: editForm.color || undefined,
-          size: editForm.size || undefined,
-          brand: editForm.brand || undefined,
-          season: editForm.season,
           tags: editForm.tags,
+          age: editForm.age ? parseInt(editForm.age) : undefined,
+          gender: editForm.gender || undefined,
+          bodyType: editForm.bodyType || undefined,
+          skinTone: editForm.skinTone || undefined,
+          hairColor: editForm.hairColor || undefined,
+          eyeColor: editForm.eyeColor || undefined,
           isFavorite: editForm.isFavorite
         })
       })
@@ -192,17 +205,17 @@ export default function ManageClothesPage() {
       
       if (result.success) {
         // Update the item in the local state
-        setClothes(prev => prev.map(item => 
+        setPeople(prev => prev.map(item => 
           item._id === editItem._id 
             ? { ...item, ...result.data }
             : item
         ))
         closeEditModal()
       } else {
-        setError(result.message || 'Failed to update item')
+        setError(result.message || 'Failed to update person')
       }
     } catch (err) {
-      setError('Error updating item')
+      setError('Error updating person')
       console.error('Update error:', err)
     } finally {
       setIsUpdating(false)
@@ -213,7 +226,7 @@ export default function ManageClothesPage() {
   // DELETE OPERATIONS
   // ============================================================================
 
-  const openDeleteModal = (item: ClothingItem) => {
+  const openDeleteModal = (item: Person) => {
     setDeleteItem(item)
   }
 
@@ -227,7 +240,7 @@ export default function ManageClothesPage() {
     try {
       setIsDeleting(true)
       
-      const response = await fetch(`/api/clothes?id=${deleteItem._id}`, {
+      const response = await fetch(`/api/people?id=${deleteItem._id}`, {
         method: 'DELETE'
       })
       
@@ -235,13 +248,13 @@ export default function ManageClothesPage() {
       
       if (result.success) {
         // Remove the item from local state
-        setClothes(prev => prev.filter(item => item._id !== deleteItem._id))
+        setPeople(prev => prev.filter(item => item._id !== deleteItem._id))
         closeDeleteModal()
       } else {
-        setError(result.message || 'Failed to delete item')
+        setError(result.message || 'Failed to delete person')
       }
     } catch (err) {
-      setError('Error deleting item')
+      setError('Error deleting person')
       console.error('Delete error:', err)
     } finally {
       setIsDeleting(false)
@@ -252,14 +265,15 @@ export default function ManageClothesPage() {
   // FAVORITE TOGGLE
   // ============================================================================
 
-  const toggleFavorite = async (item: ClothingItem) => {
+  const toggleFavorite = async (item: Person) => {
     try {
-      const response = await fetch(`/api/clothes?id=${item._id}`, {
+      const response = await fetch(`/api/people`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          _id: item._id,
           isFavorite: !item.isFavorite
         })
       })
@@ -267,10 +281,10 @@ export default function ManageClothesPage() {
       const result = await response.json()
       
       if (result.success) {
-        setClothes(prev => prev.map(clothingItem => 
-          clothingItem._id === item._id 
-            ? { ...clothingItem, isFavorite: !item.isFavorite }
-            : clothingItem
+        setPeople(prev => prev.map(person => 
+          person._id === item._id 
+            ? { ...person, isFavorite: !item.isFavorite }
+            : person
         ))
       }
     } catch (err) {
@@ -291,17 +305,17 @@ export default function ManageClothesPage() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Manage Clothes</h1>
-              <p className="text-gray-600">View, edit, and delete your clothing items</p>
+              <h1 className="text-3xl font-bold text-gray-900">Manage People</h1>
+              <p className="text-gray-600">View, edit, and delete your people profiles</p>
             </div>
             <Link
-              href="/upload-clothes"
+              href="/upload-people"
               className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center space-x-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span>Add New Item</span>
+              <span>Add New Person</span>
             </Link>
           </div>
           
@@ -309,36 +323,33 @@ export default function ManageClothesPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <input
               type="text"
-              placeholder="Search clothes..."
+              placeholder="Search people..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
-              <option value="">All Categories</option>
-              <option value="tops">Tops</option>
-              <option value="bottoms">Bottoms</option>
-              <option value="dresses">Dresses</option>
-              <option value="outerwear">Outerwear</option>
-              <option value="shoes">Shoes</option>
-              <option value="accessories">Accessories</option>
-              <option value="coveralls">Coveralls</option>
+              <option value="">All Genders</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
             <select
-              value={seasonFilter}
-              onChange={(e) => setSeasonFilter(e.target.value)}
+              value={bodyTypeFilter}
+              onChange={(e) => setBodyTypeFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
-              <option value="">All Seasons</option>
-              <option value="spring">Spring</option>
-              <option value="summer">Summer</option>
-              <option value="autumn">Autumn</option>
-              <option value="winter">Winter</option>
-              <option value="all-season">All Season</option>
+              <option value="">All Body Types</option>
+              <option value="slim">Slim</option>
+              <option value="average">Average</option>
+              <option value="curvy">Curvy</option>
+              <option value="athletic">Athletic</option>
+              <option value="plus-size">Plus Size</option>
             </select>
             <label className="flex items-center">
               <input
@@ -374,7 +385,7 @@ export default function ManageClothesPage() {
           <>
             {/* Items Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {clothes.map(item => (
+              {people.map(item => (
                 <div key={item._id} className="bg-white rounded-lg shadow-md overflow-hidden">
                   <div className="relative">
                     <img
@@ -400,8 +411,10 @@ export default function ManageClothesPage() {
                   </div>
                   
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{item.category.name}</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">{item.nickname || item.name}</h3>
+                    {item.nickname && (
+                      <p className="text-sm text-gray-600 mb-2">({item.name})</p>
+                    )}
                     {item.description && (
                       <p className="text-xs text-gray-500 mb-2 line-clamp-2">{item.description}</p>
                     )}
@@ -423,8 +436,8 @@ export default function ManageClothesPage() {
                     
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-gray-500">
-                        {item.size && <span className="mr-2">Size: {item.size}</span>}
-                        <span className="capitalize">{item.season}</span>
+                        {item.age && <span className="mr-2">Age: {item.age}</span>}
+                        {item.gender && <span className="capitalize">{item.gender}</span>}
                       </div>
                       
                       <div className="flex space-x-1">
@@ -485,7 +498,7 @@ export default function ManageClothesPage() {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Edit Clothing Item</h2>
+                <h2 className="text-xl font-bold text-gray-900">Edit Person</h2>
                 <button
                   onClick={closeEditModal}
                   className="text-gray-400 hover:text-gray-600"
@@ -507,11 +520,21 @@ export default function ManageClothesPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                     <input
                       type="text"
                       value={editForm.name}
                       onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nickname</label>
+                    <input
+                      type="text"
+                      value={editForm.nickname}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, nickname: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
@@ -528,59 +551,82 @@ export default function ManageClothesPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
                       <input
-                        type="text"
-                        value={editForm.color}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))}
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={editForm.age}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, age: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                       <select
-                        value={editForm.size}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, size: e.target.value }))}
+                        value={editForm.gender}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, gender: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       >
-                        <option value="">Select size</option>
-                        <option value="XXS">XXS</option>
-                        <option value="XS">XS</option>
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                        <option value="XXL">XXL</option>
-                        <option value="XXXL">XXXL</option>
-                        <option value="One Size">One Size</option>
-                        <option value="Custom">Custom</option>
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                        <option value="prefer-not-to-say">Prefer not to say</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Body Type</label>
+                      <select
+                        value={editForm.bodyType}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, bodyType: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">Select body type</option>
+                        <option value="slim">Slim</option>
+                        <option value="average">Average</option>
+                        <option value="curvy">Curvy</option>
+                        <option value="athletic">Athletic</option>
+                        <option value="plus-size">Plus Size</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Skin Tone</label>
+                      <select
+                        value={editForm.skinTone}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, skinTone: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">Select skin tone</option>
+                        <option value="fair">Fair</option>
+                        <option value="medium">Medium</option>
+                        <option value="olive">Olive</option>
+                        <option value="dark">Dark</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hair Color</label>
                       <input
                         type="text"
-                        value={editForm.brand}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, brand: e.target.value }))}
+                        value={editForm.hairColor}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, hairColor: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Season</label>
-                      <select
-                        value={editForm.season}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, season: e.target.value as any }))}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Eye Color</label>
+                      <input
+                        type="text"
+                        value={editForm.eyeColor}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, eyeColor: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        <option value="all-season">All Season</option>
-                        <option value="spring">Spring</option>
-                        <option value="summer">Summer</option>
-                        <option value="autumn">Autumn</option>
-                        <option value="winter">Winter</option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -589,12 +635,12 @@ export default function ManageClothesPage() {
                       selectedTags={editForm.tags}
                       onTagsChange={(tags) => setEditForm(prev => ({ ...prev, tags }))}
                       availableTags={[
-                        { id: 'casual', name: 'Casual', color: '#3B82F6' },
-                        { id: 'formal', name: 'Formal', color: '#1F2937' },
-                        { id: 'vintage', name: 'Vintage', color: '#D97706' },
-                        { id: 'trendy', name: 'Trendy', color: '#EC4899' },
-                        { id: 'comfortable', name: 'Comfortable', color: '#10B981' },
-                        { id: 'elegant', name: 'Elegant', color: '#8B5CF6' }
+                        { id: 'model', name: 'Model', color: '#EC4899' },
+                        { id: 'influencer', name: 'Influencer', color: '#8B5CF6' },
+                        { id: 'athlete', name: 'Athlete', color: '#10B981' },
+                        { id: 'celebrity', name: 'Celebrity', color: '#F59E0B' },
+                        { id: 'friend', name: 'Friend', color: '#3B82F6' },
+                        { id: 'family', name: 'Family', color: '#EF4444' }
                       ]}
                       placeholder="Search or add tags..."
                       label="Tags"
@@ -636,7 +682,7 @@ export default function ManageClothesPage() {
                       Updating...
                     </>
                   ) : (
-                    'Update Item'
+                    'Update Person'
                   )}
                 </button>
               </div>
@@ -648,9 +694,9 @@ export default function ManageClothesPage() {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!deleteItem}
-        title="Delete Clothing Item"
-        message="Are you sure you want to delete this clothing item?"
-        itemName={deleteItem?.name || ''}
+        title="Delete Person"
+        message="Are you sure you want to delete this person?"
+        itemName={deleteItem?.nickname || deleteItem?.name || ''}
         onConfirm={handleDelete}
         onCancel={closeDeleteModal}
         isDeleting={isDeleting}

@@ -110,7 +110,13 @@ export interface TryOnGeneration {
   generatedThumbnailUrl?: string
   imgbbId?: string // ImgBB ID for the generated image
   lightxRequestId?: string
-  lightxResponse?: LightXApiResponse
+  lightxResponse?: {
+    predictionId?: string
+    generatedImageUrl?: string
+    processingTimeMs?: number
+    requestId?: string
+    metadata?: any
+  }
   replicateResponse?: {
     predictionId?: string
     generatedImageUrl?: string
@@ -122,6 +128,7 @@ export interface TryOnGeneration {
   quality?: 'standard' | 'high'
   style?: 'realistic' | 'fashion' | 'casual'
   generationModel?: string
+  engine?: 'replicate' | 'lightx'
   processingTimeMs?: number
   notes?: string
   isPublic: boolean

@@ -1,6 +1,6 @@
-# 📚 LEARNINGS.md - ChangeMass v1.0.0
+# 📚 LEARNINGS.md - ChangeMass v1.3.0
 
-**Last Updated**: 2025-08-25T10:18:00.000Z  
+**Last Updated**: 2025-09-14T09:24:28.000Z  
 **Status**: Active Development Insights
 
 ## 🔹 Backend / Database Issues & Solutions
@@ -47,6 +47,12 @@ const options: mongoose.ConnectOptions = {
 ---
 
 ## 🔹 Development Process
+
+### Coveralls Try-On Inputs and Engine Fallback (2025-09-14T09:24:28.000Z)
+- Full-body garments (coveralls/overalls/jumpsuit) require full-body person photos (head-to-toe) and garment images showing the complete one-piece suit.
+- Replicate (idm-vton) works well when inputs meet these criteria; enrich garment description with “full-body … one-piece” for better guidance.
+- LightX fallback requires LightX-hosted URLs. If missing, auto-upload from existing ImgBB URLs server-side before generation to avoid user friction.
+- Pitfall avoided: attempting LightX with non-LightX URLs causes failures; automated re-upload resolves this reliably.
 
 ### Dependency Management Best Practices
 

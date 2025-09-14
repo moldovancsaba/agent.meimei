@@ -58,7 +58,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Convert base64 to File object
     const base64Data = imageData.split(',')[1] || imageData
     const buffer = Buffer.from(base64Data, 'base64')
-    const file = new File([buffer], fileName, { type: 'image/jpeg' })
+    // Convert Buffer -> ArrayBuffer for strict Blob/File typing in Node + TS DOM libs
+    // Allocate a fresh ArrayBuffer (not SharedArrayBuffer) and copy bytes to ensure
+    // compatibility with lib.dom's BlobPart (expects ArrayBuffer or ArrayBufferView<ArrayBuffer>).
+    const ab = new ArrayBuffer(buffer.byteLength)
+    new Uint8Array(ab).set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength))
+    const file = new File([ab], fileName, { type: 'image/jpeg' })
 
     console.log(`📤 Uploading person image: ${name} (${fileName})`)
 

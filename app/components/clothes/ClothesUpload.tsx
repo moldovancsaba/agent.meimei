@@ -31,7 +31,10 @@ const defaultCategories: ClothingCategory[] = [
   { id: 'dresses', name: 'Dresses', slug: 'dresses', description: 'Casual and formal dresses' },
   { id: 'outerwear', name: 'Outerwear', slug: 'outerwear', description: 'Jackets, coats, blazers' },
   { id: 'shoes', name: 'Shoes', slug: 'shoes', description: 'Sneakers, boots, heels, sandals' },
-  { id: 'accessories', name: 'Accessories', slug: 'accessories', description: 'Bags, jewelry, hats, belts' }
+  { id: 'accessories', name: 'Accessories', slug: 'accessories', description: 'Bags, jewelry, hats, belts' },
+  // Added new full-body category to support driver suits/overalls. We keep this
+  // as client-configured to avoid backend schema coupling and preserve flexibility.
+  { id: 'coveralls', name: 'Coveralls', slug: 'coveralls', description: 'Full-body suits that cover torso, arms, and legs (e.g., driver suits, overalls)' }
 ]
 
 const defaultTags: Tag[] = [

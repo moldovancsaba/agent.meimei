@@ -16,11 +16,14 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+      "plugins": [
+        {
+          "name": "next"
+        }
+      ],
+      "types": [
+        "aws4"
+      ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -48,6 +51,11 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "node_modules.bak",
+    "**/* 2.ts",
+    "**/* 2.tsx",
+    "**/* 3.ts",
+    "**/* 3.tsx"
   ]
 }

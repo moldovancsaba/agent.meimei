@@ -1,6 +1,6 @@
-# 📋 TASKLIST.md - ChangeMass v1.0.0
+# 📋 TASKLIST.md - ChangeMass v1.3.0
 
-**Last Updated**: 2025-08-25T10:18:00.000Z
+**Last Updated**: 2025-09-14T09:24:28.000Z
 
 ## 🔹 Priority Task Queue
 
@@ -42,12 +42,29 @@
   - ✅ Updated package.json version consistency
 
 ### 🚧 In Progress
+
+### ✅ Completed Today — 2025-09-14T09:24:28.000Z
+- Coveralls AI Try-On — Engine selection (Replicate primary) with LightX fallback
+  - Owner: AI Developer | Priority: HIGH | Acceptance: engine persisted, UX gate enforced, images render
+- **Replicate Try-On Timeout Mitigation (Option A)** - Expected: 2025-09-11T18:00:00.000Z | Owner: Backend Engineer | Priority: HIGH
+  - 🔄 Env-configurable polling/timeout (server)
+  - 🔄 Persist predictionId on generation record
+  - 🔄 Update image allowlist for replicate.delivery
+  - 🔄 Update .env.example and docs pointers
+
 - **System Stability and Testing** - Expected: 2025-08-25 | Owner: AI Developer | Priority: HIGH
   - ✅ MongoDB connection stability verified
   - 🔄 API endpoint performance testing
   - ⏳ Frontend component integration testing
 
 ### 📅 Upcoming Tasks
+
+- Title: Version sync and minor bump before commit (docs + release notes)
+  - Owner: Release Engineer
+  - Expected: 2025-09-12T11:00:00.000Z
+- Title: Manual verification + deploy to production
+  - Owner: QA / Release Engineer
+  - Expected: 2025-09-12T17:00:00.000Z
 
 #### **Environment Configuration and Database Setup** - Expected: 2025-01-24 | Owner: AI Developer | Priority: HIGH
 - Create MongoDB connection utility

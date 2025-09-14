@@ -100,6 +100,11 @@ export default function TryOnWorkflow({ onResultGenerated }: TryOnWorkflowProps)
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
   const [preserveFace, setPreserveFace] = useState(true)
   const [batchMode, setBatchMode] = useState(false)
+  const [confirmFullBody, setConfirmFullBody] = useState(false)
+
+  // Backend priority hint for LightX fallback
+  const backendPriority = (process.env.NEXT_PUBLIC_TRYON_BACKEND_PRIORITY || 'replicate,lightx').toLowerCase()
+  const includesLightX = backendPriority.includes('lightx')
 
   // ============================================================================
   // DATA LOADING
@@ -177,9 +182,23 @@ export default function TryOnWorkflow({ onResultGenerated }: TryOnWorkflowProps)
   // TRY-ON GENERATION
   // ============================================================================
 
+  const isCoverallsCategory = useCallback((label?: string) => {
+    if (!label) return false
+    const v = label.trim().toLowerCase()
+    const synonyms = ['coveralls','coverall','overalls','overall','jumpsuit','jump-suit','jump suit']
+    return synonyms.includes(v)
+  }, [])
+
+  const isCoverallsSelected = selectedClothes.some(c => isCoverallsCategory((c as any).category?.slug || (c as any).category?.name))
+
   const generateTryOns = useCallback(async () => {
     if (selectedClothes.length === 0 || selectedPeople.length === 0) {
       setErrors(['Please select at least one clothing item and one person'])
+      return
+    }
+
+    if (isCoverallsSelected && !confirmFullBody) {
+      setErrors(['Coveralls require a full-body person photo confirmation'])
       return
     }
 
@@ -536,11 +555,28 @@ export default function TryOnWorkflow({ onResultGenerated }: TryOnWorkflowProps)
         </div>
       </div>
 
+      {/* Coveralls Guidance */}
+      {isCoverallsSelected && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+            <div>
+              <p className="text-sm text-amber-800 font-medium">Coveralls selected</p>
+              <p className="text-sm text-amber-700">Full-body person photo required (head-to-toe). Garment image should show the complete one-piece suit.</p>
+              <label className="mt-2 inline-flex items-center gap-2 text-sm text-amber-900">
+                <input type="checkbox" className="rounded border-amber-300 text-amber-600 focus:ring-amber-500" checked={confirmFullBody} onChange={(e) => setConfirmFullBody(e.target.checked)} />
+                I confirm my person photo is full-body
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Generation Controls */}
       <div className="flex justify-center">
         <button
           onClick={generateTryOns}
-          disabled={isGenerating || selectedClothes.length === 0 || selectedPeople.length === 0}
+          disabled={isGenerating || selectedClothes.length === 0 || selectedPeople.length === 0 || (isCoverallsSelected && !confirmFullBody)}
           className="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 text-lg font-semibold"
         >
           {isGenerating ? (
@@ -561,6 +597,15 @@ export default function TryOnWorkflow({ onResultGenerated }: TryOnWorkflowProps)
           )}
         </button>
       </div>
+
+      {/* LightX fallback hint */}
+      {includesLightX && (
+        <div className="flex justify-center mt-2">
+          { (selectedPeople.some(p => !p.lightxUrl) || selectedClothes.some(c => !c.lightxUrl)) && (
+            <p className="text-xs text-gray-500">LightX fallback may be unavailable for this selection; Replicate will be attempted first.</p>
+          )}
+        </div>
+      )}
 
       {/* Generation Progress */}
       {generationProgress.length > 0 && (

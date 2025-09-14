@@ -32,7 +32,8 @@ interface NavItem {
 // ============================================================================
 
 export default function Navigation({ className = '' }: NavigationProps) {
-  const pathname = usePathname()
+  // Next.js usePathname can return null in some edge cases; default to '/'
+  const pathname = usePathname() || '/'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navigationItems: NavItem[] = [

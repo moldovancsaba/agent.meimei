@@ -326,7 +326,6 @@ export default function ManageClothesPage() {
               <option value="outerwear">Outerwear</option>
               <option value="shoes">Shoes</option>
               <option value="accessories">Accessories</option>
-              <option value="coveralls">Coveralls</option>
             </select>
             <select
               value={seasonFilter}

@@ -1,6 +1,6 @@
-# 🏗️ ARCHITECTURE.md - ChangeMass v1.0.0
+# 🏗️ ARCHITECTURE.md - ChangeMass v1.3.0
 
-**Last Updated**: 2025-01-24T12:42:16.000Z  
+**Last Updated**: 2025-09-14T09:24:28.000Z  
 **Status**: Current System Overview
 
 ## 🔹 System Architecture Overview
@@ -115,7 +115,14 @@ ChangeMass is built as a modern, scalable web application using Next.js 15.4.4 w
 }
 ```
 
-## 🔹 External Service Integration
+### External Service Integration
+
+#### Try-On Engine Selection (Coveralls)
+- Primary engine: Replicate (idm-vton by default), with optional REPLICATE_MODEL_COVERALLS override.
+- Fallback engine: LightX virtual outfit try-on.
+- Selection is category-aware (coveralls/overalls/jumpsuit synonyms) and follows TRYON_BACKEND_PRIORITY env (default replicate,lightx).
+- LightX requires LightX-hosted URLs; server auto-uploads to LightX if missing.
+- Persistence: TryOnGeneration.engine set to 'replicate' or 'lightx'; generationModel saved for auditability.
 
 ### LightX AI API Integration
 - **Base URL**: `https://api.lightxeditor.com/external/api/v2/`

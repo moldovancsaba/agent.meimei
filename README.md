@@ -1,4 +1,4 @@
-# ChangeMass v1.0.0
+# ChangeMass v1.3.0
 
 AI Virtual Outfit Try-On Application using Google Cloud Vertex AI and ImgBB CDN
 
@@ -140,7 +140,7 @@ changemass/
 
 ## 🔹 Version Badge
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 ![Status](https://img.shields.io/badge/status-development-orange)
 ![Next.js](https://img.shields.io/badge/Next.js-15.4.4-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
@@ -155,6 +155,6 @@ Private project - All rights reserved.
 
 ---
 
-**Last Updated**: 2025-01-24T12:18:16.000Z
-**Current Version**: v1.0.0
+**Last Updated**: 2025-09-14T09:24:28.000Z
+**Current Version**: v1.3.0
 **Status**: Development Phase

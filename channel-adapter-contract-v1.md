@@ -149,6 +149,10 @@ iMessage implementation plan artifact:
 
 - `imessage-adapter-architecture-v1.md`
 
+Email implementation plan artifact:
+
+- `email-adapter-architecture-v1.md`
+
 ## Acceptance Checks
 
 - [ ] all channels can normalize to the canonical event shape

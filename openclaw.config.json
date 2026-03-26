@@ -1,0 +1,11 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/Users/moldovancsaba/Projects/agent.meimei"
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "agent-meimei",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dashboard": "node dashboard/server.mjs",
+    "start": "node dashboard/server.mjs"
+  }
+}
+

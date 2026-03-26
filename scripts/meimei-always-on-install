@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+label="${MEIMEI_ALWAYS_ON_LABEL:-com.agent.meimei.gateway}"
+plist_dir="$HOME/Library/LaunchAgents"
+plist_path="$plist_dir/$label.plist"
+logs_dir="$HOME/Library/Logs/agent.meimei"
+stdout_log="$logs_dir/gateway.out.log"
+stderr_log="$logs_dir/gateway.err.log"
+openclaw_port="${OPENCLAW_GATEWAY_PORT:-18789}"
+dashboard_port="${PORT:-3030}"
+existing_label="ai.openclaw.gateway"
+uid="$(id -u)"
+
+mkdir -p "$plist_dir" "$logs_dir"
+
+if [ "${MEIMEI_ALWAYS_ON_FORCE:-0}" != "1" ] && [ "$label" != "$existing_label" ]; then
+  if launchctl print "gui/$uid/$existing_label" >/dev/null 2>&1; then
+    echo "Detected existing OpenClaw service ($existing_label)."
+    echo "Skipping install to avoid duplicate gateways."
+    echo "Set MEIMEI_ALWAYS_ON_FORCE=1 to install anyway."
+    exit 0
+  fi
+fi
+
+cat >"$plist_path" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$label</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>$repo_root</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>./scripts/oc-launch</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OPENCLAW_GATEWAY_PORT</key>
+    <string>$openclaw_port</string>
+    <key>PORT</key>
+    <string>$dashboard_port</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>$stdout_log</string>
+  <key>StandardErrorPath</key>
+  <string>$stderr_log</string>
+</dict>
+</plist>
+EOF
+
+launchctl unload "$plist_path" >/dev/null 2>&1 || true
+launchctl load "$plist_path"
+
+echo "Installed always-on gateway service."
+echo "Label: $label"
+echo "Plist: $plist_path"
+echo "Logs: $stdout_log | $stderr_log"

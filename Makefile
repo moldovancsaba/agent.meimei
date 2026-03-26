@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: launch status doctor readiness skills agent config
+.PHONY: launch status doctor readiness skills agent config always-on-install always-on-uninstall always-on-status
 
 launch:
 	./scripts/oc-launch
@@ -22,4 +22,13 @@ agent:
 
 config:
 	./scripts/oc config validate
+
+always-on-install:
+	./scripts/meimei-always-on-install
+
+always-on-uninstall:
+	./scripts/meimei-always-on-uninstall
+
+always-on-status:
+	./scripts/meimei-always-on-status
 

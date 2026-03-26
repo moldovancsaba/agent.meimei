@@ -64,6 +64,9 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `scripts/oc-launch` - launch helper for the gateway.
 - `scripts/oc-status` - health and readiness helper.
 - `scripts/oc-readiness` - unified PASS/FAIL readiness gate (blocks on critical findings).
+- `scripts/meimei-always-on-install` - installs macOS `launchd` always-on gateway service.
+- `scripts/meimei-always-on-uninstall` - removes macOS always-on gateway service.
+- `scripts/meimei-always-on-status` - prints always-on service state and gateway probe.
 - `scripts/web-search` - local DuckDuckGo-based web search fallback.
 - `Makefile` - convenience targets for launch, status, doctor, skills, and agent turns.
 - `dashboard/server.mjs` - localhost control panel for settings, search, and OpenClaw operations.
@@ -110,3 +113,6 @@ Use one of these from the repo root:
 - `npm run audit:validate` to validate audit trail chain integrity
 - `npm run telemetry:seed` to seed deterministic sample telemetry events
 - `npm run telemetry:validate` to validate telemetry summary/SLO schema integrity
+- `npm run always-on:install` to install and start always-on gateway auto-restart service
+- `npm run always-on:status` to inspect launchd service state and gateway health
+- `npm run always-on:uninstall` to remove always-on gateway service

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+label="${MEIMEI_ALWAYS_ON_LABEL:-com.agent.meimei.gateway}"
+existing_label="ai.openclaw.gateway"
+plist_path="$HOME/Library/LaunchAgents/$label.plist"
+stdout_log="$HOME/Library/Logs/agent.meimei/gateway.out.log"
+stderr_log="$HOME/Library/Logs/agent.meimei/gateway.err.log"
+
+echo "Service label: $label"
+if [ -f "$plist_path" ]; then
+  echo "Plist: present ($plist_path)"
+else
+  echo "Plist: missing ($plist_path)"
+fi
+
+echo
+echo "launchctl print output:"
+launchctl print "gui/$(id -u)/$label" 2>/dev/null || echo "Service not loaded."
+
+if [ "$label" != "$existing_label" ]; then
+  echo
+  echo "Existing OpenClaw service check ($existing_label):"
+  launchctl print "gui/$(id -u)/$existing_label" 2>/dev/null || echo "No existing OpenClaw default service."
+fi
+
+echo
+echo "Gateway status probe:"
+"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/oc-status" || true
+
+echo
+echo "Logs:"
+echo "stdout: $stdout_log"
+echo "stderr: $stderr_log"

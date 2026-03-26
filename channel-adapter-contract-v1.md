@@ -153,6 +153,10 @@ Email implementation plan artifact:
 
 - `email-adapter-architecture-v1.md`
 
+Discord implementation plan artifact:
+
+- `discord-adapter-architecture-v1.md`
+
 ## Acceptance Checks
 
 - [ ] all channels can normalize to the canonical event shape

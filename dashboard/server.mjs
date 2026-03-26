@@ -4,12 +4,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
 import { PDFParse } from "pdf-parse";
+import { createRuntimeHelpers } from "./lib/runtime.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
+const { runScript, launchDetached, readJson } = createRuntimeHelpers(repoRoot);
 const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(os.homedir(), ".openclaw", "openclaw.json");
 const launchScript = path.join(repoRoot, "scripts", "oc-launch");
 const statusScript = path.join(repoRoot, "scripts", "oc-status");
@@ -49,79 +50,6 @@ async function readConfig() {
 async function writeConfig(config) {
   const body = `${JSON.stringify(config, null, 2)}\n`;
   await writeFile(configPath, body, "utf8");
-}
-
-function runScript(script, args = [], options = {}) {
-  return new Promise((resolve) => {
-    const child = spawn(script, args, {
-      cwd: repoRoot,
-      env: { ...process.env },
-      shell: false
-    });
-
-    let stdout = "";
-    let stderr = "";
-    const timeoutMs = Number(options.timeoutMs || 0);
-    let timer = null;
-
-    if (timeoutMs > 0) {
-      timer = setTimeout(() => {
-        child.kill("SIGTERM");
-        setTimeout(() => child.kill("SIGKILL"), 2000).unref?.();
-      }, timeoutMs);
-      timer.unref?.();
-    }
-
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("close", (code, signal) => {
-      if (timer) clearTimeout(timer);
-      resolve({
-        code,
-        signal,
-        stdout,
-        stderr
-      });
-    });
-  });
-}
-
-function launchDetached(script, args = []) {
-  const child = spawn(script, args, {
-    cwd: repoRoot,
-    env: { ...process.env },
-    detached: true,
-    stdio: "ignore",
-    shell: false
-  });
-  child.unref();
-  return child.pid;
-}
-
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk.toString("utf8");
-      if (data.length > 2_000_000) {
-        reject(new Error("Request body too large."));
-        req.destroy();
-      }
-    });
-    req.on("end", () => {
-      if (!data.trim()) return resolve({});
-      try {
-        resolve(JSON.parse(data));
-      } catch (error) {
-        reject(error);
-      }
-    });
-    req.on("error", reject);
-  });
 }
 
 function configValue(config, pathParts) {
@@ -2440,7 +2368,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === dailyBriefingApiRoute) {
-      const result = await runScript("node", [dailyBriefingScript], { timeoutMs: 120000 });
+      const result = await runScript(process.execPath, [dailyBriefingScript], { timeoutMs: 120000 });
       const data = parseMaybeJson(result.stdout);
       if (result.code !== 0) {
         sendJson(res, 500, {

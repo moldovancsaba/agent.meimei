@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "release": {
+    "id": "release-2026-03-26",
+    "workItem": "mvp-factory-control#707"
+  },
+  "dod": {
+    "intentClear": true,
+    "scopeBounded": true,
+    "docsUpdated": true,
+    "skillCatalogConsistent": true,
+    "plainLanguageHandoff": true,
+    "noObviousContradictions": true
+  },
+  "risk": {
+    "higherRisk": true,
+    "ocReview": true,
+    "securityCheck": true,
+    "verificationNotes": true
+  },
+  "testing": {
+    "scopeChecked": true,
+    "namingChecked": true,
+    "catalogIntegrityChecked": true,
+    "docCoherenceChecked": true,
+    "workflowClarityChecked": true
+  },
+  "evidence": {
+    "commit": "pending-fill-on-delivery",
+    "files": [
+      "release-gates-dod-v1.md",
+      "scripts/validate-release-gates.mjs",
+      "releases/sample.release-gate.v1.json"
+    ],
+    "commands": [
+      {
+        "command": "npm run release:gates -- releases/sample.release-gate.v1.json",
+        "result": "pass"
+      }
+    ],
+    "notes": "Release gate evidence package is complete and explainable in plain language."
+  },
+  "decision": {
+    "ready": true,
+    "blockedBy": []
+  }
+}

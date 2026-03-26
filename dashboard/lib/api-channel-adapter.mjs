@@ -1,3 +1,5 @@
+import { evaluateExternalChannelPolicy } from "./external-channel-policy-engine.mjs";
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -28,27 +30,15 @@ function normalizeRoutingInput(input, method = "POST") {
       channel: String(input.channel || "dashboard"),
       taskType: String(input.taskType || "chat"),
       costTarget: String(input.costTarget || "low"),
-      message: String(input.message || "")
+      message: String(input.message || ""),
+      actionIntent: String(input.actionIntent || "execute"),
+      approved: input.approved === true
     }
   };
 }
 
 function policyCheck(event) {
-  const allowedChannels = new Set(["dashboard", "whatsapp", "imessage", "api", "internal-ops"]);
-  const allowedTaskTypes = new Set(["chat", "summary", "research", "review", "utility", "general"]);
-  const allowedCostTargets = new Set(["low", "medium", "high", "xhigh"]);
-
-  const { channel, taskType, costTarget } = event.input;
-  if (!allowedChannels.has(channel)) {
-    return { allowed: false, reason: `Unsupported channel: ${channel}`, riskTier: "low", requiresApproval: false };
-  }
-  if (!allowedTaskTypes.has(taskType)) {
-    return { allowed: false, reason: `Unsupported taskType: ${taskType}`, riskTier: "low", requiresApproval: false };
-  }
-  if (!allowedCostTargets.has(costTarget)) {
-    return { allowed: false, reason: `Unsupported costTarget: ${costTarget}`, riskTier: "low", requiresApproval: false };
-  }
-  return { allowed: true, reason: "allow by API adapter policy", riskTier: "low", requiresApproval: false };
+  return evaluateExternalChannelPolicy(event.input);
 }
 
 export async function routeViaApiAdapter(input, { previewModelRouting, method = "POST" }) {

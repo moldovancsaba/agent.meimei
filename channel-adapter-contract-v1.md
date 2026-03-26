@@ -69,6 +69,10 @@ Policy layer output:
 
 If `allowed=false`, adapter must return a visible blocked response and log the decision.
 
+Reference policy-as-code artifact:
+
+- `external-channel-policy-engine-v1.md`
+
 ## Dispatch Contract
 
 Dispatch consumes:

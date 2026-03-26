@@ -2293,7 +2293,9 @@ const server = http.createServer(async (req, res) => {
         channel: url.searchParams.get("channel") || "dashboard",
         taskType: url.searchParams.get("taskType") || "chat",
         costTarget: url.searchParams.get("costTarget") || "low",
-        message: ""
+        message: "",
+        actionIntent: url.searchParams.get("actionIntent") || "execute",
+        approved: url.searchParams.get("approved") === "true"
       }, {
         method: "GET",
         previewModelRouting
@@ -2320,7 +2322,9 @@ const server = http.createServer(async (req, res) => {
         channel: body.channel || "dashboard",
         taskType: body.taskType || "chat",
         costTarget: body.costTarget || "low",
-        message: body.message || ""
+        message: body.message || "",
+        actionIntent: body.actionIntent || "execute",
+        approved: body.approved === true
       }, {
         method: "POST",
         previewModelRouting

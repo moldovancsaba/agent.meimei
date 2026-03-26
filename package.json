@@ -12,6 +12,7 @@
     "adapter:whatsapp:validate": "node scripts/validate-whatsapp-adapter.mjs",
     "handoff:validate": "node scripts/validate-handoff-artifact.mjs",
     "release:gates": "node scripts/validate-release-gates.mjs",
+    "policy:validate": "node scripts/validate-external-channel-policy.mjs",
     "bootstrap": "./scripts/meimei-bootstrap",
     "rebuild": "./scripts/meimei-rebuild",
     "setup": "./scripts/meimei-setup",

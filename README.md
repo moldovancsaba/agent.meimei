@@ -22,6 +22,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 
 - `agent.md` - identity and behavioral contract.
 - `architecture.md` - system shape and boundaries.
+- `foundation-contradiction-audit.md` - contradiction matrix and remediation order for foundation hardening.
 - `function-lifecycle.md` - standard delivery method for new MeiMei functions.
 - `model-routing-spec.md` - deterministic routing policy for channel, task type, and cost.
 - `mac-mini-migration-audit.md` - dependency and portability audit for moving the product to another Mac mini.

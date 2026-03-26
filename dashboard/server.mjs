@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PDFParse } from "pdf-parse";
 import { createRuntimeHelpers } from "./lib/runtime.mjs";
+import { routeViaApiAdapter } from "./lib/api-channel-adapter.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2288,15 +2289,55 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === routingApiRoute) {
-      const channel = url.searchParams.get("channel") || "dashboard";
-      const taskType = url.searchParams.get("taskType") || "chat";
-      const costTarget = url.searchParams.get("costTarget") || "low";
-      const route = await previewModelRouting({
-        channel,
-        taskType,
-        costTarget
+      const result = await routeViaApiAdapter({
+        channel: url.searchParams.get("channel") || "dashboard",
+        taskType: url.searchParams.get("taskType") || "chat",
+        costTarget: url.searchParams.get("costTarget") || "low",
+        message: ""
+      }, {
+        method: "GET",
+        previewModelRouting
       });
-      sendJson(res, 200, { ok: true, route });
+      if (!result.ok) {
+        sendJson(res, result.code || 400, {
+          ok: false,
+          error: result.error,
+          adapter: result.adapter
+        });
+        return;
+      }
+      sendJson(res, 200, {
+        ok: true,
+        route: result.route,
+        adapter: result.adapter
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === routingApiRoute) {
+      const body = await readJson(req);
+      const result = await routeViaApiAdapter({
+        channel: body.channel || "dashboard",
+        taskType: body.taskType || "chat",
+        costTarget: body.costTarget || "low",
+        message: body.message || ""
+      }, {
+        method: "POST",
+        previewModelRouting
+      });
+      if (!result.ok) {
+        sendJson(res, result.code || 400, {
+          ok: false,
+          error: result.error,
+          adapter: result.adapter
+        });
+        return;
+      }
+      sendJson(res, 200, {
+        ok: true,
+        route: result.route,
+        adapter: result.adapter
+      });
       return;
     }
 
@@ -2379,18 +2420,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, data);
-      return;
-    }
-
-    if (req.method === "POST" && url.pathname === routingApiRoute) {
-      const body = await readJson(req);
-      const route = await previewModelRouting({
-        channel: body.channel || "dashboard",
-        taskType: body.taskType || "chat",
-        costTarget: body.costTarget || "low",
-        message: body.message || ""
-      });
-      sendJson(res, 200, { ok: true, route });
       return;
     }
 

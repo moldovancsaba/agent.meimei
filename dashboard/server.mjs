@@ -1068,7 +1068,7 @@ function renderKnowmorePage() {
         <button class="button secondary" id="mClose" type="button">Close</button>
       </div>
       <p id="mSummary"></p>
-      <p><a id="mIssue" class="button secondary" href="#" target="_blank" rel="noreferrer">Open related issue</a></p>
+      <p><a id="mIssue" class="button secondary" href="#">Open related issue</a></p>
       <h3>Details</h3>
       <p id="mDetails"></p>
       <h3>User manual</h3>
@@ -1116,6 +1116,15 @@ function renderKnowmorePage() {
     });
 
     closeBtn.addEventListener('click', closeModal);
+    mIssue.addEventListener('click', (event) => {
+      const href = mIssue.getAttribute('href') || '';
+      if (!href || href === '#') {
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      window.location.href = href;
+    });
     backdrop.addEventListener('click', (event) => {
       if (event.target === backdrop) closeModal();
     });

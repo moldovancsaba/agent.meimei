@@ -3,7 +3,7 @@
 Function: `daily briefing`
 User-facing term: `miniapp`
 
-Route: `/dashboard/Daily_briefing`
+Route: `/dashboard/518/Daily_briefing`
 API: `/dashboard/api/functions/daily-briefing`
 Add-on backlog: [functions/daily-briefing-addon.md](/Users/moldovancsaba/Projects/agent.meimei/functions/daily-briefing-addon.md)
 
@@ -50,7 +50,7 @@ As a MeiMei user, I want one button that creates my daily briefing and stores it
   "id": "daily-briefing",
   "version": "v1",
   "displayName": "Daily briefing",
-  "route": "/dashboard/Daily_briefing",
+  "route": "/dashboard/518/Daily_briefing",
   "api": {
     "method": "POST",
     "path": "/dashboard/api/functions/daily-briefing"

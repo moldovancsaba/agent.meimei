@@ -5,7 +5,7 @@ export function createRuntimeHelpers(repoRoot) {
     return new Promise((resolve) => {
       const child = spawn(script, args, {
         cwd: repoRoot,
-        env: { ...process.env },
+        env: { ...process.env, ...(options.env || {}) },
         shell: false
       });
 

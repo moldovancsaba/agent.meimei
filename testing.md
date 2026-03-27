@@ -27,7 +27,7 @@ Primary verification commands:
 For major UI/runtime changes:
 
 - load `https://meimei.localhost:8443/dashboard/`
-- verify primary routes (`/dashboard`, `/knowmore`, `/admin`, miniapp pages)
+- verify primary routes (`/`, `/knowmore`, `/admin`, and miniapp pages under `/dashboard/<issueId>/<slug>` via the local proxy)
 - verify theme and component consistency per design-system rules
 - verify no regressions in operator flows (status, settings, command actions)
 

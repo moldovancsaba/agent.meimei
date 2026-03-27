@@ -8,8 +8,8 @@ It accepts one URL at a time, reads the page or PDF, and returns a short summary
 
 ## User Route
 
-- Function page: `/dashboard/Any-URL_summarization_in_seconds`
-- Back path: `/dashboard/`
+- Function page: `/dashboard/516/Any-URL_summarization_in_seconds`
+- Back path: `/` (dashboard root)
 
 ## MVP UI
 
@@ -59,7 +59,7 @@ The shared naming rules live in [naming-conventions.md](../naming-conventions.md
   "id": "url-summary",
   "version": "v1",
   "displayName": "Any-URL summarization in seconds",
-  "route": "/dashboard/Any-URL_summarization_in_seconds",
+  "route": "/dashboard/516/Any-URL_summarization_in_seconds",
   "api": {
     "method": "POST",
     "path": "/dashboard/api/functions/url-summary"

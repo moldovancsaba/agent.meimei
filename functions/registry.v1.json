@@ -6,7 +6,7 @@
       "id": "daily-briefing",
       "version": "v1",
       "displayName": "Daily briefing",
-      "route": "/dashboard/Daily_briefing",
+      "route": "/dashboard/518/Daily_briefing",
       "api": {
         "method": "POST",
         "path": "/dashboard/api/functions/daily-briefing"
@@ -54,7 +54,7 @@
       "id": "url-summary",
       "version": "v1",
       "displayName": "Any-URL summarization in seconds",
-      "route": "/dashboard/Any-URL_summarization_in_seconds",
+      "route": "/dashboard/516/Any-URL_summarization_in_seconds",
       "api": {
         "method": "POST",
         "path": "/dashboard/api/functions/url-summary"
@@ -108,7 +108,7 @@
       "id": "model-routing",
       "version": "v1",
       "displayName": "Per-channel model routing by task type and cost",
-      "route": "/dashboard/Per-channel_model_routing_by_task_type_and_cost",
+      "route": "/dashboard/517/Per-channel_model_routing_by_task_type_and_cost",
       "api": {
         "method": "POST",
         "path": "/dashboard/api/functions/model-routing"

@@ -32,6 +32,7 @@ const urlSummaryApiRoute = "/api/functions/url-summary";
 const urlSummaryLabel = "Any-URL summarization in seconds";
 const dailyBriefingRoute = "/Daily_briefing";
 const dailyBriefingApiRoute = "/api/functions/daily-briefing";
+const dailyBriefingOpenApiRoute = "/api/functions/daily-briefing/open";
 const dailyBriefingLabel = "Daily briefing";
 const routingRoute = "/Per-channel_model_routing_by_task_type_and_cost";
 const routingApiRoute = "/api/functions/model-routing";
@@ -45,21 +46,30 @@ const adminLogoPath = "/images/logo_admin.png";
 const openclawLogoPath = "/images/logo_openclaw.png";
 const appCards = [
   {
+    issueId: 516,
     name: "Any-URL summarization in seconds",
-    route: "./Any-URL_summarization_in_seconds",
+    route: "/516/Any-URL_summarization_in_seconds",
     description: "Paste a URL and get a fast structured summary so you can understand key points without reading the entire source content."
   },
   {
+    issueId: 518,
     name: "Daily briefing",
-    route: "./Daily_briefing",
+    route: "/518/Daily_briefing",
     description: "Generate your daily briefing from configured sources to start the day with an actionable overview of priorities and context."
   },
   {
+    issueId: 517,
     name: "Per-channel model routing",
-    route: "./Per-channel_model_routing_by_task_type_and_cost",
+    route: "/517/Per-channel_model_routing_by_task_type_and_cost",
     description: "Preview and test model routing behavior by channel, task type, and cost target to keep output quality and spend aligned."
   }
 ];
+
+const miniappIssueRoute = new Map([
+  [516, urlSummaryRoute],
+  [517, routingRoute],
+  [518, dailyBriefingRoute]
+]);
 
 const knowmoreReleases = [
   {
@@ -705,6 +715,12 @@ function renderFlashcard({ kind, title, content, href = "", button = false, attr
   return `<a class="ds-flashcard" href="${escapeHtml(href)}">${cardHtml}</a>`;
 }
 
+function resolveMiniappRoute(pathname) {
+  const idMatch = pathname.match(/^\/(\d+)(?:\/[^/]+)?$/);
+  if (!idMatch) return null;
+  return miniappIssueRoute.get(Number(idMatch[1])) || null;
+}
+
 function renderGlobalNav(activePage) {
   const navId = "global-nav-actions";
   const toggleId = "global-nav-toggle";
@@ -782,7 +798,7 @@ function renderPage(state, lastResult) {
   const statusText = lastResult?.stdout || "";
   const statusError = lastResult?.stderr || "";
   const cardsHtml = appCards.map((app) => renderFlashcard({
-    kind: "APP",
+    kind: `APP #${app.issueId}`,
     title: app.name,
     content: toSummary160(app.description),
     href: app.route
@@ -809,61 +825,10 @@ function renderPage(state, lastResult) {
         <div class="ds-flashcard-grid">${cardsHtml}</div>
       </section>
 
-      <section class="card section">
-        <h2>Operations</h2>
-        <p class="sub">Use the built-in CLI wrappers without leaving the browser.</p>
-        <div class="actions">
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
-            <input type="hidden" name="cmd" value="status" />
-            <button type="submit">Status</button>
-          </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
-            <input type="hidden" name="cmd" value="skills" />
-            <button type="submit">Skills</button>
-          </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
-            <input type="hidden" name="cmd" value="doctor" />
-            <button type="submit" class="warn">Doctor</button>
-          </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
-            <input type="hidden" name="cmd" value="launch" />
-            <button type="submit" class="good">Launch</button>
-          </form>
-        </div>
-        <div class="footer">OpenClaw gateway is already present locally if you want to use it immediately.</div>
-      </section>
-
     </div>
   </div>
   <script>
     ${renderGlobalNavScript()}
-    const output = document.querySelector('pre');
-    async function postForm(form) {
-      const response = await fetch(form.action, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
-      });
-      const data = await response.json();
-      output.textContent = JSON.stringify(data, null, 2);
-      return data;
-    }
-    document.querySelectorAll('[data-run-form]').forEach((form) => {
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        await postForm(form);
-      });
-    });
-    document.querySelectorAll('button[data-run]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const data = await fetch('/api/run', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ cmd: button.dataset.run })
-        }).then((response) => response.json());
-        output.textContent = JSON.stringify(data, null, 2);
-      });
-    });
   </script>
 </body>
 </html>`;
@@ -1121,6 +1086,30 @@ function renderAdminPage(state, lastResult) {
       </section>
 
       <section class="card section">
+        <h2>Operations</h2>
+        <p class="sub">Use the built-in CLI wrappers without leaving the browser.</p>
+        <div class="actions">
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
+            <input type="hidden" name="cmd" value="status" />
+            <button type="submit">Status</button>
+          </form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
+            <input type="hidden" name="cmd" value="skills" />
+            <button type="submit">Skills</button>
+          </form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
+            <input type="hidden" name="cmd" value="doctor" />
+            <button type="submit" class="warn">Doctor</button>
+          </form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
+            <input type="hidden" name="cmd" value="launch" />
+            <button type="submit" class="good">Launch</button>
+          </form>
+        </div>
+        <div class="footer">OpenClaw gateway is already present locally if you want to use it immediately.</div>
+      </section>
+
+      <section class="card section">
         <h2>Latest output</h2>
         <p class="sub">Last operation result returned by the dashboard server.</p>
         <pre>${escapeHtml(statusText || statusError || "No command has been run yet.")}</pre>
@@ -1176,7 +1165,7 @@ function renderAdminPage(state, lastResult) {
       output.textContent = JSON.stringify(data, null, 2);
       return data;
     }
-    document.querySelectorAll('[data-config-form], [data-agent-form], [data-search-form]').forEach((form) => {
+    document.querySelectorAll('[data-config-form], [data-agent-form], [data-search-form], [data-run-form]').forEach((form) => {
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const data = await postForm(form);
@@ -1202,7 +1191,7 @@ function renderUrlSummaryPage() {
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="./">&larr; Back to dashboard</a>
+      <a class="button secondary" href="/">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(urlSummaryLabel)}</span>
     </div>
     <main class="hero">
@@ -1333,7 +1322,7 @@ function renderUrlSummaryPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       try {
-        const response = await fetch("./api/functions/url-summary", {
+        const response = await fetch("/api/functions/url-summary", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ url })
@@ -1450,13 +1439,20 @@ function renderDailyBriefingPage() {
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="./">&larr; Back to dashboard</a>
+      <a class="button secondary" href="/">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(dailyBriefingLabel)}</span>
     </div>
     <main class="hero">
       <section class="briefing-card">
         <h1>${escapeHtml(dailyBriefingLabel)}</h1>
         <p class="lede">Create a short daily briefing for MeiMei. Apple Notes is the default sink on macOS, and markdown is the fallback if Notes automation is unavailable.</p>
+        <div class="field briefing-sink-field">
+          <label for="briefingSink">Sink</label>
+          <select id="briefingSink" data-briefing-sink>
+            <option value="apple-notes" selected>Apple Notes</option>
+            <option value="markdown">Markdown</option>
+          </select>
+        </div>
         <div class="route-actions">
           <button type="button" class="good" data-briefing-run>Create briefing</button>
         </div>
@@ -1476,6 +1472,7 @@ function renderDailyBriefingPage() {
   </div>
   <script>
     const runButton = document.querySelector("[data-briefing-run]");
+    const sinkInput = document.querySelector("[data-briefing-sink]");
     const terminalShell = document.getElementById("terminalShell");
     const resultShell = document.getElementById("resultShell");
 
@@ -1500,11 +1497,21 @@ function renderDailyBriefingPage() {
       document.body.classList.add("has-result");
     }
 
+    async function openResult(target, markdownPath = "") {
+      const response = await fetch("${dailyBriefingOpenApiRoute}", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ target, markdownPath })
+      });
+      return await response.json();
+    }
+
     function renderLoading() {
+      const sinkLabel = prettySink(sinkInput.value);
       renderTerminal([
         "Collecting daily context.",
         "Building the briefing body.",
-        "Writing to Apple Notes."
+        "Writing to " + sinkLabel + "."
       ]);
       resultShell.innerHTML = [
         '<div class="result-card">',
@@ -1566,22 +1573,39 @@ function renderDailyBriefingPage() {
         '</div>',
         '<div class="panel u-mt12">',
         '<h3>Storage</h3>',
+        '<div class="muted">Notes account: ' + escapeHtml(data.appleNotes?.accountName || "(default)") + '</div>',
         '<div class="muted">Apple Notes folder: ' + escapeHtml(data.folderName || "MeiMei") + '</div>',
+        '<div class="muted">Notes target folder: ' + escapeHtml(data.appleNotes?.folderName || data.folderName || "MeiMei") + '</div>',
         '<div class="muted">Markdown fallback: ' + escapeHtml(data.markdownPath || "none") + '</div>',
+        '</div>',
+        '<div class="route-actions u-mt12">',
+        '<button type="button" class="button secondary" data-open-markdown>Open markdown</button>',
+        '<button type="button" class="button secondary" data-open-notes>Open Notes</button>',
         '</div>',
         '</div>'
       ].join("");
       document.body.classList.add("has-result");
+
+      const openMarkdown = resultShell.querySelector("[data-open-markdown]");
+      const openNotes = resultShell.querySelector("[data-open-notes]");
+      openMarkdown?.addEventListener("click", async () => {
+        const opened = await openResult("markdown", data.markdownPath || "");
+        if (!opened?.ok) renderError(opened?.error || "Could not open markdown file.");
+      });
+      openNotes?.addEventListener("click", async () => {
+        const opened = await openResult("notes", data.markdownPath || "");
+        if (!opened?.ok) renderError(opened?.error || "Could not open Notes.");
+      });
     }
 
     async function createBriefing() {
       renderLoading();
       window.scrollTo({ top: 0, behavior: "smooth" });
       try {
-        const response = await fetch("./api/functions/daily-briefing", {
+        const response = await fetch("/api/functions/daily-briefing", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({})
+          body: JSON.stringify({ sink: String(sinkInput.value || "apple-notes") })
         });
         const data = await response.json();
         if (!response.ok || !data.ok) {
@@ -1612,7 +1636,7 @@ function renderRoutingPage() {
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="./">&larr; Back to dashboard</a>
+      <a class="button secondary" href="/">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(routingLabel)}</span>
     </div>
     <main class="hero">
@@ -1757,7 +1781,7 @@ function renderRoutingPage() {
       renderWorking();
       window.scrollTo({ top: 0, behavior: "smooth" });
       try {
-        const response = await fetch("./api/functions/model-routing", {
+        const response = await fetch("/api/functions/model-routing", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload)
@@ -1885,7 +1909,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && normalizedPath === urlSummaryRoute) {
+    const resolvedMiniappRoute = resolveMiniappRoute(normalizedPath);
+
+    if (req.method === "GET" && resolvedMiniappRoute === urlSummaryRoute) {
       const html = renderUrlSummaryPage();
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
@@ -1895,7 +1921,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && normalizedPath === dailyBriefingRoute) {
+    if (req.method === "GET" && resolvedMiniappRoute === dailyBriefingRoute) {
       const html = renderDailyBriefingPage();
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
@@ -1905,7 +1931,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && normalizedPath === routingRoute) {
+    if (req.method === "GET" && resolvedMiniappRoute === routingRoute) {
       const html = renderRoutingPage();
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
@@ -2083,7 +2109,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === dailyBriefingApiRoute) {
-      const result = await runScript(process.execPath, [dailyBriefingScript], { timeoutMs: 120000 });
+      const body = await readJson(req);
+      const sink = String(body.sink || "apple-notes").trim() === "markdown" ? "markdown" : "apple-notes";
+      const result = await runScript(process.execPath, [dailyBriefingScript], {
+        timeoutMs: 120000,
+        env: { MEIMEI_BRIEFING_SINK: sink }
+      });
       const data = parseMaybeJson(result.stdout);
       if (result.code !== 0) {
         sendJson(res, 500, {
@@ -2094,6 +2125,36 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, data);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === dailyBriefingOpenApiRoute) {
+      const body = await readJson(req);
+      const target = String(body.target || "").trim();
+      if (target === "notes") {
+        const opened = await runScript("open", ["-a", "Notes"], { timeoutMs: 8000 });
+        if (opened.code !== 0) {
+          sendJson(res, 500, { ok: false, error: opened.stderr || "Could not open Notes." });
+          return;
+        }
+        sendJson(res, 200, { ok: true, target: "notes" });
+        return;
+      }
+      if (target === "markdown") {
+        const markdownPath = String(body.markdownPath || "").trim();
+        if (!markdownPath || !path.isAbsolute(markdownPath)) {
+          sendJson(res, 400, { ok: false, error: "Missing or invalid markdownPath." });
+          return;
+        }
+        const opened = await runScript("open", [markdownPath], { timeoutMs: 8000 });
+        if (opened.code !== 0) {
+          sendJson(res, 500, { ok: false, error: opened.stderr || "Could not open markdown file." });
+          return;
+        }
+        sendJson(res, 200, { ok: true, target: "markdown", markdownPath });
+        return;
+      }
+      sendJson(res, 400, { ok: false, error: "Unknown open target." });
       return;
     }
 

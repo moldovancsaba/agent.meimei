@@ -32,7 +32,10 @@ function validateFunctionContract(fn, index, seenIds) {
   seenIds.add(fn.id);
 
   if (fn.version !== "v1") fail(`${prefix}.version must be "v1"`);
-  if (!String(fn.route || "").startsWith("/dashboard/")) fail(`${prefix}.route must start with /dashboard/`);
+  const routeStr = String(fn.route || "");
+  if (!/^\/dashboard\/\d+\//.test(routeStr)) {
+    fail(`${prefix}.route must be /dashboard/<githubIssueId>/<slug> (issue id is canonical; slug is human-readable only)`);
+  }
 
   if (!isObject(fn.api)) {
     fail(`${prefix}.api must be an object`);

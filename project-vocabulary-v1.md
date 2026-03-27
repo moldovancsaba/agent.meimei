@@ -10,7 +10,7 @@ Define one canonical vocabulary for `agent.meimei` so architecture, issues, rele
 - **OC:** Human control partner responsible for priorities, approvals, and acceptance.
 - **OpenClaw:** Runtime/orchestration stack used by MeiMei.
 - **Miniapp:** A user-facing capability delivered under the miniapp contract standard.
-- **Function page:** A dashboard route implementing a miniapp UI flow.
+- **Function page:** A dashboard route implementing a miniapp UI flow. Canonical form is `/dashboard/<githubIssueId>/<slug>`; the issue id is stable, the slug is human-readable only.
 - **Adapter:** Channel integration component that normalizes ingress and delivery lifecycle behavior.
 - **Policy engine:** Deterministic rule evaluator that allows/blocks/risk-classifies actions.
 - **Readiness gate:** Unified go/no-go operational check before launch/release.

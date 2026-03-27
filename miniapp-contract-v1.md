@@ -27,7 +27,7 @@ Every miniapp must define a contract object with this schema:
   "id": "daily-briefing",
   "version": "v1",
   "displayName": "Daily briefing",
-  "route": "/dashboard/Daily_briefing",
+  "route": "/dashboard/518/Daily_briefing",
   "api": {
     "method": "POST",
     "path": "/dashboard/api/functions/daily-briefing"
@@ -64,7 +64,7 @@ Every miniapp must define a contract object with this schema:
 - `id`: stable snake-case or kebab-case identifier
 - `version`: must be `v1`
 - `displayName`: user-facing name
-- `route`: canonical function route
+- `route`: canonical browser URL path for the function page (must include GitHub issue id; see Route Rules)
 - `api.method` and `api.path`: canonical HTTP entry point
 - `input`: required/optional contract and at least one example
 - `output`: minimum success shape and required fields
@@ -74,9 +74,13 @@ Every miniapp must define a contract object with this schema:
 
 ## Route Rules
 
-- Route must live under `/dashboard/`.
-- API path must live under `/dashboard/api/functions/`.
-- Route and API must be stable after release; breaking changes require new versioned miniapp contract.
+- **Canonical miniapp URL:** `/dashboard/<githubIssueId>/<slug>`
+  - `<githubIssueId>` is the unique id from `mvp-factory-control` (digits only). It is the stable identifier; renaming the miniapp does not change it.
+  - `<slug>` is human-readable only (underscores allowed to match historical names). It may vary; routing is resolved by issue id, not by slug text.
+- When the dashboard is mounted behind the local HTTPS proxy (`meimei.localhost`), the public URL is `https://meimei.localhost:8443/dashboard/<id>/<slug>` (same path after the host).
+- **Legacy slug-only paths** (for example `/dashboard/Daily_briefing` with no issue id) are not supported; do not document or rely on them.
+- API path must remain under `/dashboard/api/functions/` in the contract registry (that path is the stable HTTP entry for adapters and docs parity checks).
+- Route and API must be stable after release; breaking changes require a new versioned miniapp contract or an explicit migration note.
 
 ## Input Rules
 
@@ -123,7 +127,7 @@ Every miniapp must define a contract object with this schema:
 ## Review Checklist
 
 - [ ] all required fields present
-- [ ] route and API follow naming/placement rules
+- [ ] `route` is `/dashboard/<githubIssueId>/<slug>` and API path is under `/dashboard/api/functions/`
 - [ ] input/output and failure behavior are explicit
 - [ ] safety and side effects are declared
 - [ ] channel capability and approval requirements are declared

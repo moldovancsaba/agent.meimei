@@ -12,6 +12,7 @@ const briefingDir = process.env.MEIMEI_BRIEFING_DIR || path.join(os.homedir(), "
 const briefingFolderName = process.env.MEIMEI_BRIEFING_FOLDER || "MeiMei";
 const briefingSink = process.env.MEIMEI_BRIEFING_SINK || "apple-notes";
 const notesActivate = process.env.MEIMEI_BRIEFING_NOTES_ACTIVATE === "1";
+const notesAccountPreferred = process.env.MEIMEI_BRIEFING_NOTES_ACCOUNT || "";
 
 function escapeHtml(value) {
   return String(value || "")
@@ -180,18 +181,31 @@ function formatDateLabel(date = new Date()) {
   }).format(date);
 }
 
-async function writeAppleNotesNote({ title, bodyHtml, folderName }) {
+async function writeAppleNotesNote({ title, bodyHtml, folderName, preferredAccountName = "" }) {
   const appleScript = `
 on run argv
   set noteTitle to item 1 of argv
   set noteBody to item 2 of argv
   set targetFolderName to item 3 of argv
   set shouldActivate to item 4 of argv
+  set preferredAccountName to item 5 of argv
   tell application "Notes"
     if shouldActivate is "true" then
       activate
     end if
-    set targetAccount to first account
+    set targetAccount to missing value
+    if preferredAccountName is not "" then
+      try
+        set targetAccount to account preferredAccountName
+      end try
+    end if
+    if targetAccount is missing value then
+      try
+        set targetAccount to default account
+      on error
+        set targetAccount to first account
+      end try
+    end if
     set targetFolder to missing value
     try
       set targetFolder to folder targetFolderName of targetAccount
@@ -202,11 +216,20 @@ on run argv
         set targetFolder to targetAccount
       end try
     end try
-    make new note at targetFolder with properties {name:noteTitle, body:noteBody}
+    set createdNote to make new note at targetFolder with properties {name:noteTitle, body:noteBody}
+    set accountNameText to ""
+    set folderNameText to ""
+    try
+      set accountNameText to name of targetAccount
+    end try
+    try
+      set folderNameText to name of targetFolder
+    end try
+    return accountNameText & "||" & folderNameText & "||" & id of createdNote
   end tell
 end run`.trim();
 
-  return runCommand("osascript", ["-e", appleScript, title, bodyHtml, folderName, toAppleScriptBoolean(notesActivate)], {
+  return runCommand("osascript", ["-e", appleScript, title, bodyHtml, folderName, toAppleScriptBoolean(notesActivate), preferredAccountName], {
     timeoutMs: 20000
   });
 }
@@ -259,7 +282,8 @@ async function main() {
     const result = await writeAppleNotesNote({
       title,
       bodyHtml,
-      folderName: briefingFolderName
+      folderName: briefingFolderName,
+      preferredAccountName: notesAccountPreferred
     });
     appleNotesResult = result;
     if (result.code !== 0) {
@@ -288,10 +312,15 @@ async function main() {
   };
 
   if (appleNotesResult) {
+    const locationRaw = String(appleNotesResult.stdout || "").trim();
+    const [accountName = "", folderName = "", noteId = ""] = locationRaw.split("||");
     payload.appleNotes = {
       code: appleNotesResult.code,
       signal: appleNotesResult.signal,
-      stderr: appleNotesResult.stderr
+      stderr: appleNotesResult.stderr,
+      accountName,
+      folderName,
+      noteId
     };
   }
 

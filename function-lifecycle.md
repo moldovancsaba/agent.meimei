@@ -59,9 +59,11 @@ Design the smallest useful UI:
 
 ### 3. Route
 
-Assign a stable path for the function, such as:
+Assign a stable path using the backing GitHub issue id (canonical) plus a human-readable slug:
 
-- `/dashboard/<function_name>`
+- `/dashboard/<githubIssueId>/<slug>` (example: `/dashboard/518/Daily_briefing`)
+
+The issue id must match the `mvp-factory-control` issue used for delivery tracking. The slug is display-only; routing is keyed by id.
 
 Keep the dashboard root as the function index and return path.
 

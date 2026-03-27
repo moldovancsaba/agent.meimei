@@ -92,6 +92,7 @@ Every new miniapp page must:
 1. Include `public/styles/design-system.css`
 2. Set `data-theme` on `<body>`
 3. Reuse design-system components/classes rather than introducing page-local style systems
+4. Call dashboard APIs with root-absolute paths (for example `fetch("/api/functions/...")`, not `./api/...`), because function URLs are nested (`/dashboard/<issueId>/<slug>`) and relative `./api` resolves incorrectly
 
 ## Safety + state rules
 

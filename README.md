@@ -51,6 +51,8 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `vercel-env-inventory.md` - secret inventory and Vercel sync notes.
 - `second-mac-mini-handoff.md` - copy-paste task for the migration agent.
 - `workflow.md` - intake to delivery flow.
+- `product_roadmap.md` - executive view of shipped miniapps and FR/CR themes (plain English).
+- `issue-merge-walkthrough.md` - how to walk issues, add FR/CR traceability, and link backlog to miniapps.
 - `runbook.md` - day-to-day operating steps.
 - `security.md` - safety and access rules.
 - `testing.md` - verification expectations.

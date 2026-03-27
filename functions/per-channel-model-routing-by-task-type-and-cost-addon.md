@@ -11,7 +11,7 @@ This is an add-on, not a new function.
 ## Canonical Surface
 
 - Miniapp: `Per-channel model routing by task type and cost`
-- Route: `/dashboard/Per-channel_model_routing_by_task_type_and_cost`
+- Route: `/dashboard/517/Per-channel_model_routing_by_task_type_and_cost`
 - API: `/dashboard/api/functions/model-routing`
 
 ## Add-On User Stories

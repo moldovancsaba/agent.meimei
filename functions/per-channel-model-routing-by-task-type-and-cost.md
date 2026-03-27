@@ -14,8 +14,8 @@ It does not run the task. It only shows the recommended route, fallback, and rea
 
 ## User Route
 
-- Function page: `/dashboard/Per-channel_model_routing_by_task_type_and_cost`
-- Back path: `/dashboard/`
+- Function page: `/dashboard/517/Per-channel_model_routing_by_task_type_and_cost`
+- Back path: `/` (dashboard root)
 
 ## MVP UI
 
@@ -75,7 +75,7 @@ The routing policy lives in [model-routing-spec.md](../model-routing-spec.md).
   "id": "model-routing",
   "version": "v1",
   "displayName": "Per-channel model routing by task type and cost",
-  "route": "/dashboard/Per-channel_model_routing_by_task_type_and_cost",
+  "route": "/dashboard/517/Per-channel_model_routing_by_task_type_and_cost",
   "api": {
     "method": "POST",
     "path": "/dashboard/api/functions/model-routing"

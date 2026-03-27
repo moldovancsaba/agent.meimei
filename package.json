@@ -30,6 +30,7 @@
     "dashboard:watchdog:uninstall": "./scripts/meimei-dashboard-watchdog-uninstall",
     "dashboard:watchdog:status": "./scripts/meimei-dashboard-watchdog-status",
     "dashboard:reload": "./scripts/meimei-dashboard-reload",
+    "menubar:build": "bash macos/MeiMeiMenuBar/build-app.sh",
     "start": "node dashboard/server.mjs"
   },
   "dependencies": {

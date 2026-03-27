@@ -100,6 +100,10 @@ body[data-theme="red"] {
 }
 .nav-chip:hover { transform: translateY(-1px); }
 .nav-chip img { width: 24px; height: 24px; object-fit: contain; border-radius: 6px; background: rgba(255, 255, 255, 0.03); }
+/* Inactive chips need a bit more contrast than global --line or they read as broken next to OpenClaw / .active */
+.nav-actions .nav-chip:not(.openclaw):not(.active) {
+  border-color: rgba(255, 255, 255, 0.16);
+}
 .nav-chip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent); }
 .nav-chip.openclaw { border-color: var(--brand-openclaw-border); background: linear-gradient(180deg, var(--brand-openclaw-bg-1), var(--brand-openclaw-bg-2)); }
 

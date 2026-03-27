@@ -536,7 +536,7 @@ function renderGlobalNav(activePage) {
           <img src="${escapeHtml(dashboardLogoPath)}" alt="Dashboard logo" />
           <span>Dashboard</span>
         </a>
-        <a class="nav-chip ${activePage === "knowmore" ? "active" : ""}" href="${knowmoreRoute}">
+        <a class="nav-chip ${activePage === "knowmore" ? "active" : ""}" href="${escapeHtml(knowmoreRoute)}">
           <img src="${escapeHtml(knowmoreLogoPath)}" alt="knowmore logo" />
           <span>knowmore</span>
         </a>

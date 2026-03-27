@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "generatedAt": "2026-03-27",
+  "generatedAt": "2026-03-28",
   "functions": [
     {
       "id": "daily-briefing",
@@ -169,7 +169,7 @@
       "version": "v1",
       "displayName": "API channel adapter (reference)",
       "description": "Run the API reference adapter: policy, audit, telemetry, and lifecycle—the spine that future WhatsApp, iMessage, and Discord adapters attach to.",
-      "catalogOrder": 0,
+      "catalogOrder": 4,
       "route": "/dashboard/700/API_channel_adapter",
       "api": {
         "method": "POST",

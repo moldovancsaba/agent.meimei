@@ -57,6 +57,9 @@ Key artifacts:
 
 - `dashboard/server.mjs`
 - `public/styles/design-system.css`
+- `config/dashboard-surface.v1.json` (routes, API paths, logos, operator script paths; loaded by `dashboard/lib/dashboard-surface.mjs`)
+- `config/page-layout.v1.json` (per-page layout order, block span, desktop column count; loaded by `dashboard/lib/page-layout.mjs`)
+- `macos/MeiMeiMenuBar/` (optional menu bar companion to open the local HTTPS dashboard; see `macos/MeiMeiMenuBar/README.md`)
 - `scripts/meimei-domain*`
 - `scripts/meimei-setup`
 - `scripts/meimei-cert`
@@ -111,6 +114,7 @@ Key artifacts:
 - Dashboard app serves on local runtime port.
 - `meimei.localhost` proxy routes requests to dashboard or gateway based on path.
 - TLS certificate lifecycle is managed by `scripts/meimei-cert`.
+- **Layout:** responsive page grid and block order are defined in `design-system-v1.md` (CSS: `.layout-flow` / `.layout-box` / `.layout-break`) and persisted in `config/page-layout.v1.json`; operators edit via **Admin → Page layout**.
 
 ### Gateway and adapter path
 

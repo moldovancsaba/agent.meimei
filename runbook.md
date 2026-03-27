@@ -70,4 +70,6 @@ Escalate to OC when:
 - Open `http://127.0.0.1:3030` in a browser.
 - Use the settings form to update the repo-local OpenClaw config.
 - Use the operations panel to run status, skills, doctor, and launch checks.
+- **Page layout** (grid columns, block order, row breaks): **Admin → Page layout**; spec and CSS classes in `design-system-v1.md` (**Global layout system**); data in `config/page-layout.v1.json`.
+- Optional **menu bar** app: `npm run menubar:build`, then open `macos/MeiMeiMenuBar/build/MeiMeiMenuBar.app` (see `macos/MeiMeiMenuBar/README.md`).
 - Use `npm run setup` for the one-step local domain start/open flow.

@@ -887,6 +887,7 @@ function renderPage(state, lastResult) {
     <div class="topnav">
       <h1 class="title">MeiMei Operator Dashboard</h1>
       <div class="nav-actions">
+        <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
         <a class="button secondary" href="/admin">Admin / Settings</a>
         <a class="button good" href="${escapeHtml(publicDashboardUrl)}">Open local domain</a>
       </div>
@@ -900,7 +901,6 @@ function renderPage(state, lastResult) {
         <h2>Functions</h2>
         <p class="sub">Launch MeiMei product functions from the root dashboard.</p>
         <div class="actions">
-          <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
           <a class="button good" href="./Any-URL_summarization_in_seconds">Any-URL summarization in seconds</a>
           <a class="button" href="./Daily_briefing">Daily briefing</a>
           <a class="button secondary" href="./Per-channel_model_routing_by_task_type_and_cost">Per-channel model routing</a>
@@ -1160,6 +1160,7 @@ function renderAdminPage(state, lastResult) {
     <div class="topnav">
       <h1 class="title">Admin / Settings</h1>
       <div class="nav-actions">
+        <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
         <a class="button secondary" href="/">Dashboard</a>
         <a class="button good" href="${escapeHtml(publicDashboardUrl)}">Open local domain</a>
       </div>

@@ -10,24 +10,34 @@ import { loadRegistrySync, miniappRuntimeConfig } from "./lib/miniapp-registry.m
 import { routeViaApiAdapter } from "./lib/api-channel-adapter.mjs";
 import { createReliabilityTelemetry } from "./lib/reliability-telemetry.mjs";
 import { createImessageAdapter } from "./lib/imessage-adapter.mjs";
+import {
+  loadDashboardSurfaceSync,
+  loadKnowmoreReleasesSync,
+  resolveIssueUrl,
+  resolveOperatorScripts,
+  pathStartsWithStaticPrefix
+} from "./lib/dashboard-surface.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 const publicDir = path.join(repoRoot, "public");
+const surface = loadDashboardSurfaceSync();
+const operatorScriptPaths = resolveOperatorScripts(surface, repoRoot);
+const launchScript = operatorScriptPaths.launch;
+const statusScript = operatorScriptPaths.status;
+const doctorScript = operatorScriptPaths.doctor;
+const skillsScript = operatorScriptPaths.skills;
+const agentScript = operatorScriptPaths.agent;
+const searchScript = operatorScriptPaths.webSearch;
+const dailyBriefingScript = operatorScriptPaths.dailyBriefing;
 const { runScript, launchDetached, readJson } = createRuntimeHelpers(repoRoot);
 const { getSummary: getTelemetrySummary } = createReliabilityTelemetry(repoRoot);
-const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(os.homedir(), ".openclaw", "openclaw.json");
-const launchScript = path.join(repoRoot, "scripts", "oc-launch");
-const statusScript = path.join(repoRoot, "scripts", "oc-status");
-const doctorScript = path.join(repoRoot, "scripts", "oc-doctor");
-const skillsScript = path.join(repoRoot, "scripts", "oc-skills");
-const agentScript = path.join(repoRoot, "scripts", "oc-agent");
-const searchScript = path.join(repoRoot, "scripts", "web-search");
-const dailyBriefingScript = path.join(repoRoot, "scripts", "daily-briefing.mjs");
+const configPath =
+  process.env[surface.envKeys.openclawConfigPath] || path.join(os.homedir(), ".openclaw", "openclaw.json");
 
-const port = Number(process.env.PORT || 3030);
-const localOpenCommand = process.env.MEIMEI_SETUP_COMMAND || "./scripts/meimei-setup";
+const port = Number(process.env[surface.envKeys.port] || surface.defaults.port);
+const localOpenCommand = process.env[surface.envKeys.setupCommand] || surface.defaults.setupCommand;
 
 const miniappCfg = miniappRuntimeConfig(loadRegistrySync());
 const miniappIssueRoute = miniappCfg.miniappIssueRoute;
@@ -48,225 +58,23 @@ const apiAdapterApiRoute = R["api-channel-adapter"].apiPath;
 const apiAdapterLabel = R["api-channel-adapter"].displayName;
 const apiAdapterIssueId = R["api-channel-adapter"].issueId;
 
-const imessageInboundApiRoute = "/api/channels/imessage/inbound";
-const knowmoreRoute = "/knowmore";
-const openclawChatUrl = process.env.MEIMEI_OPENCLAW_CHAT_URL || "http://127.0.0.1:18789/chat?session=main";
-const dashboardLogoPath = "/images/logo_sovereign.png";
-const knowmoreLogoPath = "/images/logo_knowmore.png";
-const adminLogoPath = "/images/logo_admin.png";
-const openclawLogoPath = "/images/logo_openclaw.png";
+const imessageInboundApiRoute = surface.api.imessageInbound;
+const homeRoute = surface.routes.home;
+const adminRoute = surface.routes.admin;
+const knowmoreRoute = surface.routes.knowmore;
+const apiConfigRoute = surface.api.config;
+const apiRunRoute = surface.api.run;
+const telemetrySummaryApiRoute = surface.api.telemetrySummary;
+const designSystemCssPath = surface.designSystemCssPath;
+const staticPrefixes = surface.staticPrefixes;
+const listenHost = surface.server.bindHost;
+const openclawChatUrl = process.env[surface.envKeys.openclawChatUrl] || surface.defaults.openclawChatUrl;
+const dashboardLogoPath = surface.logos.dashboard;
+const knowmoreLogoPath = surface.logos.knowmore;
+const adminLogoPath = surface.logos.admin;
+const openclawLogoPath = surface.logos.openclaw;
 
-const knowmoreReleases = [
-  {
-    issue: 692,
-    title: "Foundation contradiction audit baseline",
-    summary: "Mapped core docs/runtime contradictions into one baseline matrix so implementation starts from verified truth instead of assumptions and silent drift.",
-    details: "Introduced a contradiction audit artifact to identify and prioritize the biggest truth gaps between docs, config, scripts, and runtime behavior.",
-    manual: [
-      "Open foundation-contradiction-audit.md.",
-      "Review contradiction IDs and severity.",
-      "Apply remediation in order from highest impact."
-    ]
-  },
-  {
-    issue: 693,
-    title: "Unified readiness gate",
-    summary: "Added a single PASS/FAIL readiness gate that combines config checks, runtime probes, and doctor signals to block unsafe launches and releases.",
-    details: "Created scripts/oc-readiness and npm run readiness so operators have one deterministic go/no-go command.",
-    manual: [
-      "Run npm run readiness.",
-      "If FAIL, inspect reported critical findings.",
-      "Fix issues and rerun until PASS."
-    ]
-  },
-  {
-    issue: 694,
-    title: "Miniapp contract v1",
-    summary: "Locked a canonical miniapp contract schema with versioning and governance rules so all new functions follow one consistent, reviewable standard.",
-    details: "Added miniapp-contract-v1.md and linked lifecycle/workflow requirements to enforce one miniapp shape across delivery.",
-    manual: [
-      "Read miniapp-contract-v1.md.",
-      "Author miniapp metadata using the v1 schema.",
-      "Ensure docs and registry stay aligned."
-    ]
-  },
-  {
-    issue: 695,
-    title: "Function registry + validator",
-    summary: "Implemented machine-readable miniapp registry plus schema validator to keep function contracts consistent, typed, and automatically verifiable over time.",
-    details: "Added functions/registry.v1.json and scripts/validate-function-registry.mjs with npm run registry:validate.",
-    manual: [
-      "Update functions/registry.v1.json entries.",
-      "Run npm run registry:validate.",
-      "Fix validation errors before shipping."
-    ]
-  },
-  {
-    issue: 696,
-    title: "Dashboard runtime modularization",
-    summary: "Refactored dashboard runtime helpers out of server monolith into reusable module, reducing coupling and enabling safer incremental feature delivery.",
-    details: "Extracted runScript, launchDetached, and readJson into dashboard/lib/runtime.mjs and wired server import usage.",
-    manual: [
-      "Use dashboard/lib/runtime.mjs for runtime helpers.",
-      "Keep server route logic separate from helper internals.",
-      "Run dashboard and smoke-test command actions."
-    ]
-  },
-  {
-    issue: 697,
-    title: "Issue quality standard + ready gate",
-    summary: "Defined strict issue quality format and ready-gate checklist so board items are implementation-ready, testable, and objectively reviewable before coding.",
-    details: "Added issue-quality-standard.md and issue-ready-gate-checklist.md with mandatory sections and status transition rules.",
-    manual: [
-      "Draft issue with all required sections.",
-      "Apply ready-gate checklist before Ready (NEXT).",
-      "Attach evidence when moving to Review."
-    ]
-  },
-  {
-    issue: 699,
-    title: "Channel adapter contract + lifecycle",
-    summary: "Established one adapter contract and lifecycle for all channels to standardize ingress, policy, dispatch, egress, and delivery-state visibility.",
-    details: "Added channel-adapter-contract-v1.md and channel-adapter-lifecycle-v1.md as cross-channel foundation documents.",
-    manual: [
-      "Normalize channel events to canonical shape.",
-      "Enforce lifecycle stages without silent skips.",
-      "Emit explicit delivery states."
-    ]
-  },
-  {
-    issue: 700,
-    title: "API reference adapter implementation",
-    summary: "Built reference API adapter implementing lifecycle stages and policy checks, plus a dedicated miniapp and API route for operator inspection.",
-    details: "Implemented dashboard/lib/api-channel-adapter.mjs; HTTP POST /api/functions/api-channel-adapter; dashboard page /700/API_channel_adapter; see channel-api-adapter-reference-v1.md.",
-    manual: [
-      "Open /700/API_channel_adapter and run the adapter.",
-      "Call POST /api/functions/api-channel-adapter with channel, taskType, costTarget; optional message and approved.",
-      "Inspect adapter lifecycle JSON; confirm policy blocks return adapter state."
-    ]
-  },
-  {
-    issue: 701,
-    title: "WhatsApp parity validator",
-    summary: "Added WhatsApp parity rules and validator to enforce config consistency with adapter contract expectations and reduce channel-specific policy drift.",
-    details: "Introduced whatsapp-adapter-parity-v1.md and scripts/validate-whatsapp-adapter.mjs with npm run adapter:whatsapp:validate.",
-    manual: [
-      "Update WhatsApp config fields.",
-      "Run npm run adapter:whatsapp:validate.",
-      "Resolve parity mismatches before release."
-    ]
-  },
-  {
-    issue: 702,
-    title: "iMessage adapter architecture",
-    summary: "Documented phased iMessage adapter architecture with provider boundaries, policy requirements, lifecycle behavior, and production-readiness gates.",
-    details: "Added imessage-adapter-architecture-v1.md with canonical event model, rollout phases, and acceptance checks.",
-    manual: [
-      "Review architecture phases A to D.",
-      "Implement each phase with exit-gate evidence.",
-      "Validate lifecycle parity against contract."
-    ]
-  },
-  {
-    issue: 703,
-    title: "Email adapter architecture",
-    summary: "Defined Email adapter provider strategy, canonical event mapping, policy controls, and reliability constraints to prepare safe implementation rollout.",
-    details: "Added email-adapter-architecture-v1.md and linked it from adapter contract and README index.",
-    manual: [
-      "Choose provider using listed criteria.",
-      "Implement normalize/send/status abstraction.",
-      "Validate policy and delivery-state behavior."
-    ]
-  },
-  {
-    issue: 704,
-    title: "Discord adapter architecture",
-    summary: "Specified Discord transport architecture for gateway events, interactions, and outbound delivery with deterministic policy and reliability behavior.",
-    details: "Added discord-adapter-architecture-v1.md and mapped rollout phases with testable exit gates.",
-    manual: [
-      "Build ingest/send/ack transport interface.",
-      "Normalize message and interaction events.",
-      "Validate retries, rate-limit handling, and idempotency."
-    ]
-  },
-  {
-    issue: 705,
-    title: "Sovereign role taxonomy",
-    summary: "Codified sovereign agent team roles and authority matrix to separate planning, implementation, review, testing, and release decision rights.",
-    details: "Added sovereign-agent-role-taxonomy-v1.md including propose/decide/veto boundaries and handoff requirements.",
-    manual: [
-      "Assign work by defined role boundaries.",
-      "Use mandatory handoff contract fields.",
-      "Escalate veto conflicts to OC."
-    ]
-  },
-  {
-    issue: 706,
-    title: "Handoff schema + stage-gate enforcement",
-    summary: "Implemented structured handoff schema and validation rules so inter-role transitions are auditable, deterministic, and machine-checkable.",
-    details: "Added handoff-artifact-schema-v1.md, sample handoff JSON, and scripts/validate-handoff-artifact.mjs.",
-    manual: [
-      "Create handoff JSON from schema.",
-      "Run npm run handoff:validate -- <artifact>.",
-      "Only progress when gate.decision is valid."
-    ]
-  },
-  {
-    issue: 707,
-    title: "Automated release gates",
-    summary: "Mapped Definition of Done and testing requirements to automated release gates that fail fast when readiness evidence is incomplete or inconsistent.",
-    details: "Added release-gates-dod-v1.md, sample release artifact, and scripts/validate-release-gates.mjs.",
-    manual: [
-      "Prepare release gate artifact JSON.",
-      "Run npm run release:gates -- <artifact>.",
-      "Proceed only when all hard rules pass."
-    ]
-  },
-  {
-    issue: 708,
-    title: "External-channel policy engine",
-    summary: "Implemented risk-tier policy engine for external channels with approval gating on high-risk actions and explicit operator-readable block reasons.",
-    details: "Added external-channel-policy-engine module, validator script, and integrated policy checks into API adapter flow.",
-    manual: [
-      "Run npm run policy:validate.",
-      "Test high-risk action without approval.",
-      "Confirm blocked decision and reason."
-    ]
-  },
-  {
-    issue: 709,
-    title: "Decision/action audit trail",
-    summary: "Shipped append-only hash-chained audit pipeline recording policy, routing, and delivery events so tampering becomes detectable by validation.",
-    details: "Added dashboard/lib/audit-trail.mjs, scripts/validate-audit-trail.mjs, and audit event integration in adapter flow.",
-    manual: [
-      "Generate runtime events through adapter calls.",
-      "Run npm run audit:validate.",
-      "Investigate chain mismatch errors immediately."
-    ]
-  },
-  {
-    issue: 710,
-    title: "Reliability telemetry baseline",
-    summary: "Added telemetry event schema and SLO summary metrics with API endpoint visibility for success rate, latency, blocked rate, and failure trends.",
-    details: "Added reliability-telemetry module, summary endpoint /api/telemetry/summary, and seed/validate scripts.",
-    manual: [
-      "Run npm run telemetry:seed.",
-      "Run npm run telemetry:validate.",
-      "Open /api/telemetry/summary to inspect SLOs."
-    ]
-  },
-  {
-    issue: 722,
-    title: "iMessage live bridge",
-    summary: "Implemented live iMessage bridge endpoint for inbound event handling and outbound reply path, including policy, audit, telemetry, and idempotency.",
-    details: "Added POST /api/channels/imessage/inbound backed by imessage adapter and lifecycle validation command.",
-    manual: [
-      "Run npm run imessage:validate.",
-      "POST sample payload to /api/channels/imessage/inbound.",
-      "Confirm lifecycle response and delivery attempt."
-    ]
-  }
-];
+const knowmoreReleases = loadKnowmoreReleasesSync();
 
 function toSummary160(text) {
   const value = String(text || "").trim();
@@ -724,7 +532,7 @@ function renderGlobalNav(activePage) {
           <img src="${escapeHtml(openclawLogoPath)}" alt="OpenClaw logo" />
           <span>OpenClaw</span>
         </a>
-        <a class="nav-chip ${activePage === "dashboard" ? "active" : ""}" href="/">
+        <a class="nav-chip ${activePage === "dashboard" ? "active" : ""}" href="${escapeHtml(homeRoute)}">
           <img src="${escapeHtml(dashboardLogoPath)}" alt="Dashboard logo" />
           <span>Dashboard</span>
         </a>
@@ -732,7 +540,7 @@ function renderGlobalNav(activePage) {
           <img src="${escapeHtml(knowmoreLogoPath)}" alt="knowmore logo" />
           <span>knowmore</span>
         </a>
-        <a class="nav-chip ${activePage === "admin" ? "active" : ""}" href="/admin">
+        <a class="nav-chip ${activePage === "admin" ? "active" : ""}" href="${escapeHtml(adminRoute)}">
           <img src="${escapeHtml(adminLogoPath)}" alt="Admin logo" />
           <span>Admin</span>
         </a>
@@ -795,7 +603,7 @@ function renderPage(state, lastResult) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei dashboard</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-page="dashboard" data-theme="green">
   <div class="shell">
@@ -823,7 +631,7 @@ function renderKnowmorePage() {
   const releases = knowmoreReleases.map((item) => ({
     ...item,
     summary: toSummary160(item.summary),
-    issueUrl: `https://github.com/moldovancsaba/mvp-factory-control/issues/${item.issue}`
+    issueUrl: resolveIssueUrl(surface, item.issue)
   }));
   const releaseJson = JSON.stringify(releases).replace(/</g, "\\u003c");
 
@@ -833,7 +641,7 @@ function renderKnowmorePage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>knowmore - release cards</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-page="knowmore" data-theme="blue">
   <div class="shell">
@@ -965,7 +773,7 @@ function renderAdminPage(state, lastResult) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei admin/settings</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-page="admin" data-theme="orange">
   <div class="shell">
@@ -1005,7 +813,7 @@ function renderAdminPage(state, lastResult) {
       <section class="card section">
         <h2>Settings</h2>
         <p class="sub">Update the values that control how OpenClaw uses this workspace.</p>
-        <form class="form" method="post" action="/api/config" data-config-form>
+        <form class="form" method="post" action="${escapeHtml(apiConfigRoute)}" data-config-form>
           <div class="field">
             <label for="workspace">Workspace</label>
             <input id="workspace" name="workspace" value="${escapeHtml(workspace || "")}" placeholder="/Users/you/Projects/agent.meimei" />
@@ -1049,7 +857,7 @@ function renderAdminPage(state, lastResult) {
           </div>
           <div class="field">
             <label for="controlOrigins">Control UI origins</label>
-            <textarea id="controlOrigins" name="controlOrigins" placeholder="http://127.0.0.1:3030">${escapeHtml(controlOrigins)}</textarea>
+            <textarea id="controlOrigins" name="controlOrigins" placeholder="http://${escapeHtml(listenHost)}:${port}">${escapeHtml(controlOrigins)}</textarea>
           </div>
           <div class="row">
             <div class="field">
@@ -1065,7 +873,7 @@ function renderAdminPage(state, lastResult) {
           </div>
           <div class="actions">
             <button type="submit" class="good">Save settings</button>
-            <a class="button secondary" href="/api/config">View raw config</a>
+            <a class="button secondary" href="${escapeHtml(apiConfigRoute)}">View raw config</a>
           </div>
         </form>
       </section>
@@ -1074,19 +882,19 @@ function renderAdminPage(state, lastResult) {
         <h2>Operations</h2>
         <p class="sub">Use the built-in CLI wrappers without leaving the browser.</p>
         <div class="actions">
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
+          <form method="post" action="${escapeHtml(apiRunRoute)}" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="status" />
             <button type="submit">Status</button>
           </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
+          <form method="post" action="${escapeHtml(apiRunRoute)}" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="skills" />
             <button type="submit">Skills</button>
           </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
+          <form method="post" action="${escapeHtml(apiRunRoute)}" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="doctor" />
             <button type="submit" class="warn">Doctor</button>
           </form>
-          <form method="post" action="/api/run" class="inline-form" data-run-form>
+          <form method="post" action="${escapeHtml(apiRunRoute)}" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="launch" />
             <button type="submit" class="good">Launch</button>
           </form>
@@ -1103,7 +911,7 @@ function renderAdminPage(state, lastResult) {
       <section class="card section">
         <h2>Quick agent turn</h2>
         <p class="sub">Send a message through the repo-local wrapper.</p>
-        <form class="form" method="post" action="/api/run" data-agent-form>
+        <form class="form" method="post" action="${escapeHtml(apiRunRoute)}" data-agent-form>
           <input type="hidden" name="cmd" value="agent" />
           <div class="field">
             <label for="message">Message</label>
@@ -1118,7 +926,7 @@ function renderAdminPage(state, lastResult) {
       <section class="card section">
         <h2>Web search</h2>
         <p class="sub">Use the local DuckDuckGo fallback with no external API keys.</p>
-        <form class="form" method="post" action="/api/run" data-search-form>
+        <form class="form" method="post" action="${escapeHtml(apiRunRoute)}" data-search-form>
           <input type="hidden" name="cmd" value="search" />
           <div class="field">
             <label for="query">Query</label>
@@ -1171,12 +979,12 @@ function renderUrlSummaryPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(urlSummaryLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="/">&larr; Back to dashboard</a>
+      <a class="button secondary" href="${escapeHtml(homeRoute)}">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(urlSummaryLabel)}</span>
     </div>
     <main class="hero">
@@ -1307,7 +1115,7 @@ function renderUrlSummaryPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       try {
-        const response = await fetch("/api/functions/url-summary", {
+        const response = await fetch("${urlSummaryApiRoute}", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ url })
@@ -1419,12 +1227,12 @@ function renderDailyBriefingPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(dailyBriefingLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="/">&larr; Back to dashboard</a>
+      <a class="button secondary" href="${escapeHtml(homeRoute)}">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(dailyBriefingLabel)}</span>
     </div>
     <main class="hero">
@@ -1587,7 +1395,7 @@ function renderDailyBriefingPage() {
       renderLoading();
       window.scrollTo({ top: 0, behavior: "smooth" });
       try {
-        const response = await fetch("/api/functions/daily-briefing", {
+        const response = await fetch("${dailyBriefingApiRoute}", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sink: String(sinkInput.value || "apple-notes") })
@@ -1616,12 +1424,12 @@ function renderRoutingPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(routingLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="/">&larr; Back to dashboard</a>
+      <a class="button secondary" href="${escapeHtml(homeRoute)}">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(routingLabel)}</span>
     </div>
     <main class="hero">
@@ -1766,7 +1574,7 @@ function renderRoutingPage() {
       renderWorking();
       window.scrollTo({ top: 0, behavior: "smooth" });
       try {
-        const response = await fetch("/api/functions/model-routing", {
+        const response = await fetch("${routingApiRoute}", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload)
@@ -1814,12 +1622,12 @@ function renderApiChannelAdapterPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(apiAdapterLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="/styles/design-system.css" />
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
 </head>
 <body data-theme="green">
   <div class="shell">
     <div class="topbar">
-      <a class="button secondary" href="/">&larr; Back to dashboard</a>
+      <a class="button secondary" href="${escapeHtml(homeRoute)}">&larr; Back to dashboard</a>
       <span class="title">${escapeHtml(apiAdapterLabel)}</span>
     </div>
     <main class="hero">
@@ -2036,7 +1844,7 @@ const server = http.createServer(async (req, res) => {
     const normalizedPath = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
 
     if ((req.method === "GET" || req.method === "HEAD")
-      && (url.pathname.startsWith("/images/") || url.pathname.startsWith("/styles/"))) {
+      && pathStartsWithStaticPrefix(url.pathname, staticPrefixes)) {
       const relative = decodeURIComponent(url.pathname.slice(1));
       const requestedPath = path.join(publicDir, relative);
       const safePrefix = `${publicDir}${path.sep}`;
@@ -2069,7 +1877,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/") {
+    if (req.method === "GET" && url.pathname === homeRoute) {
       const config = await readConfig();
       const html = renderPage({
         config,
@@ -2083,7 +1891,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && normalizedPath === "/admin") {
+    if (req.method === "GET" && normalizedPath === adminRoute) {
       const config = await readConfig();
       const html = renderAdminPage({
         config,
@@ -2149,20 +1957,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/config") {
+    if (req.method === "GET" && url.pathname === apiConfigRoute) {
       const config = await readConfig();
       sendJson(res, 200, { configPath, config });
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/run") {
+    if (req.method === "GET" && url.pathname === apiRunRoute) {
       const cmd = url.searchParams.get("cmd") || "status";
       const result = await executeCommand(cmd, {});
       sendJson(res, 200, result);
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/telemetry/summary") {
+    if (req.method === "GET" && url.pathname === telemetrySummaryApiRoute) {
       const summary = await getTelemetrySummary();
       sendJson(res, 200, { ok: true, summary });
       return;
@@ -2240,7 +2048,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "POST" && url.pathname === "/api/config") {
+    if (req.method === "POST" && url.pathname === apiConfigRoute) {
       const body = await readJson(req);
       const config = await readConfig();
       const nextWorkspace = String(body.workspace || "").trim();
@@ -2292,7 +2100,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "POST" && url.pathname === "/api/run") {
+    if (req.method === "POST" && url.pathname === apiRunRoute) {
       const body = await readJson(req);
       const cmd = String(body.cmd || "status");
       const result = await executeCommand(cmd, body);
@@ -2428,6 +2236,6 @@ const { handleInbound: handleImessageInbound } = createImessageAdapter({
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`agent.meimei dashboard listening on http://127.0.0.1:${port}`);
+server.listen(port, listenHost, () => {
+  console.log(`agent.meimei dashboard listening on http://${listenHost}:${port}`);
 });

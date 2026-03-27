@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "routes": {
+    "home": "/",
+    "admin": "/admin",
+    "knowmore": "/knowmore"
+  },
+  "api": {
+    "config": "/api/config",
+    "run": "/api/run",
+    "telemetrySummary": "/api/telemetry/summary",
+    "imessageInbound": "/api/channels/imessage/inbound"
+  },
+  "staticPrefixes": ["/images/", "/styles/"],
+  "designSystemCssPath": "/styles/design-system.css",
+  "logos": {
+    "dashboard": "/images/logo_sovereign.png",
+    "knowmore": "/images/logo_knowmore.png",
+    "admin": "/images/logo_admin.png",
+    "openclaw": "/images/logo_openclaw.png"
+  },
+  "envKeys": {
+    "openclawConfigPath": "OPENCLAW_CONFIG_PATH",
+    "port": "PORT",
+    "openclawChatUrl": "MEIMEI_OPENCLAW_CHAT_URL",
+    "setupCommand": "MEIMEI_SETUP_COMMAND"
+  },
+  "defaults": {
+    "port": 3030,
+    "openclawChatUrl": "http://127.0.0.1:18789/chat?session=main",
+    "setupCommand": "./scripts/meimei-setup"
+  },
+  "server": {
+    "bindHost": "127.0.0.1"
+  },
+  "githubIssues": {
+    "issueUrlTemplate": "https://github.com/moldovancsaba/mvp-factory-control/issues/{issue}"
+  },
+  "operatorScripts": {
+    "launch": "scripts/oc-launch",
+    "status": "scripts/oc-status",
+    "doctor": "scripts/oc-doctor",
+    "skills": "scripts/oc-skills",
+    "agent": "scripts/oc-agent",
+    "webSearch": "scripts/web-search",
+    "dailyBriefing": "scripts/daily-briefing.mjs"
+  }
+}

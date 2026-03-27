@@ -1068,7 +1068,10 @@ function renderKnowmorePage() {
         <button class="button secondary" id="mClose" type="button">Close</button>
       </div>
       <p id="mSummary"></p>
-      <p><a id="mIssue" class="button secondary" href="#">Open related issue</a></p>
+      <div class="actions">
+        <a id="mIssue" class="button secondary" href="#" target="_blank" rel="noopener noreferrer">Open related issue</a>
+      </div>
+      <p id="mIssueUrl" style="font-size:12px;word-break:break-all;margin-top:8px"></p>
       <h3>Details</h3>
       <p id="mDetails"></p>
       <h3>User manual</h3>
@@ -1084,6 +1087,7 @@ function renderKnowmorePage() {
     const mTitle = document.getElementById('mTitle');
     const mSummary = document.getElementById('mSummary');
     const mIssue = document.getElementById('mIssue');
+    const mIssueUrl = document.getElementById('mIssueUrl');
     const mDetails = document.getElementById('mDetails');
     const mManual = document.getElementById('mManual');
 
@@ -1092,6 +1096,7 @@ function renderKnowmorePage() {
       mSummary.textContent = item.summary;
       mIssue.href = item.issueUrl;
       mIssue.textContent = 'Related issue #' + item.issue;
+      mIssueUrl.textContent = item.issueUrl;
       mDetails.textContent = item.details;
       mManual.innerHTML = '';
       (item.manual || []).forEach((step) => {
@@ -1122,8 +1127,12 @@ function renderKnowmorePage() {
         event.preventDefault();
         return;
       }
+      const popup = window.open(href, '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        // Fallback for environments that block popups/new tabs.
+        window.location.assign(href);
+      }
       event.preventDefault();
-      window.location.href = href;
     });
     backdrop.addEventListener('click', (event) => {
       if (event.target === backdrop) closeModal();

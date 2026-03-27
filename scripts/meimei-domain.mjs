@@ -85,13 +85,6 @@ function proxyRequest(req, res) {
   }
   const targetPort = isGatewayPath(incomingUrl.pathname) ? gatewayPort : dashboardPort;
 
-  if (!isGatewayPath(incomingUrl.pathname) && !incomingUrl.pathname.startsWith(`${publicPrefix}/`)) {
-    res.statusCode = 404;
-    res.setHeader("content-type", "text/plain; charset=utf-8");
-    res.end("Not found");
-    return;
-  }
-
   const proxiedPath = targetPort === dashboardPort
     ? stripPrefix(incomingUrl.pathname) + incomingUrl.search
     : incomingUrl.pathname + incomingUrl.search;

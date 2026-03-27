@@ -39,6 +39,10 @@ const routingLabel = "Per-channel model routing by task type and cost";
 const imessageInboundApiRoute = "/api/channels/imessage/inbound";
 const knowmoreRoute = "/knowmore";
 const openclawChatUrl = process.env.MEIMEI_OPENCLAW_CHAT_URL || "http://127.0.0.1:18789/chat?session=main";
+const dashboardLogoPath = "/images/logo_sovereign.png";
+const knowmoreLogoPath = "/images/logo_knowmore.png";
+const adminLogoPath = "/images/logo_admin.png";
+const openclawLogoPath = "/images/logo_openclaw.png";
 const appCards = [
   {
     name: "Any-URL summarization in seconds",
@@ -741,6 +745,35 @@ function dashboardShellStyles() {
       gap: 10px;
       flex-wrap: wrap;
     }
+    .nav-chip {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      padding: 8px 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .nav-chip:hover { transform: translateY(-1px); }
+    .nav-chip img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .nav-chip.active {
+      border-color: var(--accent);
+      background: rgba(143, 211, 255, 0.14);
+    }
+    .nav-chip.openclaw {
+      border-color: rgba(255, 91, 91, 0.5);
+      background: linear-gradient(180deg, rgba(255, 86, 86, 0.28), rgba(255, 86, 86, 0.12));
+    }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -918,6 +951,9 @@ function dashboardShellStyles() {
       line-height: 1.45;
       color: var(--muted);
     }
+    body[data-page="dashboard"] { --accent: #8fd3ff; --accent-2: #86f0c2; }
+    body[data-page="knowmore"] { --accent: #a78bfa; --accent-2: #7dd3fc; }
+    body[data-page="admin"] { --accent: #f59e0b; --accent-2: #facc15; }
     @media (max-width: 900px) {
       .grid, .row { grid-template-columns: 1fr; }
       .shell { padding: 18px 14px 34px; }
@@ -926,15 +962,37 @@ function dashboardShellStyles() {
   `;
 }
 
+function renderGlobalNav(activePage) {
+  return `
+      <div class="nav-actions">
+        <a class="nav-chip openclaw" href="${escapeHtml(openclawChatUrl)}">
+          <img src="${escapeHtml(openclawLogoPath)}" alt="OpenClaw logo" />
+          <span>OpenClaw</span>
+        </a>
+        <a class="nav-chip ${activePage === "dashboard" ? "active" : ""}" href="/">
+          <img src="${escapeHtml(dashboardLogoPath)}" alt="Dashboard logo" />
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-chip ${activePage === "knowmore" ? "active" : ""}" href="${knowmoreRoute}">
+          <img src="${escapeHtml(knowmoreLogoPath)}" alt="knowmore logo" />
+          <span>knowmore</span>
+        </a>
+        <a class="nav-chip ${activePage === "admin" ? "active" : ""}" href="/admin">
+          <img src="${escapeHtml(adminLogoPath)}" alt="Admin logo" />
+          <span>Admin</span>
+        </a>
+      </div>`;
+}
+
 function renderPage(state, lastResult) {
   const config = state.config;
   const statusText = lastResult?.stdout || "";
   const statusError = lastResult?.stderr || "";
   const cardsHtml = appCards.map((app) => `
     <a class="flash" href="${escapeHtml(app.route)}">
-      <span class="k">app</span>
-      <h3 class="title">${escapeHtml(app.name)}</h3>
-      <div class="s">${escapeHtml(toSummary160(app.description))}</div>
+      <span class="k">type: app</span>
+      <h3 class="title">appname: ${escapeHtml(app.name)}</h3>
+      <div class="s">content: ${escapeHtml(toSummary160(app.description))}</div>
     </a>
   `).join("");
 
@@ -946,15 +1004,11 @@ function renderPage(state, lastResult) {
   <title>agent.meimei dashboard</title>
   <style>${dashboardShellStyles()}</style>
 </head>
-<body>
+<body data-page="dashboard">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">MeiMei Operator Dashboard</h1>
-      <div class="nav-actions">
-        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
-        <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
-        <a class="button secondary" href="/admin">Admin / Settings</a>
-      </div>
+      ${renderGlobalNav("dashboard")}
     </div>
     <section class="card summary">
       <p>Operate functions, runtime commands, and direct agent turns from one clean surface.</p>
@@ -1103,19 +1157,15 @@ function renderKnowmorePage() {
     }
   </style>
 </head>
-<body>
+<body data-page="knowmore">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">knowmore</h1>
-      <div class="nav-actions">
-        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
-        <a class="button secondary" href="/">Dashboard</a>
-        <a class="button secondary" href="/admin">Admin / Settings</a>
-      </div>
+      ${renderGlobalNav("knowmore")}
     </div>
     <section class="card summary"></section>
     <section class="card section">
-      <h2>Release flashcards</h2>
+      <h2>Issue flashcards</h2>
       <p class="sub">Click any card for linked issue details and how-to steps.</p>
       <div class="cards" id="cards"></div>
     </section>
@@ -1124,7 +1174,7 @@ function renderKnowmorePage() {
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
     <div class="modal">
       <div class="head">
-        <h2 id="mTitle">Release</h2>
+        <h2 id="mTitle">Issue</h2>
         <button class="button secondary" id="mClose" type="button">Close</button>
       </div>
       <p id="mSummary"></p>
@@ -1175,7 +1225,7 @@ function renderKnowmorePage() {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'flash';
-      button.innerHTML = '<span class="k">release #' + item.issue + '</span><div class="s">' + item.summary + '</div>';
+      button.innerHTML = '<span class="k">type: issue #' + item.issue + '</span><h3 class="title">appname: ' + item.title + '</h3><div class="s">content: ' + item.summary + '</div>';
       button.addEventListener('click', () => openModal(item));
       cards.appendChild(button);
     });
@@ -1220,15 +1270,11 @@ function renderAdminPage(state, lastResult) {
   <title>agent.meimei admin/settings</title>
   <style>${dashboardShellStyles()}</style>
 </head>
-<body>
+<body data-page="admin">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">Admin / Settings</h1>
-      <div class="nav-actions">
-        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
-        <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
-        <a class="button secondary" href="/">Dashboard</a>
-      </div>
+      ${renderGlobalNav("admin")}
     </div>
 
     <div class="grid">

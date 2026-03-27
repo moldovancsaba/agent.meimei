@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 
 const dashboardPort = Number(process.env.MEIMEI_DASHBOARD_PORT || 3030);
+const gatewayPort = Number(process.env.OPENCLAW_GATEWAY_PORT || 18789);
 const publicHost = process.env.MEIMEI_PUBLIC_HOST || "meimei.localhost";
 const publicPrefix = process.env.MEIMEI_PUBLIC_PREFIX || "/dashboard";
 const certDir = path.join(process.env.HOME || "", ".openclaw", "certs");
@@ -59,6 +60,15 @@ function stripPrefix(urlPath) {
   return suffix.startsWith("/") ? suffix : `/${suffix}`;
 }
 
+function isGatewayPath(pathname) {
+  return pathname === "/chat"
+    || pathname.startsWith("/chat/")
+    || pathname === "/api"
+    || pathname.startsWith("/api/")
+    || pathname === "/favicon.ico"
+    || pathname === "/robots.txt";
+}
+
 function proxyRequest(req, res) {
   const incomingUrl = new URL(req.url || "/", `https://${req.headers.host || publicHost}`);
   if (incomingUrl.pathname === "/" || incomingUrl.pathname === "") {
@@ -73,22 +83,26 @@ function proxyRequest(req, res) {
     res.end();
     return;
   }
-  if (!incomingUrl.pathname.startsWith(`${publicPrefix}/`)) {
+  const targetPort = isGatewayPath(incomingUrl.pathname) ? gatewayPort : dashboardPort;
+
+  if (!isGatewayPath(incomingUrl.pathname) && !incomingUrl.pathname.startsWith(`${publicPrefix}/`)) {
     res.statusCode = 404;
     res.setHeader("content-type", "text/plain; charset=utf-8");
     res.end("Not found");
     return;
   }
 
-  const proxiedPath = stripPrefix(incomingUrl.pathname) + incomingUrl.search;
+  const proxiedPath = targetPort === dashboardPort
+    ? stripPrefix(incomingUrl.pathname) + incomingUrl.search
+    : incomingUrl.pathname + incomingUrl.search;
   const upstream = http.request({
     host: "127.0.0.1",
-    port: dashboardPort,
+    port: targetPort,
     method: req.method,
     path: proxiedPath,
     headers: {
       ...req.headers,
-      host: `127.0.0.1:${dashboardPort}`,
+      host: `127.0.0.1:${targetPort}`,
       connection: "close"
     }
   }, (upstreamRes) => {

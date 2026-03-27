@@ -1,6 +1,6 @@
 {
   "name": "agent-meimei",
-  "version": "0.7.0",
+  "version": "0.7.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -20,6 +20,9 @@
     "bootstrap": "./scripts/meimei-bootstrap",
     "rebuild": "./scripts/meimei-rebuild",
     "setup": "./scripts/meimei-setup",
+    "cert:install": "./scripts/meimei-cert install",
+    "cert:status": "./scripts/meimei-cert status",
+    "cert:rotate": "./scripts/meimei-cert rotate",
     "always-on:install": "./scripts/meimei-always-on-install",
     "always-on:uninstall": "./scripts/meimei-always-on-uninstall",
     "always-on:status": "./scripts/meimei-always-on-status",

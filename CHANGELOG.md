@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- No unreleased changes.
+- Added `design-system-v1.md` defining centralized theme tokens, component modules, and integration policy for all dashboard/miniapp pages.
+- Added shared stylesheet `public/styles/design-system.css` as the single source of UI truth for typography, backgrounds, cards, nav, forms, modal, and flashcards.
+- Refactored `dashboard/server.mjs` pages (dashboard, knowmore, admin, URL summary, daily briefing, routing) to consume the centralized design system instead of per-page style blocks.
+- Standardized flashcard content structure to `kind`, `title`, `content` rendering (`APP` / `ISSUE #...`) without variable-name prefixes.
+- Hardened design-system implementation: removed obsolete styles/tokens, replaced dynamic knowmore `innerHTML` card rendering with safe DOM creation, and moved modal visibility to class-based state (`.is-open`).
+- Expanded design tokens for modal/terminal/code surfaces and OpenClaw brand colors; added explicit `data-theme="red"` token mapping for consistent documentation/runtime alignment.
 
 ## 2026-03-26 - Foundation hardening wave
 

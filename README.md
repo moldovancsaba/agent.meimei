@@ -33,6 +33,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `external-channel-policy-engine-v1.md` - risk-tier policy-as-code contract for outbound channel actions.
 - `decision-action-audit-trail-v1.md` - append-only hash-chained audit pipeline for policy/routing/delivery events.
 - `reliability-telemetry-baseline-v1.md` - baseline telemetry event schema and SLO summary metrics.
+- `design-system-v1.md` - centralized UI tokens/components/themes and integration rules.
 - `channel-adapter-contract-v1.md` - canonical interface for all channel adapters.
 - `channel-adapter-lifecycle-v1.md` - required ingress-to-delivery adapter lifecycle.
 - `sovereign-agent-role-taxonomy-v1.md` - role boundaries and authority matrix for sovereign multi-agent delivery.
@@ -74,6 +75,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `scripts/web-search` - local DuckDuckGo-based web search fallback.
 - `Makefile` - convenience targets for launch, status, doctor, skills, and agent turns.
 - `dashboard/server.mjs` - localhost control panel for settings, search, and OpenClaw operations.
+- `public/styles/design-system.css` - global design system stylesheet used by dashboard + miniapps.
 - `package.json` - `npm run dashboard` entry point for the control panel.
 
 ## Current state

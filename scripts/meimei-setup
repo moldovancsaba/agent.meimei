@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOMAIN_URL="${MEIMEI_PUBLIC_URL:-https://meimei.localhost:8443/dashboard/}"
 
+MEIMEI_CERT_AUTO_TRUST=0 "${ROOT_DIR}/scripts/meimei-cert" install >/dev/null || true
 "${ROOT_DIR}/scripts/meimei-domain" restart
 
 if command -v open >/dev/null 2>&1; then

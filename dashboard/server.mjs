@@ -13,6 +13,7 @@ import { createImessageAdapter } from "./lib/imessage-adapter.mjs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
+const publicDir = path.join(repoRoot, "public");
 const { runScript, launchDetached, readJson } = createRuntimeHelpers(repoRoot);
 const { getSummary: getTelemetrySummary } = createReliabilityTelemetry(repoRoot);
 const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(os.homedir(), ".openclaw", "openclaw.json");
@@ -25,7 +26,6 @@ const searchScript = path.join(repoRoot, "scripts", "web-search");
 const dailyBriefingScript = path.join(repoRoot, "scripts", "daily-briefing.mjs");
 
 const port = Number(process.env.PORT || 3030);
-const publicDashboardUrl = process.env.MEIMEI_PUBLIC_URL || "https://meimei.localhost:8443/dashboard/";
 const localOpenCommand = process.env.MEIMEI_SETUP_COMMAND || "./scripts/meimei-setup";
 const urlSummaryRoute = "/Any-URL_summarization_in_seconds";
 const urlSummaryApiRoute = "/api/functions/url-summary";
@@ -697,269 +697,12 @@ async function summarizeUrlSource(inputUrl) {
   };
 }
 
-function dashboardShellStyles() {
-  return `
-    :root {
-      --bg: #08111f;
-      --panel: rgba(12, 19, 34, 0.9);
-      --panel-2: rgba(18, 27, 46, 0.9);
-      --line: rgba(255, 255, 255, 0.08);
-      --text: #f3f6ff;
-      --muted: rgba(243, 246, 255, 0.72);
-      --accent: #8fd3ff;
-      --accent-2: #86f0c2;
-      --warn: #ffce7a;
-      --danger: #ff8d8d;
-      --shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(143, 211, 255, 0.22), transparent 34%),
-        radial-gradient(circle at top right, rgba(134, 240, 194, 0.14), transparent 30%),
-        linear-gradient(180deg, #05101d 0%, #08111f 55%, #050b14 100%);
-      min-height: 100vh;
-    }
-    .shell {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 28px 20px 48px;
-    }
-    .topnav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .title {
-      margin: 0;
-      font-size: 22px;
-      line-height: 1.2;
-    }
-    .nav-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .nav-chip {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--text);
-      padding: 8px 12px;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 44px;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-    .nav-chip:hover { transform: translateY(-1px); }
-    .nav-chip img {
-      width: 24px;
-      height: 24px;
-      object-fit: contain;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .nav-chip.active {
-      border-color: var(--accent);
-      background: rgba(143, 211, 255, 0.14);
-    }
-    .nav-chip.openclaw {
-      border-color: rgba(255, 91, 91, 0.5);
-      background: linear-gradient(180deg, rgba(255, 86, 86, 0.28), rgba(255, 86, 86, 0.12));
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-    }
-    .summary {
-      padding: 20px;
-      margin-bottom: 18px;
-    }
-    .summary p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .grid {
-      display: grid;
-      gap: 20px;
-      grid-template-columns: 1fr 1fr;
-    }
-    .section {
-      padding: 22px;
-    }
-    .section h2 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-    .section p.sub {
-      margin: 0 0 18px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .form {
-      display: grid;
-      gap: 14px;
-    }
-    .field {
-      display: grid;
-      gap: 8px;
-    }
-    .field label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-    }
-    input, select, textarea, button {
-      font: inherit;
-    }
-    input, select, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(4, 10, 20, 0.72);
-      color: var(--text);
-      padding: 12px 14px;
-      outline: none;
-    }
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-    .row {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: 1fr 1fr;
-    }
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 4px;
-    }
-    button, .button {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(143, 211, 255, 0.18), rgba(143, 211, 255, 0.08));
-      color: var(--text);
-      border-radius: 14px;
-      padding: 11px 14px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .button.secondary, button.secondary {
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .button.warn, button.warn {
-      background: rgba(255, 206, 122, 0.12);
-    }
-    .button.good, button.good {
-      background: rgba(134, 240, 194, 0.12);
-    }
-    pre {
-      margin: 0;
-      padding: 16px;
-      overflow: auto;
-      border-radius: 18px;
-      background: rgba(3, 8, 15, 0.8);
-      border: 1px solid var(--line);
-      color: #d8e6ff;
-      font-size: 12px;
-      line-height: 1.6;
-      max-height: 420px;
-    }
-    .footer {
-      margin-top: 20px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .meta-grid {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: 1fr;
-    }
-    .meta {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-    }
-    .meta .label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .meta .value {
-      font-size: 16px;
-      font-weight: 650;
-      word-break: break-word;
-      white-space: pre-wrap;
-    }
-    .cards {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      margin-top: 6px;
-    }
-    .flash {
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      padding: 16px;
-      min-height: 160px;
-      text-align: left;
-      transition: transform 0.15s ease;
-      color: var(--text);
-      text-decoration: none;
-      display: block;
-      width: 100%;
-    }
-    .flash:hover { transform: translateY(-1px); }
-    .flash .k {
-      display: inline-block;
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .flash .title {
-      margin: 0 0 8px;
-      font-size: 16px;
-      line-height: 1.3;
-      color: var(--text);
-    }
-    .flash .s {
-      font-size: 13px;
-      line-height: 1.45;
-      color: var(--muted);
-    }
-    body[data-page="dashboard"] { --accent: #8fd3ff; --accent-2: #86f0c2; }
-    body[data-page="knowmore"] { --accent: #a78bfa; --accent-2: #7dd3fc; }
-    body[data-page="admin"] { --accent: #f59e0b; --accent-2: #facc15; }
-    @media (max-width: 900px) {
-      .grid, .row { grid-template-columns: 1fr; }
-      .shell { padding: 18px 14px 34px; }
-      .topnav { align-items: flex-start; flex-direction: column; }
-    }
-  `;
+function renderFlashcard({ kind, title, content, href = "", button = false, attrs = "" }) {
+  const cardHtml = `<span class="ds-flashcard-kind">${escapeHtml(kind)}</span><h3 class="ds-flashcard-title">${escapeHtml(title)}</h3><div class="ds-flashcard-content">${escapeHtml(content)}</div>`;
+  if (button) {
+    return `<button type="button" class="ds-flashcard"${attrs ? ` ${attrs}` : ""}>${cardHtml}</button>`;
+  }
+  return `<a class="ds-flashcard" href="${escapeHtml(href)}">${cardHtml}</a>`;
 }
 
 function renderGlobalNav(activePage) {
@@ -988,13 +731,12 @@ function renderPage(state, lastResult) {
   const config = state.config;
   const statusText = lastResult?.stdout || "";
   const statusError = lastResult?.stderr || "";
-  const cardsHtml = appCards.map((app) => `
-    <a class="flash" href="${escapeHtml(app.route)}">
-      <span class="k">type: app</span>
-      <h3 class="title">appname: ${escapeHtml(app.name)}</h3>
-      <div class="s">content: ${escapeHtml(toSummary160(app.description))}</div>
-    </a>
-  `).join("");
+  const cardsHtml = appCards.map((app) => renderFlashcard({
+    kind: "APP",
+    title: app.name,
+    content: toSummary160(app.description),
+    href: app.route
+  })).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -1002,42 +744,38 @@ function renderPage(state, lastResult) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei dashboard</title>
-  <style>${dashboardShellStyles()}</style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body data-page="dashboard">
+<body data-page="dashboard" data-theme="green">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">MeiMei Operator Dashboard</h1>
       ${renderGlobalNav("dashboard")}
     </div>
-    <section class="card summary">
-      <p>Operate functions, runtime commands, and direct agent turns from one clean surface.</p>
-    </section>
-
     <div class="grid">
       <section class="card section">
         <h2>Functions</h2>
         <p class="sub">Select an app card to launch the corresponding MeiMei function.</p>
-        <div class="cards">${cardsHtml}</div>
+        <div class="ds-flashcard-grid">${cardsHtml}</div>
       </section>
 
       <section class="card section">
         <h2>Operations</h2>
         <p class="sub">Use the built-in CLI wrappers without leaving the browser.</p>
         <div class="actions">
-          <form method="post" action="/api/run" style="display:inline" data-run-form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="status" />
             <button type="submit">Status</button>
           </form>
-          <form method="post" action="/api/run" style="display:inline" data-run-form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="skills" />
             <button type="submit">Skills</button>
           </form>
-          <form method="post" action="/api/run" style="display:inline" data-run-form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="doctor" />
             <button type="submit" class="warn">Doctor</button>
           </form>
-          <form method="post" action="/api/run" style="display:inline" data-run-form>
+          <form method="post" action="/api/run" class="inline-form" data-run-form>
             <input type="hidden" name="cmd" value="launch" />
             <button type="submit" class="good">Launch</button>
           </form>
@@ -1094,80 +832,18 @@ function renderKnowmorePage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>knowmore - release cards</title>
-  <style>${dashboardShellStyles()}
-    .cards {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      margin-top: 14px;
-    }
-    .flash {
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      padding: 16px;
-      min-height: 150px;
-      cursor: pointer;
-      text-align: left;
-      transition: transform 0.15s ease;
-    }
-    .flash:hover { transform: translateY(-1px); }
-    .flash .k {
-      display: inline-block;
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .flash .s {
-      font-size: 14px;
-      line-height: 1.4;
-      color: var(--text);
-    }
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(2, 8, 14, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 20;
-    }
-    .modal {
-      max-width: 760px;
-      width: 100%;
-      max-height: 90vh;
-      overflow: auto;
-      background: #0b1729;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 20px;
-      box-shadow: var(--shadow);
-    }
-    .modal h2 { margin: 0 0 8px; }
-    .modal p { color: var(--muted); }
-    .modal ul { margin: 8px 0 0 18px; }
-    .modal .head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-    }
-  </style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body data-page="knowmore">
+<body data-page="knowmore" data-theme="blue">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">knowmore</h1>
       ${renderGlobalNav("knowmore")}
     </div>
-    <section class="card summary"></section>
     <section class="card section">
       <h2>Issue flashcards</h2>
       <p class="sub">Click any card for linked issue details and how-to steps.</p>
-      <div class="cards" id="cards"></div>
+      <div class="ds-flashcard-grid" id="cards"></div>
     </section>
   </div>
 
@@ -1181,7 +857,7 @@ function renderKnowmorePage() {
       <div class="actions">
         <a id="mIssue" class="button secondary" href="#" target="_blank" rel="noopener noreferrer">Open related issue</a>
       </div>
-      <p id="mIssueUrl" style="font-size:12px;word-break:break-all;margin-top:8px"></p>
+      <p id="mIssueUrl" class="issue-url"></p>
       <h3>Details</h3>
       <p id="mDetails"></p>
       <h3>User manual</h3>
@@ -1214,20 +890,39 @@ function renderKnowmorePage() {
         li.textContent = step;
         mManual.appendChild(li);
       });
-      backdrop.style.display = 'flex';
+      backdrop.classList.add('is-open');
     }
 
     function closeModal() {
-      backdrop.style.display = 'none';
+      backdrop.classList.remove('is-open');
+    }
+
+    function createIssueCard(item) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ds-flashcard';
+
+      const kind = document.createElement('span');
+      kind.className = 'ds-flashcard-kind';
+      kind.textContent = 'ISSUE #' + item.issue;
+
+      const title = document.createElement('h3');
+      title.className = 'ds-flashcard-title';
+      title.textContent = item.title;
+
+      const content = document.createElement('div');
+      content.className = 'ds-flashcard-content';
+      content.textContent = item.summary;
+
+      button.appendChild(kind);
+      button.appendChild(title);
+      button.appendChild(content);
+      button.addEventListener('click', () => openModal(item));
+      return button;
     }
 
     releases.forEach((item) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'flash';
-      button.innerHTML = '<span class="k">type: issue #' + item.issue + '</span><h3 class="title">appname: ' + item.title + '</h3><div class="s">content: ' + item.summary + '</div>';
-      button.addEventListener('click', () => openModal(item));
-      cards.appendChild(button);
+      cards.appendChild(createIssueCard(item));
     });
 
     closeBtn.addEventListener('click', closeModal);
@@ -1268,9 +963,9 @@ function renderAdminPage(state, lastResult) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei admin/settings</title>
-  <style>${dashboardShellStyles()}</style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body data-page="admin">
+<body data-page="admin" data-theme="orange">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">Admin / Settings</h1>
@@ -1449,284 +1144,9 @@ function renderUrlSummaryPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(urlSummaryLabel)} - agent.meimei</title>
-  <style>
-    :root {
-      --bg: #07111f;
-      --panel: rgba(12, 19, 34, 0.92);
-      --panel-2: rgba(18, 27, 46, 0.95);
-      --line: rgba(255, 255, 255, 0.08);
-      --text: #f3f6ff;
-      --muted: rgba(243, 246, 255, 0.72);
-      --accent: #8fd3ff;
-      --accent-2: #86f0c2;
-      --warn: #ffce7a;
-      --danger: #ff8d8d;
-      --shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(143, 211, 255, 0.18), transparent 30%),
-        radial-gradient(circle at top right, rgba(134, 240, 194, 0.14), transparent 26%),
-        linear-gradient(180deg, #05101d 0%, #08111f 55%, #050b14 100%);
-      min-height: 100vh;
-    }
-    body.has-result .hero {
-      min-height: auto;
-      padding-top: 32px;
-      padding-bottom: 56px;
-      align-items: center;
-    }
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 24px 20px 48px;
-    }
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .title {
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-    .button, button {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(143, 211, 255, 0.18), rgba(143, 211, 255, 0.08));
-      color: var(--text);
-      border-radius: 14px;
-      padding: 11px 14px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font: inherit;
-    }
-    .button.secondary {
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .hero {
-      min-height: calc(100vh - 120px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-    }
-    .search-card {
-      width: min(100%, 760px);
-      padding: 32px 28px 28px;
-      border-radius: 28px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: center;
-    }
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 4rem);
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-    .lede {
-      margin: 0 auto 22px;
-      max-width: 54ch;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-    .search-form {
-      display: grid;
-      gap: 12px;
-      justify-items: center;
-    }
-    .terminal-shell {
-      width: min(100%, 760px);
-      border-radius: 20px;
-      border: 1px solid rgba(143, 211, 255, 0.18);
-      background: rgba(2, 8, 18, 0.9);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      display: block;
-    }
-    .terminal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .terminal-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--accent-2);
-    }
-    .terminal-badge::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent-2);
-      box-shadow: 0 0 18px rgba(134, 240, 194, 0.9);
-    }
-    .terminal-body {
-      padding: 16px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      text-align: left;
-      min-height: 98px;
-    }
-    .terminal-line {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 10px;
-      align-items: start;
-      min-height: 1.5em;
-      color: rgba(243, 246, 255, 0.82);
-      margin-bottom: 6px;
-    }
-    .terminal-line:last-child {
-      margin-bottom: 0;
-    }
-    .terminal-prefix {
-      color: var(--accent);
-      white-space: nowrap;
-    }
-    .terminal-current {
-      color: var(--text);
-    }
-    .terminal-dim {
-      color: rgba(243, 246, 255, 0.58);
-    }
-    .terminal-cursor {
-      display: inline-block;
-      width: 8px;
-      height: 1em;
-      margin-left: 4px;
-      background: rgba(243, 246, 255, 0.92);
-      vertical-align: -2px;
-      animation: cursorBlink 1s steps(1) infinite;
-    }
-    @keyframes cursorBlink {
-      0%, 49% { opacity: 1; }
-      50%, 100% { opacity: 0; }
-    }
-    .search-box {
-      width: min(100%, 680px);
-      border-radius: 999px;
-      padding: 6px;
-      background: rgba(4, 10, 20, 0.72);
-      border: 1px solid var(--line);
-      display: flex;
-      gap: 8px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    }
-    .search-box input {
-      flex: 1;
-      border: 0;
-      background: transparent;
-      color: var(--text);
-      font: inherit;
-      font-size: 18px;
-      padding: 18px 18px 18px 20px;
-      outline: none;
-      min-width: 0;
-    }
-    .search-box button {
-      border-radius: 999px;
-      padding: 16px 20px;
-      white-space: nowrap;
-    }
-    .result-shell {
-      width: min(100%, 760px);
-      display: grid;
-      gap: 16px;
-    }
-    .result-card {
-      padding: 20px;
-      border-radius: 24px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-    }
-    .result-card h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-    }
-    .muted {
-      color: var(--muted);
-    }
-    .grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .panel {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-    }
-    .panel h3 {
-      margin: 0 0 8px;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    ul {
-      margin: 0;
-      padding-left: 18px;
-      line-height: 1.65;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .status-ok { color: var(--accent-2); }
-    .status-limited { color: var(--warn); }
-    .status-failed { color: var(--danger); }
-    .footer {
-      color: var(--muted);
-      font-size: 12px;
-    }
-    @media (max-width: 760px) {
-      .shell { padding: 18px 14px 34px; }
-      .search-card { padding: 24px 18px 20px; }
-      .search-box { border-radius: 20px; flex-direction: column; }
-      .search-box input { font-size: 16px; padding: 14px 14px 0; }
-      .search-box button { width: calc(100% - 12px); margin: 0 6px 6px; border-radius: 14px; }
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body>
+<body data-theme="green">
   <div class="shell">
     <div class="topbar">
       <a class="button secondary" href="./">&larr; Back to dashboard</a>
@@ -1769,7 +1189,7 @@ function renderUrlSummaryPage() {
       </section>
       <section class="result-shell" id="resultShell">
         <div class="result-card">
-          <p class="muted" style="margin:0;">Enter a URL above and press <strong>Summarize</strong>.</p>
+          <p class="muted u-m0">Enter a URL above and press <strong>Summarize</strong>.</p>
         </div>
       </section>
       <div class="footer">The page is intentionally minimal now so we can extend it into more MeiMei functions later.</div>
@@ -1795,7 +1215,7 @@ function renderUrlSummaryPage() {
 
     function listHtml(items) {
       const values = Array.isArray(items) ? items.filter(Boolean) : [];
-      if (!values.length) return '<p class="muted" style="margin:0;">None</p>';
+      if (!values.length) return '<p class="muted u-m0">None</p>';
       return '<ul>' + values.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>';
     }
 
@@ -1811,7 +1231,6 @@ function renderUrlSummaryPage() {
 
     function setTerminal(lines, meta = "Running") {
       terminalMeta.textContent = meta;
-      terminalShell.classList.add("visible");
       const content = lines.slice(0, 3).map((line, index) => {
         const prefix = index === 0 ? "$" : index === 1 ? ">" : "_";
         const toneClass = index === 0 ? "terminal-current" : "terminal-dim";
@@ -1854,7 +1273,7 @@ function renderUrlSummaryPage() {
       resultShell.innerHTML = [
         '<div class="result-card">',
         '<div class="pill">Working</div>',
-        '<p class="muted" style="margin-top:12px;">Fetching and summarizing the source.</p>',
+        '<p class="muted u-mt12">Fetching and summarizing the source.</p>',
         '</div>'
       ].join('');
       document.body.classList.add("has-result");
@@ -1902,9 +1321,9 @@ function renderUrlSummaryPage() {
       ].join("");
       resultShell.innerHTML = [
         '<div class="result-card">',
-        '<div class="pill ' + statusClass + '" style="margin-bottom:12px;">Status: ' + escapeHtml(status) + '</div>',
+        '<div class="pill ' + statusClass + ' u-mb12">Status: ' + escapeHtml(status) + '</div>',
         '<h2>' + escapeHtml(title) + '</h2>',
-        '<p class="muted" style="margin-top:0;">' + escapeHtml(sourceUrl) + (textLength ? ' • ' + escapeHtml(textLength) : '') + ' • ' + escapeHtml(sourceType) + '</p>',
+        '<p class="muted u-mt0">' + escapeHtml(sourceUrl) + (textLength ? ' • ' + escapeHtml(textLength) : '') + ' • ' + escapeHtml(sourceType) + '</p>',
         '<div class="grid">',
         '<section class="panel">',
         '<h3>Summary</h3>',
@@ -1937,9 +1356,9 @@ function renderUrlSummaryPage() {
       ].join("");
       resultShell.innerHTML = [
         '<div class="result-card">',
-        '<div class="pill status-failed" style="margin-bottom:12px;">Failed</div>',
+        '<div class="pill status-failed u-mb12">Failed</div>',
         '<h2>Could not summarize the URL</h2>',
-        '<p class="muted" style="margin:0;">' + escapeHtml(message) + '</p>',
+        '<p class="muted u-m0">' + escapeHtml(message) + '</p>',
         '</div>'
       ].join('');
       document.body.classList.add("has-result");
@@ -1973,206 +1392,9 @@ function renderDailyBriefingPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(dailyBriefingLabel)} - agent.meimei</title>
-  <style>
-    :root {
-      --bg: #07111f;
-      --panel: rgba(12, 19, 34, 0.92);
-      --panel-2: rgba(18, 27, 46, 0.95);
-      --line: rgba(255, 255, 255, 0.08);
-      --text: #f3f6ff;
-      --muted: rgba(243, 246, 255, 0.72);
-      --accent: #8fd3ff;
-      --accent-2: #86f0c2;
-      --warn: #ffce7a;
-      --danger: #ff8d8d;
-      --shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(143, 211, 255, 0.18), transparent 30%),
-        radial-gradient(circle at top right, rgba(134, 240, 194, 0.14), transparent 26%),
-        linear-gradient(180deg, #05101d 0%, #08111f 55%, #050b14 100%);
-      min-height: 100vh;
-    }
-    body.has-result .hero {
-      min-height: auto;
-      padding-top: 32px;
-      padding-bottom: 56px;
-      align-items: center;
-    }
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 24px 20px 48px;
-    }
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .title {
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-    .button, button {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(143, 211, 255, 0.18), rgba(143, 211, 255, 0.08));
-      color: var(--text);
-      border-radius: 14px;
-      padding: 11px 14px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font: inherit;
-    }
-    .button.secondary {
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .button.good {
-      background: rgba(134, 240, 194, 0.12);
-    }
-    .hero {
-      min-height: calc(100vh - 120px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-    }
-    .briefing-card {
-      width: min(100%, 820px);
-      padding: 32px 28px 28px;
-      border-radius: 28px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: center;
-    }
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 3.7rem);
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-    .lede {
-      margin: 0 auto 18px;
-      max-width: 62ch;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-    .route-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 4px;
-    }
-    .terminal-shell {
-      width: min(100%, 820px);
-      padding: 18px 20px;
-      border-radius: 22px;
-      background: rgba(6, 10, 18, 0.82);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: left;
-    }
-    .terminal-line {
-      display: grid;
-      grid-template-columns: 24px minmax(0, 1fr);
-      gap: 10px;
-      align-items: start;
-      padding: 4px 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--muted);
-    }
-    .terminal-line strong,
-    .terminal-line .terminal-current {
-      color: var(--text);
-      font-weight: 600;
-    }
-    .terminal-prefix {
-      color: var(--accent);
-    }
-    .result-shell {
-      width: min(100%, 820px);
-      display: grid;
-      gap: 16px;
-    }
-    .result-card {
-      padding: 20px;
-      border-radius: 24px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: left;
-    }
-    .result-card h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-    }
-    .muted {
-      color: var(--muted);
-    }
-    .grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .panel {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-    }
-    .panel h3 {
-      margin: 0 0 8px;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .status-ok { color: var(--accent-2); }
-    .status-limited { color: var(--warn); }
-    .status-failed { color: var(--danger); }
-    .footer {
-      color: var(--muted);
-      font-size: 12px;
-    }
-    @media (max-width: 760px) {
-      .shell { padding: 18px 14px 34px; }
-      .briefing-card { padding: 24px 18px 20px; }
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body>
+<body data-theme="green">
   <div class="shell">
     <div class="topbar">
       <a class="button secondary" href="./">&larr; Back to dashboard</a>
@@ -2193,7 +1415,7 @@ function renderDailyBriefingPage() {
       </section>
       <section class="result-shell" id="resultShell">
         <div class="result-card">
-          <p class="muted" style="margin:0;">Press <strong>Create briefing</strong> to generate the note.</p>
+          <p class="muted u-m0">Press <strong>Create briefing</strong> to generate the note.</p>
         </div>
       </section>
       <div class="footer">The function writes to Apple Notes first and falls back to markdown for portability.</div>
@@ -2234,7 +1456,7 @@ function renderDailyBriefingPage() {
       resultShell.innerHTML = [
         '<div class="result-card">',
         '<div class="pill">Working</div>',
-        '<p class="muted" style="margin-top:12px;">The briefing is being assembled now.</p>',
+        '<p class="muted u-mt12">The briefing is being assembled now.</p>',
         '</div>'
       ].join("");
     }
@@ -2247,9 +1469,9 @@ function renderDailyBriefingPage() {
       ]);
       resultShell.innerHTML = [
         '<div class="result-card">',
-        '<div class="pill status-failed" style="margin-bottom:12px;">Failed</div>',
+        '<div class="pill status-failed u-mb12">Failed</div>',
         '<h2>Could not create the briefing</h2>',
-        '<p class="muted" style="margin:0;">' + escapeHtml(message || "The briefing did not complete.") + '</p>',
+        '<p class="muted u-m0">' + escapeHtml(message || "The briefing did not complete.") + '</p>',
         '</div>'
       ].join("");
     }
@@ -2264,9 +1486,9 @@ function renderDailyBriefingPage() {
       ]);
       resultShell.innerHTML = [
         '<div class="result-card">',
-        '<div class="pill ' + sinkClass + '" style="margin-bottom:12px;">' + escapeHtml(sink) + '</div>',
+        '<div class="pill ' + sinkClass + ' u-mb12">' + escapeHtml(sink) + '</div>',
         '<h2>' + escapeHtml(data.title || "MeiMei Daily Briefing") + '</h2>',
-        '<p class="muted" style="margin-top:0;">' + escapeHtml(data.noteError || "The briefing was created successfully.") + '</p>',
+        '<p class="muted u-mt0">' + escapeHtml(data.noteError || "The briefing was created successfully.") + '</p>',
         '<div class="grid">',
         '<section class="panel">',
         '<h3>Priorities</h3>',
@@ -2285,11 +1507,11 @@ function renderDailyBriefingPage() {
         '<ul>' + (Array.isArray(data.reminders) && data.reminders.length ? data.reminders.map((item) => '<li>' + escapeHtml(item) + '</li>').join("") : "<li>None</li>") + '</ul>',
         '</section>',
         '</div>',
-        '<div class="panel" style="margin-top:12px;">',
+        '<div class="panel u-mt12">',
         '<h3>Workspace</h3>',
-        '<div class="muted" style="white-space:pre-wrap;">' + escapeHtml(data.workspaceStatus || "No extra workspace changes detected.") + '</div>',
+        '<div class="muted u-prewrap">' + escapeHtml(data.workspaceStatus || "No extra workspace changes detected.") + '</div>',
         '</div>',
-        '<div class="panel" style="margin-top:12px;">',
+        '<div class="panel u-mt12">',
         '<h3>Storage</h3>',
         '<div class="muted">Apple Notes folder: ' + escapeHtml(data.folderName || "MeiMei") + '</div>',
         '<div class="muted">Markdown fallback: ' + escapeHtml(data.markdownPath || "none") + '</div>',
@@ -2332,210 +1554,9 @@ function renderRoutingPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(routingLabel)} - agent.meimei</title>
-  <style>
-    :root {
-      --bg: #07111f;
-      --panel: rgba(12, 19, 34, 0.92);
-      --panel-2: rgba(18, 27, 46, 0.95);
-      --line: rgba(255, 255, 255, 0.08);
-      --text: #f3f6ff;
-      --muted: rgba(243, 246, 255, 0.72);
-      --accent: #8fd3ff;
-      --accent-2: #86f0c2;
-      --warn: #ffce7a;
-      --danger: #ff8d8d;
-      --shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(143, 211, 255, 0.18), transparent 30%),
-        radial-gradient(circle at top right, rgba(134, 240, 194, 0.14), transparent 26%),
-        linear-gradient(180deg, #05101d 0%, #08111f 55%, #050b14 100%);
-      min-height: 100vh;
-    }
-    body.has-result .hero {
-      min-height: auto;
-      padding-top: 32px;
-      padding-bottom: 56px;
-      align-items: center;
-    }
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 24px 20px 48px;
-    }
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .title {
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-    .button, button {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(143, 211, 255, 0.18), rgba(143, 211, 255, 0.08));
-      color: var(--text);
-      border-radius: 14px;
-      padding: 11px 14px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font: inherit;
-    }
-    .button.secondary {
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .button.good, button.good {
-      background: rgba(134, 240, 194, 0.12);
-    }
-    .hero {
-      min-height: calc(100vh - 120px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-    }
-    .route-card {
-      width: min(100%, 820px);
-      padding: 32px 28px 28px;
-      border-radius: 28px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: center;
-    }
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 3.7rem);
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-    .lede {
-      margin: 0 auto 22px;
-      max-width: 58ch;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-    .route-form {
-      display: grid;
-      gap: 14px;
-      justify-items: center;
-    }
-    .route-grid {
-      width: min(100%, 720px);
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      text-align: left;
-    }
-    .field {
-      display: grid;
-      gap: 8px;
-    }
-    .field label {
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    select, input {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(4, 10, 20, 0.72);
-      color: var(--text);
-      padding: 12px 14px;
-      outline: none;
-      font: inherit;
-    }
-    .route-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 4px;
-    }
-    .result-shell {
-      width: min(100%, 820px);
-      display: grid;
-      gap: 16px;
-    }
-    .result-card {
-      padding: 20px;
-      border-radius: 24px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      text-align: left;
-    }
-    .result-card h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-    }
-    .muted {
-      color: var(--muted);
-    }
-    .grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .panel {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-    }
-    .panel h3 {
-      margin: 0 0 8px;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .status-ok { color: var(--accent-2); }
-    .status-limited { color: var(--warn); }
-    .status-failed { color: var(--danger); }
-    .footer {
-      color: var(--muted);
-      font-size: 12px;
-    }
-    @media (max-width: 760px) {
-      .shell { padding: 18px 14px 34px; }
-      .route-card { padding: 24px 18px 20px; }
-      .route-grid { grid-template-columns: 1fr; }
-      .grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="/styles/design-system.css" />
 </head>
-<body>
+<body data-theme="green">
   <div class="shell">
     <div class="topbar">
       <a class="button secondary" href="./">&larr; Back to dashboard</a>
@@ -2591,7 +1612,7 @@ function renderRoutingPage() {
       </section>
       <section class="result-shell" id="resultShell">
         <div class="result-card">
-          <p class="muted" style="margin:0;">Choose values above and press <strong>Route</strong>.</p>
+          <p class="muted u-m0">Choose values above and press <strong>Route</strong>.</p>
         </div>
       </section>
       <div class="footer">This page previews the routing policy only. It does not send a message or execute a turn.</div>
@@ -2631,7 +1652,7 @@ function renderRoutingPage() {
       resultShell.innerHTML = [
         '<div class="result-card">',
         '<div class="pill">Working</div>',
-        '<p class="muted" style="margin-top:12px;">Calculating the routing recommendation.</p>',
+        '<p class="muted u-mt12">Calculating the routing recommendation.</p>',
         '</div>'
       ].join('');
       document.body.classList.add("has-result");
@@ -2644,19 +1665,19 @@ function renderRoutingPage() {
       const statusClass = route.agent === "judge" ? "status-ok" : route.agent === "drafter" ? "status-limited" : "status-ok";
       resultShell.innerHTML = [
         '<div class="result-card">',
-        '<div class="pill ' + statusClass + '" style="margin-bottom:12px;">Route ready</div>',
+        '<div class="pill ' + statusClass + ' u-mb12">Route ready</div>',
         '<h2>' + escapeHtml(title) + '</h2>',
-        '<p class="muted" style="margin-top:0;">' + escapeHtml(route.reason || "Deterministic routing selected the safest fit.") + '</p>',
+        '<p class="muted u-mt0">' + escapeHtml(route.reason || "Deterministic routing selected the safest fit.") + '</p>',
         '<div class="grid">',
         '<section class="panel">',
         '<h3>Recommended</h3>',
-        '<div class="value" style="font-size:18px;font-weight:650;">' + escapeHtml(agent) + '</div>',
-        '<div class="muted" style="margin-top:8px;">Thinking: ' + escapeHtml(route.thinking || "low") + '</div>',
+        '<div class="value value-lg">' + escapeHtml(agent) + '</div>',
+        '<div class="muted u-mt8">Thinking: ' + escapeHtml(route.thinking || "low") + '</div>',
         '</section>',
         '<section class="panel">',
         '<h3>Fallback</h3>',
-        '<div class="value" style="font-size:18px;font-weight:650;">' + escapeHtml(fallbackAgent) + '</div>',
-        '<div class="muted" style="margin-top:8px;">Fallback thinking: ' + escapeHtml(route.fallbackThinking || "low") + '</div>',
+        '<div class="value value-lg">' + escapeHtml(fallbackAgent) + '</div>',
+        '<div class="muted u-mt8">Fallback thinking: ' + escapeHtml(route.fallbackThinking || "low") + '</div>',
         '</section>',
         '<section class="panel">',
         '<h3>Inputs</h3>',
@@ -2666,7 +1687,7 @@ function renderRoutingPage() {
         '</section>',
         '<section class="panel">',
         '<h3>Tier</h3>',
-        '<div class="value" style="font-size:18px;font-weight:650;">' + escapeHtml(route.tier || "tier_local_fast") + '</div>',
+        '<div class="value value-lg">' + escapeHtml(route.tier || "tier_local_fast") + '</div>',
         '</section>',
         '</div>',
         '</div>'
@@ -2697,9 +1718,9 @@ function renderRoutingPage() {
       } catch (error) {
         resultShell.innerHTML = [
           '<div class="result-card">',
-          '<div class="pill status-failed" style="margin-bottom:12px;">Failed</div>',
+          '<div class="pill status-failed u-mb12">Failed</div>',
           '<h2>Could not calculate a route</h2>',
-          '<p class="muted" style="margin:0;">' + escapeHtml(error instanceof Error ? error.message : String(error)) + '</p>',
+          '<p class="muted u-m0">' + escapeHtml(error instanceof Error ? error.message : String(error)) + '</p>',
           '</div>'
         ].join('');
         document.body.classList.add("has-result");
@@ -2732,10 +1753,56 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload, null, 2));
 }
 
+function guessContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".css") return "text/css; charset=utf-8";
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".ico") return "image/x-icon";
+  return "application/octet-stream";
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
     const normalizedPath = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
+
+    if ((req.method === "GET" || req.method === "HEAD")
+      && (url.pathname.startsWith("/images/") || url.pathname.startsWith("/styles/"))) {
+      const relative = decodeURIComponent(url.pathname.slice(1));
+      const requestedPath = path.join(publicDir, relative);
+      const safePrefix = `${publicDir}${path.sep}`;
+      if (!requestedPath.startsWith(safePrefix)) {
+        res.writeHead(403, {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store, max-age=0"
+        });
+        res.end("Forbidden");
+        return;
+      }
+      try {
+        const file = await readFile(requestedPath);
+        res.writeHead(200, {
+          "content-type": guessContentType(requestedPath),
+          "cache-control": "no-store, max-age=0"
+        });
+        if (req.method === "HEAD") {
+          res.end();
+          return;
+        }
+        res.end(file);
+      } catch {
+        res.writeHead(404, {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store, max-age=0"
+        });
+        res.end("Not found");
+      }
+      return;
+    }
 
     if (req.method === "GET" && url.pathname === "/") {
       const config = await readConfig();

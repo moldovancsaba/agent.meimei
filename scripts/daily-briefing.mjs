@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dirname, "..");
 const briefingDir = process.env.MEIMEI_BRIEFING_DIR || path.join(os.homedir(), ".openclaw", "briefings");
 const briefingFolderName = process.env.MEIMEI_BRIEFING_FOLDER || "MeiMei";
 const briefingSink = process.env.MEIMEI_BRIEFING_SINK || "apple-notes";
+const notesActivate = process.env.MEIMEI_BRIEFING_NOTES_ACTIVATE === "1";
 
 function escapeHtml(value) {
   return String(value || "")
@@ -53,6 +54,10 @@ function runCommand(command, args = [], options = {}) {
       resolve({ code, signal, stdout, stderr });
     });
   });
+}
+
+function toAppleScriptBoolean(value) {
+  return value ? "true" : "false";
 }
 
 async function readTextFile(relPath) {
@@ -181,8 +186,11 @@ on run argv
   set noteTitle to item 1 of argv
   set noteBody to item 2 of argv
   set targetFolderName to item 3 of argv
+  set shouldActivate to item 4 of argv
   tell application "Notes"
-    activate
+    if shouldActivate is "true" then
+      activate
+    end if
     set targetAccount to first account
     set targetFolder to missing value
     try
@@ -198,7 +206,7 @@ on run argv
   end tell
 end run`.trim();
 
-  return runCommand("osascript", ["-e", appleScript, title, bodyHtml, folderName], {
+  return runCommand("osascript", ["-e", appleScript, title, bodyHtml, folderName, toAppleScriptBoolean(notesActivate)], {
     timeoutMs: 20000
   });
 }

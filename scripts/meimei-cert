@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CERT_DIR="${HOME}/.openclaw/certs"
+KEY_PATH="${CERT_DIR}/meimei.localhost.key"
+CERT_PATH="${CERT_DIR}/meimei.localhost.crt"
+KEYCHAIN_PATH="${HOME}/Library/Keychains/login.keychain-db"
+
+ensure_cert_dir() {
+  mkdir -p "${CERT_DIR}"
+}
+
+generate_cert() {
+  ensure_cert_dir
+  local san
+  san="DNS:meimei.localhost,DNS:localhost,IP:127.0.0.1,IP:::1"
+  openssl req \
+    -x509 \
+    -newkey rsa:2048 \
+    -nodes \
+    -keyout "${KEY_PATH}" \
+    -out "${CERT_PATH}" \
+    -days 825 \
+    -subj "/CN=meimei.localhost" \
+    -addext "subjectAltName=${san}" \
+    >/dev/null 2>&1
+  echo "Generated certificate at ${CERT_PATH}"
+}
+
+ensure_cert() {
+  if [[ -f "${KEY_PATH}" && -f "${CERT_PATH}" ]]; then
+    return 0
+  fi
+  generate_cert
+}
+
+cert_fingerprint() {
+  openssl x509 -in "${CERT_PATH}" -noout -fingerprint -sha256 | sed 's/.*=//'
+}
+
+is_trusted() {
+  local fp
+  fp="$(cert_fingerprint | tr -d ':')"
+  security find-certificate -a -Z -c "meimei.localhost" "${KEYCHAIN_PATH}" 2>/dev/null \
+    | tr -d ' \t:' \
+    | grep -q "SHA-256hash:${fp}"
+}
+
+trust_cert() {
+  if [[ "${MEIMEI_CERT_AUTO_TRUST:-1}" != "1" ]]; then
+    echo "Certificate trust step skipped (MEIMEI_CERT_AUTO_TRUST=${MEIMEI_CERT_AUTO_TRUST})."
+    return 0
+  fi
+
+  if [[ ! -t 0 && ! -t 1 ]]; then
+    echo "Certificate trust step skipped (non-interactive session)."
+    return 0
+  fi
+
+  if is_trusted; then
+    echo "Certificate already trusted in login keychain."
+    return 0
+  fi
+
+  if security add-trusted-cert -d -r trustRoot -k "${KEYCHAIN_PATH}" "${CERT_PATH}" >/dev/null 2>&1; then
+    echo "Trusted certificate in login keychain."
+    return 0
+  fi
+
+  echo "Warning: could not add trust entry automatically." >&2
+  echo "Run this once in macOS session and approve keychain prompt:" >&2
+  echo "  security add-trusted-cert -d -r trustRoot -k \"${KEYCHAIN_PATH}\" \"${CERT_PATH}\"" >&2
+  return 1
+}
+
+status() {
+  if [[ ! -f "${CERT_PATH}" || ! -f "${KEY_PATH}" ]]; then
+    echo "Certificate status: missing"
+    echo "Run: ./scripts/meimei-cert install"
+    return 1
+  fi
+
+  echo "Certificate status: present"
+  echo "Cert path: ${CERT_PATH}"
+  echo "Key path:  ${KEY_PATH}"
+  echo "SHA256:    $(cert_fingerprint)"
+  echo "Expires:   $(openssl x509 -in "${CERT_PATH}" -noout -enddate | sed 's/notAfter=//')"
+  if is_trusted; then
+    echo "Trusted:   yes (login keychain)"
+  else
+    echo "Trusted:   no"
+  fi
+}
+
+install() {
+  ensure_cert
+  trust_cert || true
+  status || true
+}
+
+rotate() {
+  rm -f "${KEY_PATH}" "${CERT_PATH}"
+  generate_cert
+  trust_cert || true
+  status || true
+}
+
+case "${1:-status}" in
+  install)
+    install
+    ;;
+  rotate)
+    rotate
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo "Usage: $0 [install|rotate|status]" >&2
+    exit 2
+    ;;
+esac

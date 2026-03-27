@@ -3,9 +3,9 @@
 ## Current
 
 - Line: `foundation`
-- Version: `0.7.0`
-- Date: `2026-03-26`
-- Codename: `foundation-hardening-wave`
+- Version: `0.7.2`
+- Date: `2026-03-27`
+- Codename: `design-system-v1-hardened`
 
 ## Included issue deliveries
 
@@ -24,6 +24,8 @@
 - `mvp-factory-control#705` - Sovereign role taxonomy + authority matrix
 - `mvp-factory-control#706` - Handoff artifact schema + stage-gate validator
 - `mvp-factory-control#707` - Automated release gates mapped to DoD/testing
+- `mvp-factory-control#723` - Centralized design system v1 + shared flashcard module
+- `mvp-factory-control#724` - Design system hardening audit fixes (safe rendering + state classes + token cleanup)
 
 ## Versioning policy
 

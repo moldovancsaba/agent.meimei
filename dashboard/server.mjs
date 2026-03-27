@@ -932,47 +932,6 @@ function renderPage(state, lastResult) {
         <div class="footer">OpenClaw gateway is already present locally if you want to use it immediately.</div>
       </section>
 
-      <section class="card section">
-        <h2>Latest output</h2>
-        <p class="sub">Last operation result returned by the dashboard server.</p>
-        <pre>${escapeHtml(statusText || statusError || "No command has been run yet.")}</pre>
-      </section>
-
-      <section class="card section">
-        <h2>Quick agent turn</h2>
-        <p class="sub">Send a message through the repo-local wrapper.</p>
-        <form class="form" method="post" action="/api/run" data-agent-form>
-          <input type="hidden" name="cmd" value="agent" />
-          <div class="field">
-            <label for="message">Message</label>
-            <textarea id="message" name="message" placeholder="Summarize the current workspace status."></textarea>
-          </div>
-          <div class="actions">
-            <button type="submit" class="good">Send to agent</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="card section">
-        <h2>Web search</h2>
-        <p class="sub">Use the local DuckDuckGo fallback with no external API keys.</p>
-        <form class="form" method="post" action="/api/run" data-search-form>
-          <input type="hidden" name="cmd" value="search" />
-          <div class="field">
-            <label for="query">Query</label>
-            <input id="query" name="query" placeholder="agent.meimei issue 516" />
-          </div>
-          <div class="row">
-            <div class="field">
-              <label for="count">Results</label>
-              <input id="count" name="count" type="number" min="1" max="10" value="5" />
-            </div>
-          </div>
-          <div class="actions">
-            <button type="submit">Search</button>
-          </div>
-        </form>
-      </section>
     </div>
   </div>
   <script>
@@ -987,7 +946,7 @@ function renderPage(state, lastResult) {
       output.textContent = JSON.stringify(data, null, 2);
       return data;
     }
-    document.querySelectorAll('[data-run-form], [data-agent-form], [data-search-form]').forEach((form) => {
+    document.querySelectorAll('[data-run-form]').forEach((form) => {
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         await postForm(form);
@@ -1309,6 +1268,42 @@ function renderAdminPage(state, lastResult) {
         <p class="sub">Last operation result returned by the dashboard server.</p>
         <pre>${escapeHtml(statusText || statusError || "No command has been run yet.")}</pre>
       </section>
+
+      <section class="card section">
+        <h2>Quick agent turn</h2>
+        <p class="sub">Send a message through the repo-local wrapper.</p>
+        <form class="form" method="post" action="/api/run" data-agent-form>
+          <input type="hidden" name="cmd" value="agent" />
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Summarize the current workspace status."></textarea>
+          </div>
+          <div class="actions">
+            <button type="submit" class="good">Send to agent</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card section">
+        <h2>Web search</h2>
+        <p class="sub">Use the local DuckDuckGo fallback with no external API keys.</p>
+        <form class="form" method="post" action="/api/run" data-search-form>
+          <input type="hidden" name="cmd" value="search" />
+          <div class="field">
+            <label for="query">Query</label>
+            <input id="query" name="query" placeholder="agent.meimei issue 516" />
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="count">Results</label>
+              <input id="count" name="count" type="number" min="1" max="10" value="5" />
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit">Search</button>
+          </div>
+        </form>
+      </section>
     </div>
   </div>
   <script>
@@ -1323,11 +1318,11 @@ function renderAdminPage(state, lastResult) {
       output.textContent = JSON.stringify(data, null, 2);
       return data;
     }
-    document.querySelectorAll('[data-config-form]').forEach((form) => {
+    document.querySelectorAll('[data-config-form], [data-agent-form], [data-search-form]').forEach((form) => {
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const data = await postForm(form);
-        if (data.ok) {
+        if (form.matches('[data-config-form]') && data.ok) {
           window.location.reload();
         }
       });

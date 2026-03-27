@@ -38,6 +38,7 @@ const routingApiRoute = "/api/functions/model-routing";
 const routingLabel = "Per-channel model routing by task type and cost";
 const imessageInboundApiRoute = "/api/channels/imessage/inbound";
 const knowmoreRoute = "/knowmore";
+const openclawChatUrl = process.env.MEIMEI_OPENCLAW_CHAT_URL || "http://127.0.0.1:18789/chat?session=main";
 
 const knowmoreReleases = [
   {
@@ -887,6 +888,7 @@ function renderPage(state, lastResult) {
     <div class="topnav">
       <h1 class="title">MeiMei Operator Dashboard</h1>
       <div class="nav-actions">
+        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
         <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
         <a class="button secondary" href="/admin">Admin / Settings</a>
       </div>
@@ -1048,6 +1050,7 @@ function renderKnowmorePage() {
     <div class="topnav">
       <h1 class="title">knowmore</h1>
       <div class="nav-actions">
+        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
         <a class="button secondary" href="/">Dashboard</a>
         <a class="button secondary" href="/admin">Admin / Settings</a>
       </div>
@@ -1120,19 +1123,6 @@ function renderKnowmorePage() {
     });
 
     closeBtn.addEventListener('click', closeModal);
-    mIssue.addEventListener('click', (event) => {
-      const href = mIssue.getAttribute('href') || '';
-      if (!href || href === '#') {
-        event.preventDefault();
-        return;
-      }
-      const popup = window.open(href, '_blank', 'noopener,noreferrer');
-      if (!popup) {
-        // Fallback for environments that block popups/new tabs.
-        window.location.assign(href);
-      }
-      event.preventDefault();
-    });
     backdrop.addEventListener('click', (event) => {
       if (event.target === backdrop) closeModal();
     });
@@ -1177,6 +1167,7 @@ function renderAdminPage(state, lastResult) {
     <div class="topnav">
       <h1 class="title">Admin / Settings</h1>
       <div class="nav-actions">
+        <a class="button secondary" href="${escapeHtml(openclawChatUrl)}">OpenClaw</a>
         <a class="button secondary" href="${knowmoreRoute}">knowmore</a>
         <a class="button secondary" href="/">Dashboard</a>
       </div>

@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-  name: "MeiMeiMenuBar",
+  name: "MeiMei",
   platforms: [.macOS(.v13)],
   products: [
-    .executable(name: "MeiMeiMenuBar", targets: ["MeiMeiMenuBar"])
+    .executable(name: "MeiMei", targets: ["MeiMei"])
   ],
   targets: [
     .executableTarget(
-      name: "MeiMeiMenuBar",
+      name: "MeiMei",
       path: "Sources"
     )
   ]

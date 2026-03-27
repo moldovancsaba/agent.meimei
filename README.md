@@ -36,7 +36,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `reliability-telemetry-baseline-v1.md` - baseline telemetry event schema and SLO summary metrics.
 - `design-system-v1.md` - centralized UI tokens/components/themes, **global layout system** (`.layout-flow` / `.layout-box`), and integration rules.
 - `config/page-layout.v1.json` - persisted per-page block order, spans, and desktop column count (edited from **Admin → Page layout**).
-- `macos/MeiMeiMenuBar/` - optional macOS menu bar app to open the local dashboard (`npm run menubar:build`).
+- `macos/MeiMei/` - optional macOS menu bar app for the local dashboard (`npm run menubar:build`; `npm run menubar:install` copies **MeiMei.app** to `~/Applications` for Spotlight — see `macos/MeiMei/README.md`).
 - `project-vocabulary-v1.md` - canonical product vocabulary and documentation wording rules.
 - `channel-adapter-contract-v1.md` - canonical interface for all channel adapters.
 - `channel-adapter-lifecycle-v1.md` - required ingress-to-delivery adapter lifecycle.

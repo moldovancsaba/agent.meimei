@@ -118,7 +118,7 @@ Frozen-style specs: channel adapters, handoff, release gates, policy, audit, tel
 
 Product function specs and skills: **correct location**; avoid duplicating registry fields in prose (point to `functions/registry.v1.json`).
 
-### Tier J — `macos/MeiMeiMenuBar/README.md`
+### Tier J — `macos/MeiMei/README.md`
 
 Local app; keep next to code.
 

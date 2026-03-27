@@ -59,7 +59,7 @@ Key artifacts:
 - `public/styles/design-system.css`
 - `config/dashboard-surface.v1.json` (routes, API paths, logos, operator script paths; loaded by `dashboard/lib/dashboard-surface.mjs`)
 - `config/page-layout.v1.json` (per-page layout order, block span, desktop column count; loaded by `dashboard/lib/page-layout.mjs`)
-- `macos/MeiMeiMenuBar/` (optional menu bar companion to open the local HTTPS dashboard; see `macos/MeiMeiMenuBar/README.md`)
+- `macos/MeiMei/` (optional menu bar companion to open the local HTTPS dashboard; see `macos/MeiMei/README.md`)
 - `scripts/meimei-domain*`
 - `scripts/meimei-setup`
 - `scripts/meimei-cert`

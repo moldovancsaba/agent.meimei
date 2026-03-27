@@ -8,7 +8,7 @@ import SwiftUI
 /// https://github.com/AnaghSharma/Ambar-SwiftUI — we could not find a public “Amanoba” course;
 /// this app follows the same architectural idea: status item + SwiftUI content).
 @main
-struct MeiMeiMenuBarApp: App {
+struct MeiMeiApp: App {
   var body: some Scene {
     MenuBarExtra("MeiMei", systemImage: "sparkles.rectangle.stack.fill") {
       MenuRootView()

@@ -1,14 +1,26 @@
-# Changelog
+# CHANGELOG
 
 ## Unreleased
 
-- Added `design-system-v1.md` defining centralized theme tokens, component modules, and integration policy for all dashboard/miniapp pages.
-- Added shared stylesheet `public/styles/design-system.css` as the single source of UI truth for typography, backgrounds, cards, nav, forms, modal, and flashcards.
-- Refactored `dashboard/server.mjs` pages (dashboard, knowmore, admin, URL summary, daily briefing, routing) to consume the centralized design system instead of per-page style blocks.
-- Standardized flashcard content structure to `kind`, `title`, `content` rendering (`APP` / `ISSUE #...`) without variable-name prefixes.
-- Hardened design-system implementation: removed obsolete styles/tokens, replaced dynamic knowmore `innerHTML` card rendering with safe DOM creation, and moved modal visibility to class-based state (`.is-open`).
-- Expanded design tokens for modal/terminal/code surfaces and OpenClaw brand colors; added explicit `data-theme="red"` token mapping for consistent documentation/runtime alignment.
-- Added a standardized mobile navigation component (`.nav-toggle` + `.nav-actions.is-open`) with responsive behavior across dashboard, knowmore, and admin pages.
+- No unreleased changes.
+
+## 2026-03-27 - Design system hardening wave (`0.7.3`)
+
+### Documentation and communication quality
+
+- Added `project-vocabulary-v1.md` to standardize project-level wording and release-note language.
+- Rewrote `architecture.md` with explicit layer boundaries, runtime topology, and enforceability principles.
+- Updated `README.md` state/version language to match released runtime maturity and `VERSION.md`.
+
+### Design system centralization and hardening
+
+- Added shared stylesheet `public/styles/design-system.css` as the single source of UI tokens/components across dashboard and miniapp pages.
+- Standardized flashcard structure to `kind`, `title`, `content` rendering (`APP` / `ISSUE #...`) without variable-name prefixes.
+- Hardened knowmore rendering and modal behavior:
+  - safe DOM card creation (`createElement`/`textContent`)
+  - class-based modal state (`.is-open`) instead of inline style mutation.
+- Expanded token model for modal/terminal/code surfaces and OpenClaw branding; added explicit `data-theme=\"red\"` support.
+- Added standardized mobile nav component (`.nav-toggle` + `.nav-actions.is-open`) across dashboard, knowmore, and admin.
 
 ## 2026-03-26 - Foundation hardening wave
 

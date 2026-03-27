@@ -1,37 +1,41 @@
 # Testing
 
-## What gets tested
+## Scope
 
-- skill scope
-- skill naming
-- catalog integrity
-- document coherence
-- workflow clarity
+- runtime readiness and launch safety
+- miniapp/adapter contract integrity
+- release and handoff gate validity
+- policy/audit/telemetry correctness
+- documentation coherence and version parity
 
-## Test style
+## Current automation
 
-This project starts with human-verifiable tests:
+Primary verification commands:
 
-- read the skill body
-- compare it to the catalog
-- confirm it is not duplicative
-- confirm it is actionable
+- `npm run readiness`
+- `npm run registry:validate`
+- `npm run adapter:whatsapp:validate`
+- `npm run handoff:validate -- handoffs/sample.stage-gate.v1.json`
+- `npm run release:gates -- releases/sample.release-gate.v1.json`
+- `npm run policy:validate`
+- `npm run audit:validate`
+- `npm run telemetry:validate`
+- `npm run imessage:validate`
 
-## Acceptance checks
+## Manual verification expectations
 
-For each new skill or major doc:
+For major UI/runtime changes:
 
-- the purpose is clear in one pass
-- the boundaries are explicit
-- OC collaboration is respected
-- the skill can be reused without rewriting the prompt
+- load `https://meimei.localhost:8443/dashboard/`
+- verify primary routes (`/dashboard`, `/knowmore`, `/admin`, miniapp pages)
+- verify theme and component consistency per design-system rules
+- verify no regressions in operator flows (status, settings, command actions)
 
-## Future automation
+## Documentation parity checks
 
-When the project grows code, add:
+For each release:
 
-- linting
-- doc validation
-- skill metadata validation
-- catalog duplication checks
+- `VERSION.md`, `CHANGELOG.md`, and `README.md` version statements must match
+- release notes must include objective, impact, and verification path
+- architecture and vocabulary docs must reflect current runtime behavior
 

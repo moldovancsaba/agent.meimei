@@ -34,6 +34,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `decision-action-audit-trail-v1.md` - append-only hash-chained audit pipeline for policy/routing/delivery events.
 - `reliability-telemetry-baseline-v1.md` - baseline telemetry event schema and SLO summary metrics.
 - `design-system-v1.md` - centralized UI tokens/components/themes and integration rules.
+- `project-vocabulary-v1.md` - canonical product vocabulary and documentation wording rules.
 - `channel-adapter-contract-v1.md` - canonical interface for all channel adapters.
 - `channel-adapter-lifecycle-v1.md` - required ingress-to-delivery adapter lifecycle.
 - `sovereign-agent-role-taxonomy-v1.md` - role boundaries and authority matrix for sovereign multi-agent delivery.
@@ -80,17 +81,21 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 
 ## Current state
 
-This is the foundation layer only.
-It is designed to support:
+This repository is beyond bootstrap and includes both foundation governance and operational runtime surfaces.
+Current baseline includes:
 
-- many reusable skills
-- repeatable delivery
-- safe collaboration with OC
-- future implementation work without rethinking the base structure
+- reusable skills and miniapp contracts
+- policy, audit, telemetry, and release-gate validators
+- operator runtime UI + local-domain proxy + watchdog services
+- repeatable release/version governance
 
 Current version line:
 
-- `foundation 0.7.0` (`foundation-hardening-wave`, `2026-03-26`)
+- `foundation 0.7.3` (`design-system-v1-mobile-nav-hardened`, `2026-03-27`)
+
+Release metadata source of truth:
+
+- `VERSION.md` is canonical for current version/date/codename.
 
 ## Next step
 

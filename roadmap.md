@@ -1,41 +1,34 @@
 # Roadmap
 
-## Phase 1
+## Phase 1 - Foundation governance complete
 
-Establish the workspace:
+Status: delivered
 
-- identity docs
-- operating docs
-- skill template
-- skill catalog
+- identity and operating contracts
+- miniapp/channel/handoff/release standards
+- quality gates and validator baseline
 
-## Phase 2
+## Phase 2 - Runtime and operator hardening (active)
 
-Build the first reusable core skill set:
+Objectives:
 
-- research
-- synthesis
-- planning
-- review
-- execution support
+- stabilize operator runtime UX and local-domain reliability
+- enforce centralized design-system behavior across all pages
+- complete documentation parity and vocabulary normalization
 
-## Phase 3
+## Phase 3 - Multi-channel delivery expansion
 
-Expand the skill library into large clusters:
+Objectives:
 
-- product work
-- writing
-- operations
-- analysis
-- coordination
-- automation
+- iMessage live bridge hardening
+- email and discord adapter implementation from architecture plans
+- policy-gated outbound channel execution
 
-## Phase 4
+## Phase 4 - Reliability and release governance automation
 
-Add validation and automation around:
+Objectives:
 
-- catalog health
-- skill metadata
-- duplicate detection
-- release readiness
+- CI enforcement for readiness/release/policy/audit/telemetry validators
+- release-note and version-parity checks as mandatory gates
+- SLO reporting and reliability trend dashboards
 

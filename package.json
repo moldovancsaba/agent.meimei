@@ -23,6 +23,9 @@
     "always-on:install": "./scripts/meimei-always-on-install",
     "always-on:uninstall": "./scripts/meimei-always-on-uninstall",
     "always-on:status": "./scripts/meimei-always-on-status",
+    "dashboard:watchdog:install": "./scripts/meimei-dashboard-watchdog-install",
+    "dashboard:watchdog:uninstall": "./scripts/meimei-dashboard-watchdog-uninstall",
+    "dashboard:watchdog:status": "./scripts/meimei-dashboard-watchdog-status",
     "start": "node dashboard/server.mjs"
   },
   "dependencies": {

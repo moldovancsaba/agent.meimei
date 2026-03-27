@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+uid="$(id -u)"
+dashboard_label="${MEIMEI_DASHBOARD_LABEL:-com.agent.meimei.dashboard}"
+dashboard_port="${PORT:-3030}"
+health_url="${MEIMEI_DASHBOARD_HEALTH_URL:-http://127.0.0.1:${dashboard_port}/api/telemetry/summary}"
+
+if curl -fsS --max-time 5 "$health_url" >/dev/null 2>&1; then
+  exit 0
+fi
+
+echo "[watchdog] health probe failed for $health_url, restarting $dashboard_label"
+launchctl kickstart -k "gui/$uid/$dashboard_label"

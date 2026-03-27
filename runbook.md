@@ -57,6 +57,9 @@ Escalate to OC when:
 - Use `npm run always-on:install` to keep gateway running across restarts with auto-restart on crash.
 - Use `npm run always-on:status` to inspect launchd service and gateway health.
 - Use `npm run always-on:uninstall` if you need to disable always-on mode.
+- Use `npm run dashboard:watchdog:install` to auto-start dashboard at login and restart it on crash/healthcheck failure.
+- Use `npm run dashboard:watchdog:status` to inspect dashboard watcher service and health probe.
+- Use `npm run dashboard:watchdog:uninstall` to disable dashboard always-on watcher mode.
 - Use `npm run config:seed` when you need to render or refresh the live OpenClaw config from the repo seed.
 - Use `npm run bootstrap` when you are bringing up a fresh Mac mini or validating the migration path.
 

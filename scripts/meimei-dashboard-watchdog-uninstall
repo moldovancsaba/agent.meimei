@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dashboard_label="${MEIMEI_DASHBOARD_LABEL:-com.agent.meimei.dashboard}"
+watchdog_label="${MEIMEI_DASHBOARD_WATCHDOG_LABEL:-com.agent.meimei.dashboard-health}"
+plist_dir="$HOME/Library/LaunchAgents"
+dashboard_plist="$plist_dir/$dashboard_label.plist"
+watchdog_plist="$plist_dir/$watchdog_label.plist"
+
+launchctl unload "$watchdog_plist" >/dev/null 2>&1 || true
+launchctl unload "$dashboard_plist" >/dev/null 2>&1 || true
+rm -f "$watchdog_plist" "$dashboard_plist"
+
+echo "Uninstalled dashboard always-on services."
+echo "Removed: $dashboard_plist"
+echo "Removed: $watchdog_plist"

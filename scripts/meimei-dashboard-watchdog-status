@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+uid="$(id -u)"
+dashboard_label="${MEIMEI_DASHBOARD_LABEL:-com.agent.meimei.dashboard}"
+watchdog_label="${MEIMEI_DASHBOARD_WATCHDOG_LABEL:-com.agent.meimei.dashboard-health}"
+dashboard_port="${PORT:-3030}"
+health_url="${MEIMEI_DASHBOARD_HEALTH_URL:-http://127.0.0.1:${dashboard_port}/api/telemetry/summary}"
+logs_dir="$HOME/Library/Logs/agent.meimei"
+
+echo "Dashboard label: $dashboard_label"
+echo "Watchdog label:  $watchdog_label"
+echo
+echo "Dashboard launchctl:"
+launchctl print "gui/$uid/$dashboard_label" 2>/dev/null || echo "Dashboard service not loaded."
+echo
+echo "Watchdog launchctl:"
+launchctl print "gui/$uid/$watchdog_label" 2>/dev/null || echo "Watchdog service not loaded."
+echo
+echo "Health probe: $health_url"
+if curl -fsS --max-time 5 "$health_url" >/dev/null 2>&1; then
+  echo "Health: PASS"
+else
+  echo "Health: FAIL"
+fi
+echo
+echo "Logs:"
+echo "  $logs_dir/dashboard.out.log"
+echo "  $logs_dir/dashboard.err.log"
+echo "  $logs_dir/dashboard-watchdog.out.log"
+echo "  $logs_dir/dashboard-watchdog.err.log"

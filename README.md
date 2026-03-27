@@ -68,6 +68,9 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `scripts/meimei-always-on-install` - installs macOS `launchd` always-on gateway service.
 - `scripts/meimei-always-on-uninstall` - removes macOS always-on gateway service.
 - `scripts/meimei-always-on-status` - prints always-on service state and gateway probe.
+- `scripts/meimei-dashboard-watchdog-install` - installs dashboard auto-start + auto-restart + health watcher.
+- `scripts/meimei-dashboard-watchdog-status` - prints dashboard/watchdog service state and health probe.
+- `scripts/meimei-dashboard-watchdog-uninstall` - removes dashboard watcher services.
 - `scripts/web-search` - local DuckDuckGo-based web search fallback.
 - `Makefile` - convenience targets for launch, status, doctor, skills, and agent turns.
 - `dashboard/server.mjs` - localhost control panel for settings, search, and OpenClaw operations.
@@ -118,3 +121,6 @@ Use one of these from the repo root:
 - `npm run always-on:install` to install and start always-on gateway auto-restart service
 - `npm run always-on:status` to inspect launchd service state and gateway health
 - `npm run always-on:uninstall` to remove always-on gateway service
+- `npm run dashboard:watchdog:install` to keep dashboard always-on (boot/login, crash restart, health-triggered restart)
+- `npm run dashboard:watchdog:status` to inspect dashboard watcher services and health
+- `npm run dashboard:watchdog:uninstall` to remove dashboard watcher services

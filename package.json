@@ -33,7 +33,8 @@
     "menubar:build": "bash macos/MeiMei/build-app.sh",
     "menubar:install": "bash scripts/meimei-menubar-install-user.sh",
     "menubar:test": "bash scripts/meimei-menubar-smoke-test.sh",
-    "start": "node dashboard/server.mjs"
+    "start": "node dashboard/server.mjs",
+    "ci": "npm run registry:validate && npm run policy:validate && npm run audit:validate && npm run telemetry:validate && npm run handoff:validate -- handoffs/sample.stage-gate.v1.json && npm run adapter:whatsapp:validate && npm run imessage:validate && npm run release:gates -- releases/sample.release-gate.v1.json"
   },
   "dependencies": {
     "pdf-parse": "^2.4.5"

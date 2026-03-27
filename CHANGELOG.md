@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **CI:** GitHub Actions workflow `.github/workflows/ci.yml` runs on **`main`** pushes and all **pull requests**; `npm run ci` chains registry, policy, audit, telemetry, handoff sample, WhatsApp/iMessage validators, and release-gates sample. Documented in `runbook.md`.
 - Added `documentation-audit.md` (markdown corpus audit, overlap/staleness, phased structure plan) and `docs/README.md` (navigation map). Linked from `README.md` and `AGENTS.md`.
 - Dashboard miniapp cards and route constants are derived from `functions/registry.v1.json` (`dashboard/lib/miniapp-registry.mjs`); registry entries require `description` and may set `catalogOrder`.
 - **Design system docs:** `design-system-v1.md` now documents the **global layout system** (`.layout-flow`, `.layout-box`, `.layout-break`, responsive 1/2/N columns, span classes), distinction from inner `.grid`, `config/page-layout.v1.json`, Admin **Page layout** editor, and `/api/page-layout`. Navigation section documents inactive nav-chip border contrast.

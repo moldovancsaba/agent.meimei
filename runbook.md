@@ -40,6 +40,12 @@ Escalate to OC when:
 - a skill would need privileged behavior
 - execution is blocked by missing product decisions
 
+## Continuous integration
+
+- Every push to **`main`** and every **pull request** runs **`npm run ci`** on GitHub Actions (registry, policy, audit, telemetry, handoff sample, WhatsApp/iMessage adapter parity, release-gates sample).
+- Local check before pushing: `npm ci && npm run ci`.
+- **Not** in CI: OpenClaw runtime probes (`npm run readiness`), macOS menu bar build (`npm run menubar:build`) — run those on a machine with the gateway / Xcode tools when relevant.
+
 ## Launching OpenClaw
 
 - Use `./scripts/oc-launch` to start the gateway from this repo-local config.

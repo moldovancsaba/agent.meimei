@@ -1,5 +1,7 @@
 # agent.meimei
 
+[![CI](https://github.com/moldovancsaba/agent.meimei/actions/workflows/ci.yml/badge.svg)](https://github.com/moldovancsaba/agent.meimei/actions/workflows/ci.yml)
+
 `agent.meimei` is a fresh OpenClaw workspace and product shell for a large-skill agent system.
 
 This repository is the source of truth for:

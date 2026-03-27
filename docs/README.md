@@ -10,7 +10,7 @@ Use this page to navigate markdown without relying on repo search alone.
 | System shape | [`architecture.md`](../architecture.md) |
 | UI + layout system | [`design-system-v1.md`](../design-system-v1.md) |
 | Miniapp contracts | [`miniapp-contract-v1.md`](../miniapp-contract-v1.md), [`functions/registry.v1.json`](../functions/registry.v1.json) |
-| Day-to-day ops | [`runbook.md`](../runbook.md) |
+| Day-to-day ops | [`runbook.md`](../runbook.md) (includes **CI** / `npm run ci`) |
 | macOS menu bar app (Spotlight **MeiMei**) | [`macos/MeiMei/README.md`](../macos/MeiMei/README.md) — `npm run menubar:build`, `npm run menubar:install` |
 | What shipped | [`CHANGELOG.md`](../CHANGELOG.md), [`VERSION.md`](../VERSION.md) |
 | Product priorities | [`product_roadmap.md`](../product_roadmap.md) |

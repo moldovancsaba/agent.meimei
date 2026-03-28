@@ -40,7 +40,7 @@ async function buildDashboardSignals() {
     lines.push("- Apple Mail: status unknown. Do not invent unread counts.");
   }
   lines.push(
-    "- Lead enrichment, AI SDR analytics (#651), Memory, Mission control, Explain URL, and What next miniapps are available from Apps; Tools include Supabase connector and Environment variables (Vercel-style secrets); mention when Brain context implies they help."
+    "- What next (#724) is MeiMei AI-ranked suggestions. Lead enrichment, AI SDR analytics (#651), Memory, Mission control, and Explain URL are under Apps; Tools include Supabase connector and Environment variables (Vercel-style secrets); mention when Brain context implies they help. Agent.Chappie (github.com/moldovancsaba/checklist) uses MeiMei's LLM gateway for model calls when configured."
   );
   return lines.join("\n");
 }
@@ -72,7 +72,7 @@ export async function generateHomeSuggestions(repoRoot) {
 
 Rules:
 - The "suggestions" array MUST have length 3.
-- Each item maps to dashboard actions: inbox, lead enrichment, memory, mission control, explain URL, what next, or teaching a fact.
+- Each item maps to dashboard actions: inbox, lead enrichment, memory, mission control, explain URL, what next (MeiMei AI suggestions), or teaching a fact.
 - Use ONLY the provided unread count from signals for email numbers; never invent counts.
 - Titles can be punchy (e.g. "You have 5 unread emails" when the signal says so).
 - exampleQuery must be a short phrase for the command bar.

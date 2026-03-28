@@ -46,6 +46,7 @@ import {
   setCachedPrompt,
   getCacheStats,
   clearCache,
+  gatewayOllamaGenerate,
   LLMError,
   DEFAULT_MODELS,
   MODELS
@@ -81,7 +82,6 @@ import {
   loadSyncAndApplyMeimeiEnv,
   handleMeimeiEnvApiRequest
 } from "./lib/meimei-env-store.mjs";
-import { loadChecklistActions, saveChecklistActions } from "./lib/checklist-next-actions.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -463,38 +463,6 @@ async function processSupabaseConnector(body = {}) {
   return { ok: false, error: "Unknown action. Use overview, health, or preview_fetch." };
 }
 
-/** Default full-app URL for Agent.Chappie (https://github.com/moldovancsaba/checklist); override with MEIMEI_CHECKLIST_APP_URL. */
-const DEFAULT_MEIMEI_CHECKLIST_APP_URL = "https://agent-chappie.doneisbetter.com/checklist";
-
-/** Checklist — three next actions (Agent.Chappie / checklist repo companion). */
-async function processChecklist(body = {}, repoRoot) {
-  const action = String(body.action || "load");
-  const fullAppUrl =
-    String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim() || DEFAULT_MEIMEI_CHECKLIST_APP_URL;
-  if (action === "overview") {
-    return {
-      ok: true,
-      title: "Checklist",
-      summary:
-        "Keep exactly three next deliveries visible. Pairs with Agent.Chappie from github.com/moldovancsaba/checklist (auto-deployed web app).",
-      fullAppUrl,
-      storeFile: "data/checklist-next-actions.v1.json",
-      repo: "https://github.com/moldovancsaba/checklist"
-    };
-  }
-  if (action === "load") {
-    const actions = await loadChecklistActions(repoRoot);
-    return { ok: true, actions, fullAppUrl };
-  }
-  if (action === "save") {
-    const raw = body.actions;
-    const arr = Array.isArray(raw) ? raw : [];
-    await saveChecklistActions(repoRoot, arr);
-    return { ok: true };
-  }
-  return { ok: false, error: "Unknown action. Use overview, load, or save." };
-}
-
 async function processLeadOutreach(body = {}, repoRoot) {
   const action = String(body.action || "overview");
   if (action === "overview") {
@@ -655,10 +623,6 @@ const toolsCatalog = miniappCfg.catalog.filter((c) => c.category === "tools");
 const explainItRoute = R["explain-it"]?.internalPath || "/516/Explain_it";
 const explainItApiRoute = R["explain-it"]?.apiPath || "/api/functions/explain-it";
 const explainItLabel = R["explain-it"]?.displayName || "Explain it";
-const checklistRoute = R["checklist"]?.internalPath || "/Checklist";
-const checklistApiRoute = R["checklist"]?.apiPath || "/api/functions/checklist";
-const checklistLabel = R["checklist"]?.displayName || "Checklist";
-const checklistIssueId = R["checklist"]?.issueId;
 const whatNextRoute = R["what-next"]?.internalPath || "/724/What_next";
 const whatNextApiRoute = R["what-next"]?.apiPath || "/api/functions/what-next";
 const whatNextLabel = R["what-next"]?.displayName || "What next?";
@@ -2688,109 +2652,6 @@ function renderRoutingPage(layoutDoc) {
     if (params.get("channel")) channelInput.value = params.get("channel");
     if (params.get("taskType")) taskTypeInput.value = params.get("taskType");
     if (params.get("costTarget")) costTargetInput.value = params.get("costTarget");
-  </script>
-</body>
-</html>`;
-}
-
-function renderChecklistPage(layoutDoc) {
-  const issueId = checklistIssueId ?? "727";
-  const fullAppUrl =
-    String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim() || DEFAULT_MEIMEI_CHECKLIST_APP_URL;
-  const topbar = `<div class="topbar">
-      <a class="button secondary" href="${escapeHtml(appsRoute)}">&larr; Back to Apps</a>
-      <span class="title">${escapeHtml(checklistLabel)}</span>
-    </div>`;
-  const main = `<main class="hero">
-      <section class="route-card">
-        <h1>${escapeHtml(checklistLabel)}</h1>
-        <p class="lede u-mb12">Issue <strong>#${escapeHtml(String(issueId))}</strong> — Your three next best actions, always in front so you can ship. Edit here on the dashboard; open the <a href="${escapeHtml(fullAppUrl)}" target="_blank" rel="noopener noreferrer">Agent.Chappie Checklist</a> (from <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">moldovancsaba/checklist</a>, auto-deployed) for the full competitive workspace.</p>
-        <p class="muted u-mb12"><strong>What next?</strong> is AI-ranked suggestions from sources. <strong>Checklist</strong> is what <em>you</em> commit to delivering next.</p>
-        <div class="route-form">
-          <div class="field u-mb12">
-            <label for="checklistA1">1 — Next best action</label>
-            <textarea id="checklistA1" data-checklist-row rows="4" placeholder="The single most important thing to finish next…" style="width:100%;max-width:40rem;box-sizing:border-box;border-radius:14px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px 14px;font-size:15px;line-height:1.45;"></textarea>
-          </div>
-          <div class="field u-mb12">
-            <label for="checklistA2">2 — Then</label>
-            <textarea id="checklistA2" data-checklist-row rows="3" placeholder="Right after #1…" style="width:100%;max-width:40rem;box-sizing:border-box;border-radius:14px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px 14px;font-size:15px;line-height:1.45;"></textarea>
-          </div>
-          <div class="field u-mb12">
-            <label for="checklistA3">3 — Then</label>
-            <textarea id="checklistA3" data-checklist-row rows="3" placeholder="Third in line…" style="width:100%;max-width:40rem;box-sizing:border-box;border-radius:14px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px 14px;font-size:15px;line-height:1.45;"></textarea>
-          </div>
-          <div class="route-actions u-mb12">
-            <button type="button" class="good" id="checklistSave">Save three actions</button>
-          </div>
-          <p class="muted u-m0" id="checklistStatus" aria-live="polite"></p>
-        </div>
-      </section>
-      <div class="footer">Stored locally in <code>data/checklist-next-actions.v1.json</code> (gitignored). Repo: <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">moldovancsaba/checklist</a>.</div>
-    </main>`;
-  const layout = buildLayoutFlowHtml(layoutDoc, miniappPageKey("checklist"), { topbar, main }, escapeAttr);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(checklistLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-</head>
-<body data-theme="green">
-  <div class="shell">
-  ${layout}
-  </div>
-  <script>
-    const checklistApi = "${escapeHtml(checklistApiRoute)}";
-    const rows = [
-      document.getElementById("checklistA1"),
-      document.getElementById("checklistA2"),
-      document.getElementById("checklistA3")
-    ];
-    const statusEl = document.getElementById("checklistStatus");
-    const saveBtn = document.getElementById("checklistSave");
-
-    function setStatus(msg) {
-      if (statusEl) statusEl.textContent = msg || "";
-    }
-
-    async function loadActions() {
-      setStatus("Loading…");
-      try {
-        const response = await fetch(checklistApi, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action: "load" })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.error || "Load failed");
-        const a = Array.isArray(data.actions) ? data.actions : ["", "", ""];
-        rows.forEach((el, i) => { if (el) el.value = String(a[i] != null ? a[i] : ""); });
-        setStatus("Loaded.");
-      } catch (e) {
-        setStatus(e instanceof Error ? e.message : String(e));
-      }
-    }
-
-    async function saveActions() {
-      setStatus("Saving…");
-      try {
-        const actions = rows.map((el) => (el ? el.value : ""));
-        const response = await fetch(checklistApi, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action: "save", actions })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.error || "Save failed");
-        setStatus("Saved.");
-      } catch (e) {
-        setStatus(e instanceof Error ? e.message : String(e));
-      }
-    }
-
-    if (saveBtn) saveBtn.addEventListener("click", saveActions);
-    loadActions();
   </script>
 </body>
 </html>`;
@@ -5934,6 +5795,17 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload, null, 2));
 }
 
+/** Loopback clients for POST /api/llm/gateway/generate when MEIMEI_LLM_GATEWAY_SECRET is unset. */
+function isTrustedLlmGatewayClient(req) {
+  const a = String(req.socket?.remoteAddress || "");
+  return (
+    a === "127.0.0.1" ||
+    a === "::1" ||
+    a === "::ffff:127.0.0.1" ||
+    a.endsWith("127.0.0.1")
+  );
+}
+
 function guessContentType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".css") return "text/css; charset=utf-8";
@@ -6227,16 +6099,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && resolvedMiniappRoute === checklistRoute) {
-      const html = renderChecklistPage(getLayoutDoc());
-      res.writeHead(200, {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store, max-age=0"
-      });
-      res.end(html);
-      return;
-    }
-
     if (req.method === "GET" && resolvedMiniappRoute === whatNextRoute) {
       const html = renderWhatNextPage(getLayoutDoc());
       res.writeHead(200, {
@@ -6451,20 +6313,6 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const result = await summarizeUrlSource(body.url);
       sendJson(res, 200, result);
-      return;
-    }
-
-    if (req.method === "POST" && normalizedPath === checklistApiRoute) {
-      const body = (await readJson(req)) || {};
-      try {
-        const out = await processChecklist(body, repoRoot);
-        sendJson(res, out.ok ? 200 : 400, out);
-      } catch (error) {
-        sendJson(res, 500, {
-          ok: false,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
       return;
     }
 
@@ -6952,15 +6800,24 @@ Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY
 
         await brain.log(repoRoot, `Mission control viewed (filter: ${filter})`).catch(() => {});
 
+        // Ensure overview has safe defaults
+        const overview = telemetry.overview || {};
+        const safeOverview = {
+          totalRuns: overview.totalRuns || 0,
+          successRate: overview.successRate != null ? overview.successRate : (overview.totalRuns > 0 ? Math.round((overview.successRuns || 0) / overview.totalRuns * 100) : 100),
+          avgDuration: overview.avgDuration || "N/A",
+          activeAgents: overview.activeAgents || 0
+        };
+
         sendJson(res, 200, {
           ok: true,
-          overview: telemetry.overview,
-          recentRuns: filter === "errors" ? [] : telemetry.recentRuns,
-          errors: filter === "runs" ? [] : telemetry.errors,
-          agentStatus: telemetry.agentStatus,
-          gatewayStatus: telemetry.health.gateway,
-          source: "openclaw",
-          timestamp: telemetry.timestamp
+          overview: safeOverview,
+          recentRuns: filter === "errors" ? [] : telemetry.recentRuns || [],
+          errors: filter === "runs" ? [] : telemetry.errors || [],
+          agentStatus: telemetry.agentStatus || [],
+          gatewayStatus: telemetry.health?.gateway || { running: false },
+          source: telemetry.source || "openclaw",
+          timestamp: telemetry.timestamp || new Date().toISOString()
         });
       } catch (error) {
         sendJson(res, 500, {
@@ -7155,6 +7012,43 @@ Generate a concise daily briefing. Return ONLY JSON:
     if (req.method === "POST" && normalizedPath === "/api/llm/cache/clear") {
       const result = clearCache();
       sendJson(res, 200, result);
+      return;
+    }
+
+    // Ollama-compatible gateway for external stacks (e.g. moldovancsaba/checklist worker).
+    if (req.method === "POST" && normalizedPath === "/api/llm/gateway/generate") {
+      const secret = String(process.env.MEIMEI_LLM_GATEWAY_SECRET || "").trim();
+      const provided = String(req.headers["x-meimei-llm-secret"] || "").trim();
+      if (secret) {
+        if (provided !== secret) {
+          sendJson(res, 401, { ok: false, error: "Invalid or missing x-meimei-llm-secret" });
+          return;
+        }
+      } else if (!isTrustedLlmGatewayClient(req)) {
+        sendJson(res, 403, {
+          ok: false,
+          error:
+            "LLM gateway is loopback-only unless MEIMEI_LLM_GATEWAY_SECRET is set (send matching x-meimei-llm-secret header)."
+        });
+        return;
+      }
+      try {
+        const body = await readJson(req);
+        const data = await gatewayOllamaGenerate(body);
+        sendJson(res, 200, data);
+      } catch (error) {
+        const sc =
+          error instanceof LLMError &&
+          typeof error.statusCode === "number" &&
+          error.statusCode >= 400 &&
+          error.statusCode < 600
+            ? error.statusCode
+            : 502;
+        sendJson(res, sc, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       return;
     }
 

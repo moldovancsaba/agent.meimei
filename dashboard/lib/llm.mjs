@@ -598,6 +598,72 @@ function clearCache() {
   return { ok: true, cleared: true };
 }
 
+/**
+ * Ollama-compatible non-streaming generate for external callers (e.g. Agent.Chappie worker).
+ * Body matches POST /api/generate shape: { model, prompt, stream?: false, format?, system?, options? }.
+ */
+async function gatewayOllamaGenerate(payload) {
+  if (!payload || typeof payload !== "object") {
+    throw new LLMError("JSON object body required", 400);
+  }
+  const model = String(payload.model || "").trim();
+  const prompt = payload.prompt;
+  if (!model || typeof prompt !== "string") {
+    throw new LLMError("model (non-empty string) and prompt (string) are required", 400);
+  }
+  if (payload.stream === true) {
+    throw new LLMError("stream:true is not supported on this gateway", 400);
+  }
+  const optIn =
+    payload.options && typeof payload.options === "object" && payload.options !== null ? payload.options : {};
+  const body = {
+    model,
+    prompt,
+    stream: false,
+    options: {
+      temperature: typeof optIn.temperature === "number" ? optIn.temperature : 0.7,
+      num_predict: typeof optIn.num_predict === "number" ? optIn.num_predict : 2048
+    }
+  };
+  if (payload.format) {
+    body.format = payload.format;
+  }
+  if (payload.system) {
+    body.system = payload.system;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 180000);
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      const t = await response.text();
+      throw new LLMError(`Upstream Ollama HTTP ${response.status}: ${t.slice(0, 800)}`, response.status);
+    }
+    const data = await response.json();
+    const responseText = data.response || data.thinking || "";
+    const inputTokens = data.prompt_eval_count || estimateTokens(prompt);
+    const outputTokens = data.eval_count || estimateTokens(responseText);
+    recordTokenUsage(model, "gateway", inputTokens, outputTokens);
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof LLMError) {
+      throw error;
+    }
+    if (error?.name === "AbortError") {
+      throw new LLMError("Gateway request timeout", 408);
+    }
+    throw new LLMError(error?.message || String(error), null);
+  }
+}
+
 // ─── Exports ────────────────────────────────────────────────
 
 export {
@@ -631,5 +697,6 @@ export {
   setCachedPrompt,
   getCacheStats,
   clearCache,
+  gatewayOllamaGenerate,
   OLLAMA_URL
 };

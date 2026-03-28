@@ -52,7 +52,8 @@
         { "key": "MEIMEI_SUPABASE_URL", "hint": "Supabase project URL" },
         { "key": "MEIMEI_SUPABASE_SERVICE_ROLE", "hint": "Service role key" },
         { "key": "MEIMEI_SUPABASE_ANON_KEY", "hint": "Anon key + RLS" },
-        { "key": "MEIMEI_ENV_PROFILE", "hint": "development | preview | production — which scoped vars apply to process.env" }
+        { "key": "MEIMEI_ENV_PROFILE", "hint": "development | preview | production — which scoped vars apply to process.env" },
+        { "key": "MEIMEI_LLM_GATEWAY_SECRET", "hint": "Optional shared secret for POST /api/llm/gateway/generate (header x-meimei-llm-secret). If unset, only loopback may call the gateway." }
       ]
     }
   ]

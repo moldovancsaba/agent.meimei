@@ -82,7 +82,7 @@ enrich_lead = enrich a business contact or email
 check_inbox = check or read emails
 view_memory = view agent identity or stored knowledge
 check_status = check MeiMei system health or OpenClaw agents
-get_recommendations = ask what to do next or get priorities
+get_recommendations = ask what to do next or get AI priorities
 sdr_analytics = outbound / SDR metrics and funnel dashboard
 supabase_connector = Supabase database connector tool
 environment_variables = manage API keys and env vars like Vercel
@@ -173,7 +173,7 @@ async function executeCommand(intentData, repoRoot) {
     case "check_status": {
       return { action: "navigate", target: "/635/Mission_control", message: "Opening Mission Control" };
     }
-    
+
     case "get_recommendations": {
       return { action: "navigate", target: "/724/What_next", message: "Opening What Next" };
     }

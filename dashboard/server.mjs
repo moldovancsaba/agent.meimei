@@ -17,6 +17,7 @@ import {
   resolveOperatorScripts,
   pathStartsWithStaticPrefix
 } from "./lib/dashboard-surface.mjs";
+import { normalizeDashboardListenCandidate } from "../config/dashboard-listen-normalize.mjs";
 import {
   loadPageLayoutMerged,
   buildLayoutFlowHtml,
@@ -71,6 +72,15 @@ import {
 } from "./lib/lead-enrichment-workflow.mjs";
 import { buildGtmAnalyticsPayload } from "./lib/gtm-analytics.mjs";
 import { getSupabaseEnv, supabaseSelectRows, supabaseHealthPing } from "./lib/supabase-connector.mjs";
+import { routeToApp } from "./lib/app-router.mjs";
+import { handleApi as leadEnrichmentHandler } from "../apps/lead-enrichment/index.mjs";
+import { handleApi as inboxHandler } from "../apps/inbox/index.mjs";
+import { handleApi as memoryHandler } from "../apps/memory/index.mjs";
+import { handleApi as missionControlHandler } from "../apps/mission-control/index.mjs";
+import { handleApi as whatNextHandler } from "../apps/what-next/index.mjs";
+import { handleApi as explainItHandler } from "../apps/explain-it/index.mjs";
+import { handleApi as dailyBriefingHandler } from "../apps/daily-briefing/index.mjs";
+import { handleApi as aiRoutingHandler } from "../apps/ai-routing/index.mjs";
 import {
   getOpenClawHealth,
   getTelemetry,
@@ -114,7 +124,7 @@ const { getSummary: getTelemetrySummary } = createReliabilityTelemetry(repoRoot)
 const configPath =
   process.env[surface.envKeys.openclawConfigPath] || path.join(os.homedir(), ".openclaw", "openclaw.json");
 
-const port = Number(process.env[surface.envKeys.port] || surface.defaults.port);
+const port = normalizeDashboardListenCandidate(surface, process.env[surface.envKeys.port]);
 const localOpenCommand = process.env[surface.envKeys.setupCommand] || surface.defaults.setupCommand;
 
 async function callOllama(prompt, options = {}) {
@@ -476,14 +486,30 @@ async function processSupabaseConnector(body = {}) {
 
 const DEFAULT_MEIMEI_CHECKLIST_APP_URL = "https://agent-chappie.doneisbetter.com/checklist";
 
-function checklistResolvedAppUrl() {
-  return String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim() || DEFAULT_MEIMEI_CHECKLIST_APP_URL;
+function isChecklistEmbedDisabled() {
+  const v = String(process.env.MEIMEI_CHECKLIST_EMBED_DISABLED || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
+ * Base URL for the checklist Next.js operator UI (iframe + “open in new tab”).
+ * - If MEIMEI_CHECKLIST_EMBED_DISABLED=1 → null (MeiMei shows runtime only; no remote/local iframe).
+ * - Else MEIMEI_CHECKLIST_APP_URL if set (use http://127.0.0.1:PORT/checklist for local `next dev`).
+ * - Else default hosted demo URL.
+ */
+function checklistEmbedBaseUrl() {
+  if (isChecklistEmbedDisabled()) return null;
+  const raw = String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim();
+  if (raw) return raw.replace(/\/+$/, "");
+  return DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
 }
 
 /** Agent.Chappie — MeiMei shell + HTTP bridge to local Python worker (SQLite, BI); online Next app + Neon unchanged. */
 async function processChecklist(body = {}) {
   const action = String(body.action || "overview");
-  const appUrl = checklistResolvedAppUrl();
+  const embedUrl = checklistEmbedBaseUrl();
+  const defaultHosted = DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
+  const appUrl = embedUrl ?? defaultHosted;
   const runtime = await getAgentChappieRuntimeSummary(repoRoot, port);
   const bridgeBase = AGENT_CHAPPIE_BRIDGE_PREFIX;
   if (action === "overview") {
@@ -491,8 +517,11 @@ async function processChecklist(body = {}) {
       ok: true,
       title: "Checklist (Agent.Chappie)",
       summary:
-        "Default: MeiMei **Node engine** (SQLite under data/agent-chappie + Ollama via dashboard). Optional MEIMEI_AGENT_CHAPPIE_ENGINE=python uses the legacy checklist-repo worker. Deployed Next.js + Neon unchanged — AGENT_API_BASE_URL → MeiMei bridge with matching shared secret when set.",
+        "MeiMei is the **local** dashboard (runtime panel + SQLite bridge). The checklist **operator UI** is the separate Next.js app — embedded below only if enabled. Point MEIMEI_CHECKLIST_APP_URL at local `next dev` to avoid the hosted site; set MEIMEI_CHECKLIST_EMBED_DISABLED=1 to hide the iframe entirely.",
       appUrl,
+      checklistIframeSrc: embedUrl,
+      embedDisabled: isChecklistEmbedDisabled(),
+      defaultHostedChecklistUrl: defaultHosted,
       openPath: checklistPublicPath,
       repo: "https://github.com/moldovancsaba/checklist",
       runtime,
@@ -501,6 +530,12 @@ async function processChecklist(body = {}) {
         AGENT_BRIDGE_MODE: "worker",
         AGENT_API_BASE_URL: `http://127.0.0.1:${port}${bridgeBase}`,
         note: "Use https + /dashboard prefix when using the TLS proxy; mirror AGENT_SHARED_SECRET with MEIMEI_AGENT_CHAPPIE_SHARED_SECRET."
+      },
+      queueConsumer: {
+        when: "Hosted app uses AGENT_BRIDGE_MODE=queue + Neon; Node engine on a Mac pulls jobs and posts job_result + workspace back.",
+        command: "npm run agent-chappie:queue-consumer",
+        env: ["APP_QUEUE_BASE_URL", "WORKER_QUEUE_SHARED_SECRET", "MEIMEI_AGENT_CHAPPIE_ENGINE=node (default)"],
+        themeSync: "npm run agent-chappie:sync-checklist-theme with CHECKLIST_WEB_APP set"
       }
     };
   }
@@ -2961,32 +2996,29 @@ function renderWhatNextPage(layoutDoc) {
 }
 
 function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
-  const rawBase = checklistResolvedAppUrl();
-  const base = rawBase.replace(/\/+$/, "");
+  const baseRaw = checklistEmbedBaseUrl();
+  const base = baseRaw ? baseRaw.replace(/\/+$/, "") : "";
   const suf = String(pathSuffix || "");
   const embedSrc =
-    suf && suf !== "/"
-      ? `${base}${suf.startsWith("/") ? suf : `/${suf}`}`
-      : rawBase;
+    !baseRaw || !base
+      ? null
+      : suf && suf !== "/"
+        ? `${base}${suf.startsWith("/") ? suf : `/${suf}`}`
+        : base;
+  const defaultHosted = DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
+  const publicPrefixRaw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
+  const urlDashPrefix = publicPrefixRaw === "/" ? "" : publicPrefixRaw;
+  const meiOriginDisplay = `http://127.0.0.1:${port}${urlDashPrefix}`;
+  const meiChecklistUrlDisplay = `${meiOriginDisplay}${checklistPublicPath.startsWith("/") ? "" : "/"}${checklistPublicPath}`;
   const topbar = `<div class="topbar">
       <a class="button secondary" href="${escapeHtml(appsRoute)}">&larr; Back to Apps</a>
       <span class="title">${escapeHtml(checklistLabel)}</span>
     </div>`;
-  const main = `<main class="hero">
-      <section class="route-card u-mb12">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
-        <p class="muted u-mb12">By default the <strong>Node engine</strong> runs inside MeiMei (SQLite in <code class="route-code">data/agent-chappie/</code>, LLM via <code class="route-code">/api/llm/gateway/generate</code>). MeiMei exposes <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> for the online Next app (shared secret when configured). Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> to use the legacy <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">checklist</a> worker instead.</p>
-        <div id="checklist-runtime-panel" class="result-card">
-          <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
-        </div>
-        <div class="route-actions u-mt12">
-          <button type="button" class="button secondary" id="checklist-refresh-runtime">Refresh status</button>
-          <button type="button" class="button secondary" id="checklist-ensure-worker">Ensure worker</button>
-        </div>
-      </section>
-      <section class="route-card checklist-embed-card">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Online workspace</h2>
-        <p class="lede u-mb12">Deployed Next.js app (Neon-backed when configured). <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">Open in new tab</a> if the frame is blocked.</p>
+  const embedSection =
+    embedSrc != null
+      ? `<section class="route-card checklist-embed-card">
+        <h2 class="u-mt0" style="font-size:1.15rem;">Checklist operator UI (embedded)</h2>
+        <p class="lede u-mb12">Loaded from <code class="route-code">MEIMEI_CHECKLIST_APP_URL</code> (or the default hosted URL). This is <strong>not</strong> MeiMei itself — MeiMei is the panel above. For a <strong>local</strong> Next app, set e.g. <code class="route-code">MEIMEI_CHECKLIST_APP_URL=http://127.0.0.1:3000/checklist</code> and restart the dashboard. <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">Open in new tab</a>.</p>
         <div class="checklist-embed-wrap">
           <iframe
             class="checklist-embed-frame"
@@ -2997,7 +3029,26 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
             referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>
+      </section>`
+      : `<section class="route-card checklist-embed-card">
+        <h2 class="u-mt0" style="font-size:1.15rem;">Checklist operator UI (iframe off)</h2>
+        <p class="lede u-mb12">You set <code class="route-code">MEIMEI_CHECKLIST_EMBED_DISABLED=1</code>. MeiMei stays the <strong>local</strong> runtime only (bridge + SQLite + queue consumer). Open the Next.js checklist app in another window, or unset that env and set <code class="route-code">MEIMEI_CHECKLIST_APP_URL</code> to <code class="route-code">http://127.0.0.1:PORT/checklist</code> to embed local <code class="route-code">next dev</code> here instead of <a href="${escapeHtml(defaultHosted)}" target="_blank" rel="noopener noreferrer">the hosted demo</a>.</p>
+        <p class="muted u-m0">Global MeiMei admin/settings: <a href="${escapeHtml(adminRoute)}">${escapeHtml(adminRoute)}</a> · Checklist local monitor in Next: <code class="route-code">LOCAL_ADMIN_ENABLED=1</code> → <code class="route-code">/admin</code> on the same origin as the checklist app.</p>
+      </section>`;
+  const main = `<main class="hero">
+      <section class="route-card u-mb12">
+        <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
+        <p class="muted u-mb12">This page is served by the <strong>MeiMei dashboard</strong> on your machine. The <strong>Node engine</strong> uses SQLite in <code class="route-code">data/agent-chappie/</code> and LLM via <code class="route-code">/api/llm/gateway/generate</code>. The bridge <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> is what the checklist Next app calls when it talks to your Mac. Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> for the legacy checklist-repo worker instead.</p>
+        <p class="muted u-mb12"><strong>MeiMei home:</strong> <code class="route-code">${escapeHtml(`${meiOriginDisplay}/`)}</code> · <strong>Checklist miniapp (this shell):</strong> <code class="route-code">${escapeHtml(meiChecklistUrlDisplay)}</code> (use your real host/port or TLS proxy if different).</p>
+        <div id="checklist-runtime-panel" class="result-card">
+          <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
+        </div>
+        <div class="route-actions u-mt12">
+          <button type="button" class="button secondary" id="checklist-refresh-runtime">Refresh status</button>
+          <button type="button" class="button secondary" id="checklist-ensure-worker">Ensure worker</button>
+        </div>
       </section>
+      ${embedSection}
     </main>`;
   const layout = buildLayoutFlowHtml(layoutDoc, miniappPageKey("checklist"), { topbar, main }, escapeAttr);
   return `<!doctype html>
@@ -6616,8 +6667,8 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && normalizedPath === explainItApiRoute) {
       const body = await readJson(req);
-      const result = await summarizeUrlSource(body.url);
-      sendJson(res, 200, result);
+      const result = await explainItHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
 
@@ -6637,71 +6688,16 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && normalizedPath === whatNextApiRoute) {
       const body = await readJson(req) || {};
-      const sources = Array.isArray(body.sources) ? body.sources : ["tasks", "calendar", "mail"];
-      
-      try {
-        // Gather context from Brain and system
-        const context = await brain.buildContext(repoRoot, { includeLog: true, logLimit: 20 });
-        const mailAvailable = await isMailAvailable();
-        const unreadCount = mailAvailable ? await getUnreadCount() : 0;
-        
-        // Get real data from sources
-        let sourceData = [];
-        if (sources.includes("mail") && mailAvailable) {
-          const recentMail = await getInboxMessages({ limit: 5 });
-          sourceData.push({ type: "mail", count: unreadCount, recent: recentMail.map(m => m.subject) });
-        }
-        
-        // Build prompt for LLM
-        const prompt = `You are MeiMei, an AI assistant helping OC prioritize their work.
-
-Context from system:
-${context}
-
-Current sources:
-${JSON.stringify(sourceData, null, 2)}
-
-Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY a JSON object:
-{
-  "recommendations": [
-    {
-      "priority": "high|medium|low",
-      "title": "Brief action title",
-      "reason": "Why this matters",
-      "source": "Which source triggered this"
-    }
-  ]
-}`;
-
-        const result = await callOllamaJson(prompt, { model: "qwen3.5:0.8b", temperature: 0.3, maxTokens: 1024 });
-        const parsed = result.data;
-        const recs = parsed.recommendations || parsed.items || [];
-        
-        if (!Array.isArray(recs) || recs.length === 0) {
-          throw new Error("Could not parse LLM recommendations");
-        }
-        
-        await brain.log(repoRoot, `Generated ${recs.length} recommendations`).catch(() => {});
-        
-        sendJson(res, 200, {
-          ok: true,
-          recommendations: recs,
-          sources: sources,
-          generatedAt: new Date().toISOString(),
-          source: "ollama/qwen3.5:0.8b"
-        });
-      } catch (error) {
-        sendJson(res, 500, {
-          ok: false,
-          error: `AI recommendation failed: ${error.message}`
-        });
-      }
+      const result = await whatNextHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 500, result);
       return;
     }
 
     if (req.method === "POST" && normalizedPath === leadEnrichmentApiRoute) {
       const body = (await readJson(req)) || {};
       const action = String(body.action || "");
+      
+      // Workflow actions stay in server.mjs
       if (action.startsWith("workflow_")) {
         try {
           const out = await processLeadEnrichmentWorkflow(body, repoRoot);
@@ -6715,21 +6711,9 @@ Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY
         return;
       }
 
-      const source = String(body.source || "");
-      const sourceData = body.sourceData || {};
-      const enrichmentLevel = String(body.enrichmentLevel || "standard");
-      const priority = String(body.priority || "medium");
-
-      if (!source || !sourceData || Object.keys(sourceData).length === 0) {
-        sendJson(res, 400, {
-          ok: false,
-          error: "Missing required fields: source and sourceData"
-        });
-        return;
-      }
-
-      const enrichedLead = await enrichLead({ source, sourceData, enrichmentLevel, priority });
-      sendJson(res, 200, enrichedLead);
+      // Delegate to app handler
+      const result = await leadEnrichmentHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
 
@@ -6791,471 +6775,29 @@ Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY
 
     if (req.method === "POST" && normalizedPath === inboxApiRoute) {
       const body = await readJson(req) || {};
-      const action = String(body.action || "list");
-      const filter = String(body.filter || "all");
-      const limit = Math.min(parseInt(body.limit) || 20, 100);
-      const useAI = Boolean(body.useAI);
-
-      if (action === "list") {
-        try {
-          const mailAvailable = await isMailAvailable();
-          
-          if (mailAvailable) {
-            const messages = await getInboxMessages({ limit, filter, includeBody: false });
-            const unreadCount = await getUnreadCount();
-            
-            let prioritizedMessages = messages;
-            if (useAI && messages.length > 0) {
-              const messageSummaries = messages.slice(0, 5).map(m => 
-                `From: ${m.from}\nSubject: ${m.subject}`
-              ).join("\n\n");
-              
-              try {
-                const priorityResult = await callOllama(
-                  `Analyze these emails and suggest priorities. Return JSON with 'priorityOrder' array of indexes (0-4) from highest to lowest priority.\n\n${messageSummaries}`,
-                  { model: "qwen3.5:0.8b", maxTokens: 128 }
-                );
-                
-                const parsed = parseJsonResponse(priorityResult);
-                if (parsed && parsed.priorityOrder) {
-                  const priorityMap = {};
-                  parsed.priorityOrder.forEach((idx, priority) => {
-                    priorityMap[priority] = idx;
-                  });
-                  prioritizedMessages = [...messages].sort((a, b) => {
-                    const aIdx = messages.indexOf(a) % 5;
-                    const bIdx = messages.indexOf(b) % 5;
-                    const aPriority = parsed.priorityOrder.indexOf(aIdx);
-                    const bPriority = parsed.priorityOrder.indexOf(bIdx);
-                    return aPriority - bPriority;
-                  });
-                }
-              } catch {
-                // Continue with default order
-              }
-            }
-            
-            await brain.log(repoRoot, `Fetched ${messages.length} emails from Mail`).catch(() => {});
-            
-            sendJson(res, 200, {
-              ok: true,
-              messages: prioritizedMessages,
-              total: messages.length,
-              unread: unreadCount,
-              source: "mail",
-              aiEnhanced: useAI
-            });
-          } else {
-            sendJson(res, 200, {
-              ok: true,
-              messages: [],
-              total: 0,
-              unread: 0,
-              source: "none",
-              warning: "Mail app is not running. Open Mail.app to see real emails."
-            });
-          }
-        } catch (error) {
-          sendJson(res, 200, {
-            ok: false,
-            messages: [],
-            total: 0,
-            unread: 0,
-            source: "none",
-            error: "Could not fetch emails: " + error.message
-          });
-        }
-        return;
-      }
-
-      if (action === "read") {
-        const messageId = String(body.messageId || "");
-        
-        try {
-          const mailAvailable = await isMailAvailable();
-          
-          if (mailAvailable && messageId.includes("@")) {
-            const message = await getMessageById(messageId);
-            if (message) {
-              await markAsRead(messageId);
-              
-              let summary = null;
-              if (useAI && message.body) {
-                try {
-                  const summaryResult = await summarize(message.body.substring(0, 2000));
-                  summary = summaryResult.response;
-                } catch {
-                  // Continue without summary
-                }
-              }
-              
-              sendJson(res, 200, {
-                ok: true,
-                message,
-                summary,
-                source: "mail"
-              });
-              return;
-            }
-          }
-        } catch (error) {
-          // Fall through to sample
-        }
-        
-        sendJson(res, 200, {
-          ok: true,
-          message: {
-            id: messageId,
-            from: "Jane Doe <jane@example.com>",
-            subject: "Meeting follow-up",
-            body: "Hi,\n\nFollowing up on our conversation from yesterday. I wanted to share the deck we discussed.\n\nBest,\nJane",
-            date: new Date().toISOString(),
-            read: true
-          },
-          source: "sample"
-        });
-        return;
-      }
-      
-      if (action === "markRead") {
-        const messageId = String(body.messageId || "");
-        const result = await markAsRead(messageId);
-        sendJson(res, 200, result);
-        return;
-      }
-      
-      if (action === "flag") {
-        const messageId = String(body.messageId || "");
-        const flagged = Boolean(body.flagged !== false);
-        const result = await flagMessage(messageId, flagged);
-        sendJson(res, 200, result);
-        return;
-      }
-      
-      if (action === "status") {
-        const mailAvailable = await isMailAvailable();
-        const unread = mailAvailable ? await getUnreadCount() : -1;
-        sendJson(res, 200, {
-          ok: true,
-          available: mailAvailable,
-          unreadCount: unread
-        });
-        return;
-      }
-
-      sendJson(res, 400, {
-        ok: false,
-        error: "Unknown action: " + action + ". Valid actions: list, read, markRead, flag, status"
-      });
+      const result = await inboxHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
 
     if (req.method === "POST" && normalizedPath === memoryApiRoute) {
       const body = await readJson(req) || {};
-      let layer = String(body.layer || "all");
-      const action = String(body.action || "get");
-      const query = String(body.query || "");
-
-      // Map old layer names to Brain layers
-      const layerMap = {
-        "identity": "identity",
-        "context": "context", 
-        "events": "log",
-        "skills": "skills",
-        "user": "user",
-        "durable": "durable"
-      };
-      
-      if (layerMap[layer]) {
-        layer = layerMap[layer];
-      }
-
-      try {
-        if (action === "query" && query) {
-          const result = await brain.getContext(repoRoot, query);
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "learn" && body.fact) {
-          const result = await brain.learn(repoRoot, body.fact, body.source || "user");
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "think" && body.question) {
-          const result = await brain.think(repoRoot, body.question, { depth: body.depth || "medium" });
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "log" && body.activity) {
-          const result = await brain.log(repoRoot, body.activity);
-          sendJson(res, 200, result);
-          return;
-        }
-
-        // Brain backbone operations (#564, #614)
-        if (action === "stats") {
-          const stats = await brain.getStats(repoRoot);
-          sendJson(res, 200, stats);
-          return;
-        }
-
-        if (action === "compact") {
-          const result = await brain.compactLog(repoRoot);
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "curate") {
-          const result = await brain.curateDurable(repoRoot);
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "snapshot") {
-          const result = await brain.snapshot(repoRoot, layer || "all");
-          sendJson(res, 200, result);
-          return;
-        }
-
-        if (action === "get") {
-          if (layer === "all") {
-            const layers = await brain.readLayers(repoRoot);
-            sendJson(res, 200, {
-              ok: true,
-              layers,
-              availableLayers: Object.keys(brain.layers)
-            });
-          } else {
-            const result = await brain.readLayer(repoRoot, layer);
-            if (!result.ok) {
-              sendJson(res, 404, {
-                ok: false,
-                error: "Layer not found: " + layer
-              });
-              return;
-            }
-            
-            // Parse markdown content into structured object for frontend
-            let parsedContent;
-            try {
-              // Simple markdown parsing - extract key-value pairs
-              const lines = result.content.split('\n').filter(l => l.trim());
-              parsedContent = {};
-              let currentKey = null;
-              
-              for (const line of lines) {
-                if (line.startsWith('#')) continue; // Skip headers
-                if (line.startsWith('- ') || line.startsWith('* ')) {
-                  // List item
-                  const item = line.substring(2);
-                  if (currentKey) {
-                    if (!Array.isArray(parsedContent[currentKey])) {
-                      parsedContent[currentKey] = [];
-                    }
-                    parsedContent[currentKey].push(item);
-                  }
-                } else if (line.includes(':')) {
-                  // Key: value
-                  const [key, ...valueParts] = line.split(':');
-                  const value = valueParts.join(':').trim();
-                  parsedContent[key.trim()] = value;
-                  currentKey = key.trim();
-                }
-              }
-              
-              // If no structured data found, use raw content
-              if (Object.keys(parsedContent).length === 0) {
-                parsedContent = { content: result.content.substring(0, 500) };
-              }
-            } catch {
-              parsedContent = { content: result.content.substring(0, 500) };
-            }
-            
-            sendJson(res, 200, {
-              ok: true,
-              layer: layer,
-              content: parsedContent,
-              updatedAt: new Date().toISOString()
-            });
-          }
-          return;
-        }
-
-        sendJson(res, 400, {
-          ok: false,
-          error: "Unknown action: " + action + ". Valid: get, query, learn, think, log"
-        });
-      } catch (error) {
-        sendJson(res, 500, {
-          ok: false,
-          error: "Memory error: " + error.message
-        });
-      }
+      const result = await memoryHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : (result.error?.includes("not found") ? 404 : 400), result);
       return;
     }
 
     if (req.method === "POST" && normalizedPath === missionControlApiRoute) {
       const body = await readJson(req) || {};
-      const filter = String(body.filter || "all");
-      const action = String(body.action || "overview");
-
-      try {
-        if (action === "logs" && body.agentId) {
-          const logs = await getAgentLogs(body.agentId, parseInt(body.limit) || 20);
-          sendJson(res, 200, logs);
-          return;
-        }
-
-        if (action === "health") {
-          const health = await getOpenClawHealth();
-          sendJson(res, 200, health);
-          return;
-        }
-
-        const telemetry = await getTelemetry();
-
-        await brain.log(repoRoot, `Mission control viewed (filter: ${filter})`).catch(() => {});
-
-        // Ensure overview has safe defaults
-        const overview = telemetry.overview || {};
-        const safeOverview = {
-          totalRuns: overview.totalRuns || 0,
-          successRate: overview.successRate != null ? overview.successRate : (overview.totalRuns > 0 ? Math.round((overview.successRuns || 0) / overview.totalRuns * 100) : 100),
-          avgDuration: overview.avgDuration || "N/A",
-          activeAgents: overview.activeAgents || 0
-        };
-
-        sendJson(res, 200, {
-          ok: true,
-          overview: safeOverview,
-          recentRuns: filter === "errors" ? [] : telemetry.recentRuns || [],
-          errors: filter === "runs" ? [] : telemetry.errors || [],
-          agentStatus: telemetry.agentStatus || [],
-          gatewayStatus: telemetry.health?.gateway || { running: false },
-          source: telemetry.source || "openclaw",
-          timestamp: telemetry.timestamp || new Date().toISOString()
-        });
-      } catch (error) {
-        sendJson(res, 500, {
-          ok: false,
-          error: "Failed to get telemetry: " + error.message
-        });
-      }
+      const result = await missionControlHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 500, result);
       return;
     }
 
     if (req.method === "POST" && normalizedPath === dailyBriefingApiRoute) {
       const body = await readJson(req);
-      const sink = String(body.sink || "apple-notes").trim() === "markdown" ? "markdown" : "apple-notes";
-
-      try {
-        // Gather context for briefing
-        const context = await brain.buildContext(repoRoot, { includeLog: true, logLimit: 30 });
-        const mailAvailable = await isMailAvailable();
-        const unreadCount = mailAvailable ? await getUnreadCount() : 0;
-
-        // Get recent emails if available
-        let recentEmails = [];
-        if (mailAvailable) {
-          try {
-            const messages = await getInboxMessages({ limit: 5 });
-            recentEmails = messages.map(m => ({ from: m.from, subject: m.subject }));
-          } catch {
-            // Continue without email data
-          }
-        }
-
-        // Build prompt for LLM
-        const prompt = `You are MeiMei, creating a daily briefing for OC.
-
-Context:
-${context}
-
-Current Status:
-- Unread emails: ${unreadCount}
-- Recent emails: ${JSON.stringify(recentEmails)}
-
-Generate a concise daily briefing. Return ONLY JSON:
-{
-  "headline": "One-line summary of the day",
-  "sections": [
-    {
-      "title": "Section name",
-      "items": ["bullet point 1", "bullet point 2"]
-    }
-  ],
-  "priorities": ["top priority 1", "top priority 2"],
-  "insights": "Brief strategic insight"
-}`;
-
-        const result = await callOllamaJson(prompt, {
-          model: "gemma3:1b",
-          temperature: 0.4,
-          maxTokens: 2048
-        });
-
-        const parsed = result.data;
-
-        if (!parsed || !parsed.headline) {
-          throw new Error("Could not generate briefing structure");
-        }
-
-        // Format as markdown
-        let markdown = `# Daily Briefing: ${parsed.headline}\n\n`;
-        markdown += `Generated: ${new Date().toLocaleString()}\n\n`;
-
-        if (parsed.sections) {
-          for (const section of parsed.sections) {
-            markdown += `## ${section.title}\n\n`;
-            for (const item of section.items || []) {
-              markdown += `- ${item}\n`;
-            }
-            markdown += "\n";
-          }
-        }
-
-        if (parsed.priorities?.length) {
-          markdown += "## Today's Priorities\n\n";
-          for (const p of parsed.priorities) {
-            markdown += `- **${p}**\n`;
-          }
-          markdown += "\n";
-        }
-
-        if (parsed.insights) {
-          markdown += `## Insight\n\n${parsed.insights}\n`;
-        }
-
-        // Write to file if markdown sink
-        let markdownPath = null;
-        if (sink === "markdown") {
-          markdownPath = path.join(repoRoot, "briefing.md");
-          await writeFile(markdownPath, markdown, "utf-8");
-        }
-
-        await brain.log(repoRoot, `Generated daily briefing: ${parsed.headline}`).catch(() => {});
-
-        sendJson(res, 200, {
-          ok: true,
-          headline: parsed.headline,
-          sections: parsed.sections || [],
-          priorities: parsed.priorities || [],
-          insights: parsed.insights || "",
-          markdown: markdown,
-          markdownPath: sink === "markdown" ? markdownPath : null,
-          sink: sink,
-          generatedAt: new Date().toISOString(),
-          source: "ollama/gemma3:1b"
-        });
-      } catch (error) {
-        sendJson(res, 500, {
-          ok: false,
-          error: `Daily briefing generation failed: ${error.message}`
-        });
-      }
+      const result = await dailyBriefingHandler(req, body, repoRoot);
+      sendJson(res, result.ok ? 200 : 500, result);
       return;
     }
 
@@ -7384,22 +6926,15 @@ Generate a concise daily briefing. Return ONLY JSON:
 
     // Model routing (#517, #561, #612)
     if (req.method === "GET" && normalizedPath === "/api/llm/routing") {
-      const config = getRoutingConfig();
-      const health = await checkOllamaHealth();
-      sendJson(res, 200, { 
-        ok: true, 
-        config,
-        models: MODELS,
-        availableModels: health.models || [],
-        ollamaHealthy: health.healthy
-      });
+      const result = await aiRoutingHandler(req, {}, repoRoot);
+      sendJson(res, 200, result);
       return;
     }
     
     if (req.method === "POST" && normalizedPath === "/api/llm/routing") {
       const body = await readJson(req);
-      const updated = updateRoutingConfig(body);
-      sendJson(res, 200, { ok: true, config: updated });
+      const result = await aiRoutingHandler(req, { action: "update", ...body }, repoRoot);
+      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
     

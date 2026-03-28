@@ -278,7 +278,7 @@ export async function routeToApp(appId, req, body) {
 ### Step 7: Test
 
 ```bash
-curl -s -X POST http://127.0.0.1:3030/api/functions/[app-id] \
+curl -s -X POST http://127.0.0.1:45285/api/functions/[app-id] \
   -H "content-type: application/json" \
   -d '{"action":"test"}'
 ```

@@ -385,6 +385,74 @@ function formatCost(tokens, model) {
   };
 }
 
+// ─── Prompt Cache (#613) ────────────────────────────────────
+
+const promptCache = new Map();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_CACHE_ENTRIES = 100;
+
+function getCacheKey(systemPrompt, contextPrefix) {
+  // Use hash of stable content parts
+  const stablePart = `${systemPrompt || ""}|${contextPrefix || ""}`;
+  let hash = 0;
+  for (let i = 0; i < stablePart.length; i++) {
+    const char = stablePart.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `prompt_${hash}`;
+}
+
+function getCachedPrompt(key) {
+  const entry = promptCache.get(key);
+  if (!entry) return null;
+  
+  // Check TTL
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    promptCache.delete(key);
+    return null;
+  }
+  
+  // Update hit count
+  entry.hits++;
+  return entry.value;
+}
+
+function setCachedPrompt(key, value) {
+  // Evict oldest if at capacity
+  if (promptCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = [...promptCache.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+    if (oldest) promptCache.delete(oldest[0]);
+  }
+  
+  promptCache.set(key, {
+    value,
+    timestamp: Date.now(),
+    hits: 0,
+    tokens: estimateTokens(value)
+  });
+}
+
+function getCacheStats() {
+  let totalHits = 0;
+  let totalTokens = 0;
+  const entries = [];
+  
+  for (const [key, entry] of promptCache) {
+    totalHits += entry.hits;
+    totalTokens += entry.tokens;
+    entries.push({ key, hits: entry.hits, tokens: entry.tokens, age: Date.now() - entry.timestamp });
+  }
+  
+  return { size: promptCache.size, totalHits, totalTokens, entries };
+}
+
+function clearCache() {
+  promptCache.clear();
+  return { ok: true, cleared: true };
+}
+
 export {
   LLMError,
   checkOllamaHealth,
@@ -403,6 +471,11 @@ export {
   analyze,
   estimateTokens,
   formatCost,
+  getCacheKey,
+  getCachedPrompt,
+  setCachedPrompt,
+  getCacheStats,
+  clearCache,
   DEFAULT_MODELS,
   TASK_MODELS,
   OLLAMA_URL

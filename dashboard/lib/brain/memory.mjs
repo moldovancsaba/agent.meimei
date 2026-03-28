@@ -1,6 +1,6 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, readdir, stat, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { callOllama, callOllamaJson, summarize } from "../llm.mjs";
+import { callOllama, callOllamaJson, summarize, estimateTokens } from "../llm.mjs";
 
 const BRAIN_DIR = "brain";
 const LAYERS = {
@@ -10,6 +10,15 @@ const LAYERS = {
   SKILLS: "skills",
   DURABLE: "durable",
   LOG: "log"
+};
+
+const CONFIG = {
+  maxLogEntries: 1000,
+  maxContextTokens: 4096,
+  maxLayerTokens: 2048,
+  logCompactionThreshold: 500,
+  durableDeduplication: true,
+  snapshotOnCompaction: true
 };
 
 const DEFAULT_LAYERS = {
@@ -46,16 +55,25 @@ const DEFAULT_LAYERS = {
   },
   [LAYERS.LOG]: {
     entries: [],
-    max_entries: 1000
+    max_entries: CONFIG.maxLogEntries
   }
 };
+
+// ─── File operations ────────────────────────────────────────
 
 async function ensureBrainDir(repoRoot) {
   const brainPath = path.join(repoRoot, BRAIN_DIR);
   try {
     await stat(brainPath);
   } catch {
-    await writeFile(path.join(brainPath, ".gitkeep"), "");
+    await mkdir(brainPath, { recursive: true });
+  }
+  // Ensure snapshots dir exists
+  const snapshotsPath = path.join(brainPath, "snapshots");
+  try {
+    await stat(snapshotsPath);
+  } catch {
+    await mkdir(snapshotsPath, { recursive: true });
   }
   return brainPath;
 }
@@ -68,16 +86,16 @@ async function readLayer(repoRoot, layer) {
   const filePath = await getLayerFile(repoRoot, layer);
   try {
     const content = await readFile(filePath, "utf-8");
-    return { ok: true, content, layer };
+    return { ok: true, content, layer, tokens: estimateTokens(content) };
   } catch {
-    return { ok: false, content: null, layer };
+    return { ok: false, content: null, layer, tokens: 0 };
   }
 }
 
 async function writeLayer(repoRoot, layer, content) {
   const filePath = await getLayerFile(repoRoot, layer);
   await writeFile(filePath, content, "utf-8");
-  return { ok: true, layer };
+  return { ok: true, layer, tokens: estimateTokens(content) };
 }
 
 async function readAllLayers(repoRoot) {
@@ -119,26 +137,82 @@ function parseLayerContent(layer, content) {
   return parsed;
 }
 
+// ─── Context building with token caps (#614) ────────────────
+
 async function buildContextForLLM(repoRoot, options = {}) {
-  const { layers = Object.values(LAYERS), includeLog = false, logLimit = 10 } = options;
+  const { 
+    layers = [LAYERS.IDENTITY, LAYERS.USER, LAYERS.CONTEXT, LAYERS.DURABLE],
+    includeLog = false, 
+    logLimit = 10,
+    maxTokens = CONFIG.maxContextTokens
+  } = options;
   
   const allLayers = await readAllLayers(repoRoot);
   let context = "";
+  let tokenCount = 0;
   
+  // Priority order: identity first, then user, context, durable
   for (const layer of layers) {
     const content = allLayers[layer];
-    if (content) {
-      context += `\n\n## ${layer.toUpperCase()}\n\n${content}`;
+    if (!content) continue;
+    
+    const layerTokens = estimateTokens(content);
+    
+    // If this layer would exceed budget, truncate it
+    if (tokenCount + layerTokens > maxTokens) {
+      const remainingTokens = maxTokens - tokenCount;
+      if (remainingTokens > 100) {
+        // Rough char estimate: 4 chars per token
+        const maxChars = remainingTokens * 4;
+        const truncated = content.substring(0, maxChars);
+        context += `\n\n## ${layer.toUpperCase()} (truncated)\n\n${truncated}...`;
+        tokenCount = maxTokens;
+      }
+      break; // Stop adding layers
     }
+    
+    context += `\n\n## ${layer.toUpperCase()}\n\n${content}`;
+    tokenCount += layerTokens;
   }
   
   if (includeLog && allLayers[LAYERS.LOG]) {
-    const logLines = allLayers[LAYERS.LOG].split("\n").slice(-logLimit);
-    context += `\n\n## RECENT LOG\n\n${logLines.join("\n")}`;
+    const logTokenBudget = Math.min(maxTokens - tokenCount, 500);
+    if (logTokenBudget > 50) {
+      const logLines = allLayers[LAYERS.LOG].split("\n")
+        .filter(l => l.startsWith("["))
+        .slice(-logLimit);
+      const logText = logLines.join("\n");
+      const logTokens = estimateTokens(logText);
+      
+      if (logTokens <= logTokenBudget) {
+        context += `\n\n## RECENT LOG\n\n${logText}`;
+        tokenCount += logTokens;
+      } else {
+        // Take fewer lines to fit
+        const fittingLines = logLines.slice(-Math.floor(logLimit / 2));
+        context += `\n\n## RECENT LOG\n\n${fittingLines.join("\n")}`;
+        tokenCount += estimateTokens(fittingLines.join("\n"));
+      }
+    }
   }
   
   return context;
 }
+
+function getContextStats(repoRoot) {
+  return readAllLayers(repoRoot).then(layers => {
+    const stats = {};
+    let totalTokens = 0;
+    for (const [layer, content] of Object.entries(layers)) {
+      const tokens = estimateTokens(content);
+      stats[layer] = { chars: content.length, tokens, lines: content.split("\n").length };
+      totalTokens += tokens;
+    }
+    return { layers: stats, totalTokens, maxTokens: CONFIG.maxContextTokens, budget: CONFIG.maxContextTokens - totalTokens };
+  });
+}
+
+// ─── Log with compaction (#564) ─────────────────────────────
 
 async function logActivity(repoRoot, activity) {
   const timestamp = new Date().toISOString();
@@ -155,13 +229,28 @@ async function logActivity(repoRoot, activity) {
   const lines = logContent.split("\n");
   const entries = lines.filter(l => l.startsWith("["));
   
-  if (entries.length >= DEFAULT_LAYERS[LAYERS.LOG].max_entries) {
-    const summaryPrompt = `Summarize these log entries into key events:\n${entries.slice(-100).join("\n")}`;
+  if (entries.length >= CONFIG.logCompactionThreshold) {
+    // Snapshot before compaction
+    if (CONFIG.snapshotOnCompaction) {
+      await snapshot(repoRoot, LAYERS.LOG, logContent);
+    }
+    
+    // Compact: summarize old entries, keep recent 50
+    const oldEntries = entries.slice(0, -50);
+    const recentEntries = entries.slice(-50);
+    
     try {
-      const summary = await summarize(summaryPrompt);
-      logContent = `# Activity Log\n\n## Summary (${new Date().toISOString().split("T")[0]})\n${summary.response}\n\n${entry}\n`;
+      const summaryPrompt = `Summarize these activity log entries into 5-10 key events. Be concise:\n${oldEntries.join("\n")}`;
+      const summary = await callOllama(summaryPrompt, { model: "qwen3.5:0.8b", maxTokens: 256 });
+      
+      // Strip thinking tags
+      let summaryText = summary.response || "";
+      summaryText = summaryText.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      
+      logContent = `# Activity Log\n\n## Compacted Summary (${new Date().toISOString().split("T")[0]})\n${summaryText}\n\n## Recent\n\n${recentEntries.join("\n")}\n${entry}\n`;
     } catch {
-      logContent = entries.slice(-500).join("\n") + "\n" + entry + "\n";
+      // Fallback: just trim without LLM
+      logContent = `# Activity Log\n\n## Recent\n\n${recentEntries.join("\n")}\n${entry}\n`;
     }
   } else {
     logContent += entry + "\n";
@@ -170,8 +259,10 @@ async function logActivity(repoRoot, activity) {
   const filePath = await getLayerFile(repoRoot, LAYERS.LOG);
   await writeFile(filePath, logContent, "utf-8");
   
-  return { ok: true, entry };
+  return { ok: true, entry, logSize: entries.length + 1 };
 }
+
+// ─── Durable memory with deduplication (#564) ───────────────
 
 async function learn(repoRoot, fact, source = "inferred") {
   let durableContent = "";
@@ -182,19 +273,66 @@ async function learn(repoRoot, fact, source = "inferred") {
     durableContent = "# Durable Memory\n\n## Facts\n\n";
   }
   
+  // Deduplication: check if substantially similar fact already exists
+  if (CONFIG.durableDeduplication) {
+    const existingFacts = durableContent.split("\n")
+      .filter(l => l.startsWith("- "))
+      .map(l => l.replace(/^- \[\d{4}-\d{2}-\d{2}\] /, "").replace(/ \*\(source:.*\)\*$/, "").toLowerCase().trim());
+    
+    const factLower = fact.toLowerCase().trim();
+    for (const existing of existingFacts) {
+      // Exact or near-exact match
+      if (existing === factLower || existing.includes(factLower) || factLower.includes(existing)) {
+        return { ok: true, fact, source, deduplicated: true, message: "Similar fact already known" };
+      }
+    }
+  }
+  
   const timestamp = new Date().toISOString();
   const entry = `- [${timestamp.split("T")[0]}] ${fact} *(source: ${source})*`;
   
-  if (!durableContent.includes(entry)) {
-    durableContent += entry + "\n";
-    const filePath = await getLayerFile(repoRoot, LAYERS.DURABLE);
-    await writeFile(filePath, durableContent, "utf-8");
-  }
+  durableContent += entry + "\n";
+  const filePath = await getLayerFile(repoRoot, LAYERS.DURABLE);
+  await writeFile(filePath, durableContent, "utf-8");
   
   await logActivity(repoRoot, `Learned: ${fact}`);
   
-  return { ok: true, fact, source };
+  return { ok: true, fact, source, deduplicated: false };
 }
+
+// ─── Snapshots (#564) ───────────────────────────────────────
+
+async function snapshot(repoRoot, layer, content) {
+  const brainPath = path.join(repoRoot, BRAIN_DIR, "snapshots");
+  try {
+    await stat(brainPath);
+  } catch {
+    await mkdir(brainPath, { recursive: true });
+  }
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `${layer}-${timestamp}.md`;
+  await writeFile(path.join(brainPath, filename), content || "", "utf-8");
+  
+  // Keep only last 10 snapshots per layer
+  try {
+    const files = await readdir(brainPath);
+    const layerSnapshots = files.filter(f => f.startsWith(`${layer}-`)).sort();
+    if (layerSnapshots.length > 10) {
+      const toDelete = layerSnapshots.slice(0, layerSnapshots.length - 10);
+      const { unlink } = await import("node:fs/promises");
+      for (const f of toDelete) {
+        await unlink(path.join(brainPath, f));
+      }
+    }
+  } catch {
+    // Best-effort cleanup
+  }
+  
+  return { ok: true, snapshot: filename };
+}
+
+// ─── User context ───────────────────────────────────────────
 
 async function updateUserContext(repoRoot, context) {
   let userContent = "";
@@ -222,24 +360,30 @@ async function updateUserContext(repoRoot, context) {
   return { ok: true };
 }
 
-async function getContext(repoRoot, query) {
-  const prompt = `Based on the context, answer: ${query}
+// ─── Query with context ─────────────────────────────────────
 
-Context:
-${await buildContextForLLM(repoRoot)}`;
+async function getContext(repoRoot, query) {
+  const context = await buildContextForLLM(repoRoot, { maxTokens: 2048 });
+  const prompt = `Based on the context, answer: ${query}\n\nContext:\n${context}`;
 
   try {
     const result = await callOllama(prompt, {
       model: "qwen3.5:0.8b",
-      system: "You are MeiMei's memory assistant. Answer based on the provided context.",
+      system: "You are MeiMei's memory assistant. Answer based on the provided context. Be concise.",
       maxTokens: 512
     });
     
-    return { ok: true, response: result.response };
+    // Strip thinking tags
+    let response = result.response || "";
+    response = response.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    
+    return { ok: true, response };
   } catch (error) {
     return { ok: false, error: error.message };
   }
 }
+
+// ─── Sync from project files ────────────────────────────────
 
 async function syncFromProjectFiles(repoRoot) {
   const files = {
@@ -269,12 +413,18 @@ async function syncFromProjectFiles(repoRoot) {
   return results;
 }
 
+// ─── Think with context budget (#614) ───────────────────────
+
 async function think(repoRoot, question, options = {}) {
   const { includeHistory = true, depth = "medium" } = options;
   
+  // Budget context tokens based on depth
+  const contextBudget = depth === "deep" ? 3072 : depth === "fast" ? 1024 : 2048;
+  
   const context = await buildContextForLLM(repoRoot, {
     includeLog: includeHistory,
-    logLimit: depth === "deep" ? 50 : 10
+    logLimit: depth === "deep" ? 50 : 10,
+    maxTokens: contextBudget
   });
   
   const prompt = `Question: ${question}
@@ -297,17 +447,85 @@ Think through this step by step, considering:
       maxTokens: 1024
     });
     
+    // Strip thinking tags
+    let response = result.response || "";
+    response = response.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    
     await logActivity(repoRoot, `Thought about: ${question.substring(0, 50)}...`);
     
-    return { ok: true, response: result.response, meta: result };
+    return { ok: true, response, meta: result };
   } catch (error) {
     return { ok: false, error: error.message };
   }
 }
 
+// ─── Compaction/curation (#564) ─────────────────────────────
+
+async function compactLog(repoRoot) {
+  const logResult = await readLayer(repoRoot, LAYERS.LOG);
+  if (!logResult.ok) return { ok: false, error: "No log to compact" };
+  
+  const entries = logResult.content.split("\n").filter(l => l.startsWith("["));
+  if (entries.length < 50) return { ok: true, message: "Log too small to compact", entries: entries.length };
+  
+  // Snapshot before compaction
+  await snapshot(repoRoot, LAYERS.LOG, logResult.content);
+  
+  const oldEntries = entries.slice(0, -30);
+  const recentEntries = entries.slice(-30);
+  
+  try {
+    const result = await callOllama(
+      `Summarize these log entries into 5-10 key events:\n${oldEntries.join("\n")}`,
+      { model: "qwen3.5:0.8b", maxTokens: 256 }
+    );
+    
+    let summaryText = (result.response || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    
+    const compacted = `# Activity Log\n\n## Compacted Summary (${new Date().toISOString().split("T")[0]})\n${summaryText}\n\n## Recent\n\n${recentEntries.join("\n")}\n`;
+    await writeLayer(repoRoot, LAYERS.LOG, compacted);
+    
+    return { ok: true, compacted: oldEntries.length, kept: recentEntries.length };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+async function curateDurable(repoRoot) {
+  const durableResult = await readLayer(repoRoot, LAYERS.DURABLE);
+  if (!durableResult.ok) return { ok: false, error: "No durable memory" };
+  
+  // Check if durable is getting large
+  if (durableResult.tokens < CONFIG.maxLayerTokens) {
+    return { ok: true, message: "Durable memory within budget", tokens: durableResult.tokens };
+  }
+  
+  // Snapshot before curation
+  await snapshot(repoRoot, LAYERS.DURABLE, durableResult.content);
+  
+  // Ask LLM to consolidate
+  try {
+    const result = await callOllama(
+      `Consolidate this durable memory file. Remove redundant entries, merge similar facts, keep the most important items. Return the cleaned markdown:\n\n${durableResult.content}`,
+      { model: "gemma3:1b", maxTokens: 2048 }
+    );
+    
+    let curated = (result.response || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    if (curated.length > 100) {
+      await writeLayer(repoRoot, LAYERS.DURABLE, curated);
+      return { ok: true, beforeTokens: durableResult.tokens, afterTokens: estimateTokens(curated) };
+    }
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+  
+  return { ok: true, message: "Curation skipped" };
+}
+
 export {
   LAYERS,
   DEFAULT_LAYERS,
+  CONFIG,
   ensureBrainDir,
   getLayerFile,
   readLayer,
@@ -315,10 +533,14 @@ export {
   readAllLayers,
   parseLayerContent,
   buildContextForLLM,
+  getContextStats,
   logActivity,
   learn,
   updateUserContext,
   getContext,
   syncFromProjectFiles,
-  think
+  think,
+  snapshot,
+  compactLog,
+  curateDurable
 };

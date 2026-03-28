@@ -36,6 +36,11 @@ import {
   listModels,
   summarize,
   parseJsonResponse,
+  getCacheKey,
+  getCachedPrompt,
+  setCachedPrompt,
+  getCacheStats,
+  clearCache,
   LLMError,
   DEFAULT_MODELS
 } from "./lib/llm.mjs";
@@ -6638,6 +6643,31 @@ Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY
           return;
         }
 
+        // Brain backbone operations (#564, #614)
+        if (action === "stats") {
+          const stats = await brain.getStats(repoRoot);
+          sendJson(res, 200, stats);
+          return;
+        }
+
+        if (action === "compact") {
+          const result = await brain.compactLog(repoRoot);
+          sendJson(res, 200, result);
+          return;
+        }
+
+        if (action === "curate") {
+          const result = await brain.curateDurable(repoRoot);
+          sendJson(res, 200, result);
+          return;
+        }
+
+        if (action === "snapshot") {
+          const result = await brain.snapshot(repoRoot, layer || "all");
+          sendJson(res, 200, result);
+          return;
+        }
+
         if (action === "get") {
           if (layer === "all") {
             const layers = await brain.readLayers(repoRoot);
@@ -6649,37 +6679,6 @@ Generate 3-5 prioritized recommendations for what OC should do next. Return ONLY
           } else {
             const result = await brain.readLayer(repoRoot, layer);
             if (!result.ok) {
-              // Fallback to old hardcoded data for compatibility
-              const fallbackLayers = {
-                identity: {
-                  name: "MeiMei",
-                  mission: "Help operators run efficient AI-powered businesses",
-                  values: ["clarity", "action", "trust"],
-                  tone: "professional but warm"
-                },
-                context: {
-                  currentProject: "AI-Native Platform Transformation",
-                  stakeholders: ["OC"],
-                  priorities: ["Real LLM integration", "Brain system", "macOS integration"]
-                },
-                log: {
-                  recent: [
-                    { date: "2026-03-28", event: "Phase 1-2 Complete: LLM + Brain + Telemetry" },
-                    { date: "2026-03-28", event: "Memory miniapp connected to Brain system" }
-                  ]
-                }
-              };
-              
-              if (fallbackLayers[layer]) {
-                sendJson(res, 200, {
-                  ok: true,
-                  layer: layer,
-                  content: fallbackLayers[layer],
-                  updatedAt: new Date().toISOString()
-                });
-                return;
-              }
-              
               sendJson(res, 404, {
                 ok: false,
                 error: "Layer not found: " + layer
@@ -6957,6 +6956,30 @@ Generate a concise daily briefing. Return ONLY JSON:
         sendJson(res, 200, result);
       } catch (error) {
         sendJson(res, 500, { ok: false, error: error.message });
+      }
+      return;
+    }
+
+    // Prompt cache management (#613)
+    if (req.method === "GET" && url.pathname === "/api/llm/cache/stats") {
+      const stats = getCacheStats();
+      sendJson(res, 200, { ok: true, ...stats });
+      return;
+    }
+    
+    if (req.method === "POST" && url.pathname === "/api/llm/cache/clear") {
+      const result = clearCache();
+      sendJson(res, 200, result);
+      return;
+    }
+
+    // Brain health endpoint
+    if (req.method === "GET" && url.pathname === "/api/brain/health") {
+      try {
+        const stats = await brain.getStats(repoRoot);
+        sendJson(res, 200, { ok: true, brain: stats, llmCache: getCacheStats() });
+      } catch (error) {
+        sendJson(res, 200, { ok: false, error: error.message });
       }
       return;
     }

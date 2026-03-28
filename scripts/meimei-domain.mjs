@@ -67,7 +67,8 @@ function isGatewayPath(pathname) {
   if (pathname.startsWith("/api/page-layout")) return false;
   if (pathname.startsWith("/api/llm")) return false;
   if (pathname.startsWith("/api/brain")) return false;
-  
+  if (pathname.startsWith("/api/agent-chappie/")) return false;
+
   return pathname === "/chat"
     || pathname.startsWith("/chat/")
     || pathname === "/api"

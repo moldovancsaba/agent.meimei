@@ -3014,7 +3014,72 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
     .checklist-embed-card { display: flex; flex-direction: column; min-height: calc(100vh - 10rem); }
     .checklist-embed-wrap { flex: 1; display: flex; flex-direction: column; min-height: min(720px, 72vh); }
     .checklist-embed-frame { flex: 1; width: 100%; min-height: 480px; border: 1px solid var(--line); border-radius: 14px; background: rgba(4, 10, 20, 0.72); }
+    .route-code { font-size: 0.85em; }
   </style>
+  <script>
+    (function () {
+      const checklistApi = ${JSON.stringify(checklistApiRoute)};
+      const bridgePrefix = ${JSON.stringify(AGENT_CHAPPIE_BRIDGE_PREFIX)};
+      function apiDashPrefix() {
+        var p = window.location.pathname || "";
+        return (p === "/dashboard" || p.indexOf("/dashboard/") === 0) ? "/dashboard" : "";
+      }
+      function renderRuntime(data) {
+        var panel = document.getElementById("checklist-runtime-panel");
+        var loadEl = document.getElementById("checklist-runtime-loading");
+        if (!panel) return;
+        if (loadEl) loadEl.remove();
+        var rt = data && data.runtime;
+        if (!rt) {
+          panel.innerHTML = "<p class=\\"muted u-m0\\">No runtime payload.</p>";
+          return;
+        }
+        var bridge = window.location.origin + apiDashPrefix() + bridgePrefix;
+        var lines = [
+          "<p class=\\"u-m0\\"><strong>Checklist repo</strong>: " + (rt.checklistRepoRoot ? "configured" : "not set") + " — set <code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_ROOT</code></p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Worker</strong>: " + (rt.workerReachable ? "reachable" : "down") + " at " + (rt.workerHost || "?") + ":" + (rt.workerPort || "?") + "</p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Local SQLite</strong>: " + (rt.localDbPath || "—") + "</p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Online DB env</strong>: " + (rt.onlineDatabaseConfigured ? "DATABASE_URL set for worker" : "not set (Neon optional)") + "</p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>MeiMei bridge</strong> (for Next.js <code class=\\"route-code\\">AGENT_API_BASE_URL</code>):<br /><code class=\\"route-code\\">" + bridge + "</code></p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Auto-start</strong>: " + (rt.autoStart ? "on (<code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_AUTO_START=1</code>)" : "off — run <code class=\\"route-code\\">python3 scripts/worker_bridge.py</code> from the repo") + "</p>"
+        ];
+        panel.innerHTML = "<div class=\\"result-card\\">" + lines.join("") + "</div>";
+      }
+      async function loadOverview() {
+        var panel = document.getElementById("checklist-runtime-panel");
+        if (!panel) return;
+        try {
+          var res = await fetch(apiDashPrefix() + checklistApi, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "overview" })
+          });
+          var data = await res.json();
+          if (!data.ok) throw new Error(data.error || "overview failed");
+          renderRuntime(data);
+        } catch (e) {
+          panel.innerHTML = "<p class=\\"muted u-m0\\\">Could not load status: " + String(e.message || e) + "</p>";
+        }
+      }
+      async function ensureWorker() {
+        try {
+          var res = await fetch(apiDashPrefix() + checklistApi, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "ensure_worker" })
+          });
+          var data = await res.json();
+          await loadOverview();
+          if (!data.ok) alert(data.detail || data.error || "ensure_worker failed");
+        } catch (e) {
+          alert(String(e.message || e));
+        }
+      }
+      document.getElementById("checklist-refresh-runtime")?.addEventListener("click", loadOverview);
+      document.getElementById("checklist-ensure-worker")?.addEventListener("click", ensureWorker);
+      loadOverview();
+    })();
+  </script>
 </body>
 </html>`;
 }

@@ -53,7 +53,15 @@
         { "key": "MEIMEI_SUPABASE_SERVICE_ROLE", "hint": "Service role key" },
         { "key": "MEIMEI_SUPABASE_ANON_KEY", "hint": "Anon key + RLS" },
         { "key": "MEIMEI_ENV_PROFILE", "hint": "development | preview | production — which scoped vars apply to process.env" },
-        { "key": "MEIMEI_LLM_GATEWAY_SECRET", "hint": "Optional shared secret for POST /api/llm/gateway/generate (header x-meimei-llm-secret). If unset, only loopback may call the gateway." }
+        { "key": "MEIMEI_LLM_GATEWAY_SECRET", "hint": "Optional shared secret for POST /api/llm/gateway/generate (header x-meimei-llm-secret). If unset, only loopback may call the gateway." },
+        { "key": "MEIMEI_CHECKLIST_APP_URL", "hint": "Deployed Next.js checklist UI (iframe) — default agent-chappie" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_ROOT", "hint": "Path to moldovancsaba/checklist clone (worker_bridge.py, SQLite under runtime_status/)" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_AUTO_START", "hint": "Set to 1 so MeiMei spawns python3 scripts/worker_bridge.py on first bridge request" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_SHARED_SECRET", "hint": "Must match AGENT_SHARED_SECRET for worker + Next.js; injected on /api/agent-chappie/bridge" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_WORKER_PORT", "hint": "Worker listen port (default 8787)" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_PYTHON", "hint": "Python binary (default python3)" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_DB_PATH", "hint": "Optional override for AGENT_LOCAL_DB_PATH (SQLite)" },
+        { "key": "MEIMEI_AGENT_CHAPPIE_DATABASE_URL", "hint": "Neon Postgres URL for worker + online queue (mirrors checklist DATABASE_URL)" }
       ]
     }
   ]

@@ -3,6 +3,52 @@
   "generatedAt": "2026-03-28",
   "functions": [
     {
+      "id": "checklist",
+      "version": "v1",
+      "category": "apps",
+      "displayName": "Checklist",
+      "description": "Agent.Chappie — local Python worker (SQLite + BI) via MeiMei HTTP bridge; deployed Next.js + Neon online. Model calls through MeiMei LLM gateway when the worker runs under MeiMei.",
+      "catalogOrder": 0,
+      "route": "/dashboard/727/Checklist",
+      "api": {
+        "method": "POST",
+        "path": "/dashboard/api/functions/checklist"
+      },
+      "input": {
+        "required": [],
+        "optional": ["action"],
+        "examples": [
+          { "action": "overview" },
+          { "action": "worker_health" },
+          { "action": "ensure_worker" },
+          {}
+        ]
+      },
+      "output": {
+        "statusField": "ok",
+        "payloadShape": "object",
+        "requiredFields": ["ok"]
+      },
+      "safety": {
+        "untrustedInput": false,
+        "allowedProtocols": ["https"],
+        "notes": [
+          "MeiMei proxies /api/agent-chappie/bridge → checklist worker (MEIMEI_AGENT_CHAPPIE_ROOT); injects x-agent-shared-secret.",
+          "Online Next.js: set AGENT_API_BASE_URL to the MeiMei bridge URL + same AGENT_SHARED_SECRET as the worker.",
+          "Worker: MEIMEI_AGENT_CHAPPIE_DATABASE_URL or DATABASE_URL for Neon; OLLAMA_URL via MeiMei gateway when MeiMei starts the worker."
+        ]
+      },
+      "capabilities": {
+        "channels": ["dashboard", "api"],
+        "sideEffects": ["network-fetch", "file-write"],
+        "requiresApproval": false
+      },
+      "failureModel": {
+        "clearErrorMessages": true,
+        "fallbackBehavior": "Return ok:false for unknown actions; bridge returns 502 if worker is down"
+      }
+    },
+    {
       "id": "lead-enrichment",
       "version": "v1",
       "category": "apps",

@@ -10,6 +10,7 @@ const COMMAND_INTENTS = [
   "check_inbox", 
   "view_memory",
   "check_status",
+  "checklist",
   "get_recommendations",
   "summarize_url",
   "learn_fact",
@@ -21,6 +22,10 @@ const COMMAND_INTENTS = [
 // Order matters: longer/more-specific phrases FIRST
 const KEYWORD_PATTERNS = [
   { intent: "learn_fact", keywords: ["remember that", "learn that", "note that", "save this", "remember this"] },
+  {
+    intent: "checklist",
+    keywords: ["agent chappie", "checklist app", "checklist", "chappie", "three moves", "competitive workspace"]
+  },
   { intent: "get_recommendations", keywords: ["what next", "what should", "recommend", "prioritize", "priorities", "next step", "todo"] },
   { intent: "sdr_analytics", keywords: ["sdr analytics", "outreach metrics", "outreach dashboard", "campaign metrics"] },
   { intent: "supabase_connector", keywords: ["supabase connector", "supabase tool"] },
@@ -82,6 +87,7 @@ enrich_lead = enrich a business contact or email
 check_inbox = check or read emails
 view_memory = view agent identity or stored knowledge
 check_status = check MeiMei system health or OpenClaw agents
+checklist = open Agent.Chappie Checklist (MeiMei shell + local worker bridge + online app)
 get_recommendations = ask what to do next or get AI priorities
 sdr_analytics = outbound / SDR metrics and funnel dashboard
 supabase_connector = Supabase database connector tool
@@ -174,6 +180,14 @@ async function executeCommand(intentData, repoRoot) {
       return { action: "navigate", target: "/635/Mission_control", message: "Opening Mission Control" };
     }
 
+    case "checklist": {
+      return {
+        action: "navigate",
+        target: "/727/Checklist",
+        message: "Opening Checklist — local worker via MeiMei bridge; online workspace in-frame"
+      };
+    }
+
     case "get_recommendations": {
       return { action: "navigate", target: "/724/What_next", message: "Opening What Next" };
     }
@@ -214,7 +228,7 @@ async function executeCommand(intentData, repoRoot) {
     default: {
       return {
         action: "response",
-        message: "Try: check inbox, enrich [email], what next, system status, summarize [url], or remember [fact]."
+        message: "Try: checklist, check inbox, enrich [email], what next, system status, summarize [url], or remember [fact]."
       };
     }
   }

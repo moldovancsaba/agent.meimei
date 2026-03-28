@@ -1,16 +1,17 @@
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { readSurfaceJsonSync, migrateSurfaceDefaultsPortInPlace } from "../../config/dashboard-listen-normalize.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 
 export function loadDashboardSurfaceSync() {
-  const filePath = path.join(repoRoot, "config", "dashboard-surface.v1.json");
-  const data = JSON.parse(readFileSync(filePath, "utf8"));
+  const data = readSurfaceJsonSync(repoRoot);
   if (data.version !== "v1") {
     throw new Error(`dashboard-surface.v1.json: expected version "v1", got ${JSON.stringify(data.version)}`);
   }
+  migrateSurfaceDefaultsPortInPlace(data);
   return data;
 }
 

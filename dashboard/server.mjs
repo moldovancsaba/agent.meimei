@@ -82,6 +82,15 @@ import {
   loadSyncAndApplyMeimeiEnv,
   handleMeimeiEnvApiRequest
 } from "./lib/meimei-env-store.mjs";
+import {
+  AGENT_CHAPPIE_BRIDGE_PREFIX,
+  getAgentChappieConfig,
+  ensureWorkerRunning,
+  readRawBody,
+  forwardToWorker,
+  filterForwardResponseHeaders,
+  getAgentChappieRuntimeSummary
+} from "./lib/agent-chappie-bridge.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -469,22 +478,44 @@ function checklistResolvedAppUrl() {
   return String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim() || DEFAULT_MEIMEI_CHECKLIST_APP_URL;
 }
 
-/** Agent.Chappie — catalog + embed; app runs on hosted URL or local Next (see checklist repo). */
+/** Agent.Chappie — MeiMei shell + HTTP bridge to local Python worker (SQLite, BI); online Next app + Neon unchanged. */
 async function processChecklist(body = {}) {
   const action = String(body.action || "overview");
   const appUrl = checklistResolvedAppUrl();
+  const runtime = await getAgentChappieRuntimeSummary(repoRoot, port);
+  const bridgeBase = AGENT_CHAPPIE_BRIDGE_PREFIX;
   if (action === "overview") {
     return {
       ok: true,
       title: "Checklist (Agent.Chappie)",
       summary:
-        "Hosted competitive workspace. Local development and LLM gateway: github.com/moldovancsaba/checklist and docs/meimei-integration.md.",
+        "Local Mac worker (checklist repo) holds SQLite brain + business intelligence; MeiMei proxies it and routes model calls through the LLM gateway. Deployed Next.js + Neon feed the online workspace as today — point AGENT_API_BASE_URL at the MeiMei bridge URL when the worker is reached via this dashboard.",
       appUrl,
       openPath: checklistPublicPath,
-      repo: "https://github.com/moldovancsaba/checklist"
+      repo: "https://github.com/moldovancsaba/checklist",
+      runtime,
+      bridgePath: bridgeBase,
+      nextEnvHint: {
+        AGENT_BRIDGE_MODE: "worker",
+        AGENT_API_BASE_URL: `http://127.0.0.1:${port}${bridgeBase}`,
+        note: "Use https + /dashboard prefix when using the TLS proxy; mirror AGENT_SHARED_SECRET with MEIMEI_AGENT_CHAPPIE_SHARED_SECRET."
+      }
     };
   }
-  return { ok: false, error: "Unknown action. Use overview." };
+  if (action === "worker_health") {
+    return { ok: true, action: "worker_health", ...runtime.workerHealth, runtime };
+  }
+  if (action === "ensure_worker") {
+    const cfg = getAgentChappieConfig(repoRoot);
+    const out = await ensureWorkerRunning(cfg, port);
+    return {
+      ok: out.ok,
+      action: "ensure_worker",
+      ...out,
+      runtime: await getAgentChappieRuntimeSummary(repoRoot, port)
+    };
+  }
+  return { ok: false, error: "Unknown action. Use overview, worker_health, or ensure_worker." };
 }
 
 async function processLeadOutreach(body = {}, repoRoot) {
@@ -2940,9 +2971,20 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
       <span class="title">${escapeHtml(checklistLabel)}</span>
     </div>`;
   const main = `<main class="hero">
+      <section class="route-card u-mb12">
+        <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
+        <p class="muted u-mb12">Python worker + SQLite brain and BI stay in the <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">checklist</a> repo. MeiMei proxies <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> → worker (injects shared secret). Model calls use MeiMei <code class="route-code">/api/llm/gateway/generate</code> when the worker is started via MeiMei. Neon / online webapp: set <code class="route-code">MEIMEI_AGENT_CHAPPIE_DATABASE_URL</code> (or <code class="route-code">DATABASE_URL</code>) for the worker process.</p>
+        <div id="checklist-runtime-panel" class="result-card">
+          <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
+        </div>
+        <div class="route-actions u-mt12">
+          <button type="button" class="button secondary" id="checklist-refresh-runtime">Refresh status</button>
+          <button type="button" class="button secondary" id="checklist-ensure-worker">Ensure worker</button>
+        </div>
+      </section>
       <section class="route-card checklist-embed-card">
-        <h1>${escapeHtml(checklistLabel)}</h1>
-        <p class="lede u-mb12">Issue <strong>#${checklistIssueId}</strong> — Agent.Chappie runs inside the frame. If it stays blank, the host may block embedding — use <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">open in new tab</a>.</p>
+        <h2 class="u-mt0" style="font-size:1.15rem;">Online workspace</h2>
+        <p class="lede u-mb12">Deployed Next.js app (Neon-backed when configured). <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">Open in new tab</a> if the frame is blocked.</p>
         <div class="checklist-embed-wrap">
           <iframe
             class="checklist-embed-frame"
@@ -5930,6 +5972,75 @@ const server = http.createServer(async (req, res) => {
           "cache-control": "no-store, max-age=0"
         });
         res.end("Not found");
+      }
+      return;
+    }
+
+    if (normalizedPath.startsWith(AGENT_CHAPPIE_BRIDGE_PREFIX)) {
+      if (req.method === "OPTIONS") {
+        res.writeHead(204, {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS,HEAD",
+          "access-control-allow-headers": "content-type,x-agent-shared-secret,authorization",
+          "cache-control": "no-store, max-age=0"
+        });
+        res.end();
+        return;
+      }
+      let method = req.method || "GET";
+      if (method === "HEAD") method = "GET";
+      if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) {
+        sendJson(res, 405, { ok: false, error: "method_not_allowed" });
+        return;
+      }
+      const cfg = getAgentChappieConfig(repoRoot);
+      if (cfg.autoStart && cfg.root) {
+        try {
+          await ensureWorkerRunning(cfg, port);
+        } catch (error) {
+          sendJson(res, 503, {
+            ok: false,
+            error: "agent_chappie_worker_start_failed",
+            detail: error instanceof Error ? error.message : String(error)
+          });
+          return;
+        }
+      }
+      const suffix = normalizedPath.slice(AGENT_CHAPPIE_BRIDGE_PREFIX.length);
+      const workerPathPart =
+        !suffix || suffix === "/" ? "/" : suffix.startsWith("/") ? suffix : `/${suffix}`;
+      const pathWithQuery = workerPathPart + (url.search || "");
+      let body = Buffer.alloc(0);
+      if (method === "POST" || method === "PATCH" || method === "DELETE") {
+        try {
+          body = await readRawBody(req);
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
+      }
+      const rawCt = req.headers["content-type"];
+      const contentType = Array.isArray(rawCt) ? rawCt[0] : rawCt;
+      try {
+        const out = await forwardToWorker({
+          cfg,
+          method,
+          pathWithQuery,
+          body,
+          contentType
+        });
+        const fh = filterForwardResponseHeaders(out.headers);
+        res.writeHead(out.statusCode, {
+          ...fh,
+          "cache-control": "no-store, max-age=0"
+        });
+        res.end(out.body);
+      } catch (error) {
+        sendJson(res, 502, {
+          ok: false,
+          error: "agent_chappie_upstream_failed",
+          detail: error instanceof Error ? error.message : String(error)
+        });
       }
       return;
     }

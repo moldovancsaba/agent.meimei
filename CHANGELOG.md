@@ -4,6 +4,56 @@
 
 - Nothing yet.
 
+## 2026-03-28 - AI-Native Platform: 100% LLM-based system (`0.9.0`)
+
+### LLM Foundation (Phase 1)
+- **LLM abstraction layer** (`dashboard/lib/llm.mjs`): `callOllama()`, `callOllamaJson()`, `parseJsonResponse()` with robust JSON extraction from markdown/code blocks. Handles Ollama `format: "json"` and `thinking` field for qwen3.5.
+- **Prompt cache** (#613): LRU cache with 30-minute TTL. `GET /api/llm/cache/stats`, `POST /api/llm/cache/clear`.
+- **Model routing engine** (#517, #561, #612): Brain-muscle architecture. Per-channel (dashboard/api/chat/heartbeat) and per-task model selection. `GET/POST /api/llm/routing`.
+- **Token tracking** (#617): Tracks input/output tokens by model and task type. `GET /api/llm/stats`, `POST /api/llm/stats/reset`.
+
+### Brain Memory System (Phase 1 + Wave 1)
+- **Brain architecture** (`dashboard/lib/brain/`, `brain/`): 6-layer memory (identity, user, context, skills, durable, log). All markdown-based, git-tracked.
+- **Durable backbone** (#564): Token counting, context budget (4096 tokens), log compaction with LLM summarization, durable memory deduplication, snapshots before compaction.
+- **Session discipline** (#614): Per-layer token budgets, context truncation when over budget.
+- **Brain API**: `think()`, `learn()`, `log()`, `buildContext()`. Memory tool with `query`, `learn`, `think`, `stats`, `compact`, `curate`, `snapshot` actions.
+- **Brain health endpoint**: `GET /api/brain/health`.
+
+### Real Data Integration (Phase 2)
+- **Lead Enrichment** (#649): Ollama LLM for profile generation from email/LinkedIn/company. `callOllamaJson()` with `format: "json"`.
+- **Inbox** (#563): Real macOS Mail via AppleScript (`dashboard/lib/mail-adapter.mjs`). AI priority sorting with LLM. No more fake `Math.random()` data.
+- **Memory** (#601): Brain system with line-by-line markdown parser. `think`, `learn`, `query` actions.
+- **Mission Control** (#635): Real OpenClaw telemetry (`dashboard/lib/telemetry.mjs`). Gateway status, agent list, workspace logs.
+- **What Next** (#724): Direct LLM with Brain context + Mail data. No more external scripts.
+- **Explain It** (#516): Web fetch + `callOllamaJson()` with Brain context.
+
+### AI Command Interface (Phase 3)
+- **Natural language API** (#7): `POST /api/command` with keyword + LLM intent parsing. Handles: check inbox, enrich leads, what next, system status, summarize URLs, learn facts.
+- **Home chat UI**: Search-box command bar, chat bubbles, typing indicator.
+- **Context-aware suggestions** (#9): `GET /api/command/suggestions`. Proactive next actions based on Brain state.
+- **Daily Briefing**: `callOllamaJson()` with Brain context + Mail data. Writes to `briefing.md`.
+
+### Proxy & Infrastructure
+- **Proxy routing fix**: `/api/functions/*`, `/api/command/*`, `/api/llm/*`, `/api/brain/*` route to dashboard (port 3030), not OpenClaw gateway (port 18789). (`scripts/meimei-domain.mjs`).
+- **Design system**: `.ds-markdown` component for markdown rendering. No hardcoded styles in miniapps.
+
+### Documentation
+- **`ARCHITECTURE.md`**: Full system architecture with diagrams, data flows, component specs.
+- **`brain/` directory**: Identity, user, context, skills, durable, log layers.
+- **`cursor-kilo.md`**: Agent coordination (KILO + CURSOR parallel work).
+
+### GitHub Issues Closed
+- Phase 1: #601, #602, #603, #604, #605, #635
+- Wave 1: #564, #614, #613
+- Wave 2: #517, #561, #612, #615, #617
+- **Total: 14 issues closed**
+
+### Bug Fixes
+- Mission Control null error: `renderDashboard()` was trying to update stat cards before they existed. Removed direct `querySelector` calls, now uses `innerHTML` approach only.
+- Memory regex errors: Template literal escaping for `\*` and backtick characters in client-side JavaScript.
+
+---
+
 ## 2026-03-28 - Operator GTM funnel and environment governance (`0.8.0`)
 
 ### Lead pipeline and SDR (mvp-factory-control)

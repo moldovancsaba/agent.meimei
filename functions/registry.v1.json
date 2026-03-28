@@ -7,7 +7,7 @@
       "version": "v1",
       "category": "apps",
       "displayName": "Checklist",
-      "description": "Agent.Chappie — local Python worker (SQLite + BI) via MeiMei HTTP bridge; deployed Next.js + Neon online. Model calls through MeiMei LLM gateway when the worker runs under MeiMei.",
+      "description": "Agent.Chappie — default MeiMei Node engine (local SQLite + Ollama); optional python engine for legacy checklist worker. HTTP bridge for deployed Next.js + Neon.",
       "catalogOrder": 0,
       "route": "/dashboard/727/Checklist",
       "api": {
@@ -33,9 +33,9 @@
         "untrustedInput": false,
         "allowedProtocols": ["https"],
         "notes": [
-          "MeiMei proxies /api/agent-chappie/bridge → checklist worker (MEIMEI_AGENT_CHAPPIE_ROOT); injects x-agent-shared-secret.",
-          "Online Next.js: set AGENT_API_BASE_URL to the MeiMei bridge URL + same AGENT_SHARED_SECRET as the worker.",
-          "Worker: MEIMEI_AGENT_CHAPPIE_DATABASE_URL or DATABASE_URL for Neon; OLLAMA_URL via MeiMei gateway when MeiMei starts the worker."
+          "Default MEIMEI_AGENT_CHAPPIE_ENGINE=node: SQLite data/agent-chappie + in-process jobs; bridge still serves Next.js at /api/agent-chappie/bridge.",
+          "MEIMEI_AGENT_CHAPPIE_ENGINE=python: proxy to worker_bridge.py (MEIMEI_AGENT_CHAPPIE_ROOT); optional auto-start.",
+          "Online Next.js: AGENT_API_BASE_URL → bridge URL; x-agent-shared-secret when MEIMEI_AGENT_CHAPPIE_SHARED_SECRET is set."
         ]
       },
       "capabilities": {

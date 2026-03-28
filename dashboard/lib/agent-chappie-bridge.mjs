@@ -1,12 +1,18 @@
 /**
- * Agent.Chappie (checklist repo) — local Python worker bridge for MeiMei.
- * Proxies HTTP to worker_bridge.py (SQLite brain, BI, job queue) and optionally spawns the worker.
- * Online Next.js app + Neon: unchanged — point AGENT_API_BASE_URL at the MeiMei proxy URL when needed.
+ * Agent.Chappie — MeiMei integration.
+ * Default: **Node engine** (SQLite + Ollama in-process). Optional: `MEIMEI_AGENT_CHAPPIE_ENGINE=python` + HTTP worker.
  */
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import {
+  isNodeAgentChappieEngine,
+  runNodeAgentChappieBridge,
+  resolveNodeAgentChappieDbPath
+} from "./agent-chappie-node/engine.mjs";
+
+export { isNodeAgentChappieEngine, runNodeAgentChappieBridge, resolveNodeAgentChappieDbPath };
 
 export const AGENT_CHAPPIE_BRIDGE_PREFIX = "/api/agent-chappie/bridge";
 
@@ -307,6 +313,29 @@ export function filterForwardResponseHeaders(h) {
  * @param {number} dashboardPort
  */
 export async function getAgentChappieRuntimeSummary(repoRoot, dashboardPort) {
+  if (isNodeAgentChappieEngine()) {
+    const dbPath = resolveNodeAgentChappieDbPath(repoRoot);
+    const databaseUrl = String(
+      process.env.MEIMEI_AGENT_CHAPPIE_DATABASE_URL || process.env.DATABASE_URL || ""
+    ).trim();
+    return {
+      engine: "node",
+      configured: true,
+      checklistRepoRoot: null,
+      workerScriptPresent: false,
+      workerHost: "in-process",
+      workerPort: null,
+      workerReachable: true,
+      workerHealth: { ok: true, body: { bridge: "meimei-node" } },
+      localDbPath: dbPath,
+      onlineDatabaseConfigured: Boolean(databaseUrl),
+      autoStart: false,
+      sharedSecretConfigured: true,
+      bridgePath: AGENT_CHAPPIE_BRIDGE_PREFIX,
+      ollamaViaMeiMeiGateway: `http://127.0.0.1:${dashboardPort}/api/llm/gateway/generate`,
+      note: "Native Node worker (default). Set MEIMEI_AGENT_CHAPPIE_ENGINE=python for the legacy checklist repo worker."
+    };
+  }
   const cfg = getAgentChappieConfig(repoRoot);
   const scriptOk = cfg.root ? workerScriptExists(cfg.root) : false;
   const health = await probeWorkerHealth(cfg.port, cfg.host);
@@ -314,6 +343,7 @@ export async function getAgentChappieRuntimeSummary(repoRoot, dashboardPort) {
     cfg.dbPath ||
     (cfg.root ? path.join(cfg.root, "runtime_status", "agent_brain.sqlite3") : cfg.meimeiFallbackDb);
   return {
+    engine: "python",
     configured: Boolean(cfg.root && scriptOk),
     checklistRepoRoot: cfg.root || null,
     workerScriptPresent: scriptOk,

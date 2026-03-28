@@ -236,15 +236,15 @@ ${rawText.slice(0, 14000)}`;
     }
   }
   tasks = tasks.slice(0, 3);
+  const firstEvidence = Array.from(validRef)[0];
   for (let i = 0; i < 3; i++) {
-    tasks[i] = {
-      ...tasks[i],
-      rank: i + 1,
-      evidence_refs:
-        tasks[i].evidence_refs && tasks[i].evidence_refs.length
-          ? tasks[i].evidence_refs
-          : [Array.from(validRef)[0]].filter(Boolean)
-    };
+    const refs =
+      tasks[i].evidence_refs && tasks[i].evidence_refs.length
+        ? tasks[i].evidence_refs
+        : firstEvidence
+          ? [firstEvidence]
+          : [];
+    tasks[i] = { ...tasks[i], rank: i + 1, evidence_refs: refs };
   }
 
   db.prepare(`delete from intelligence_cards where project_id = ?`).run(projectId);

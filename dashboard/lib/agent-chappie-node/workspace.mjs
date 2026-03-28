@@ -94,10 +94,10 @@ export function buildWorkspacePayload(dbPath, projectId) {
     )
     .all(projectId);
 
-  const managed_jobs = managedJobRows.map((j) => ({
-    ...j,
-    last_runs: j.last_runs_json ? parseJsonArray(j.last_runs_json) : []
-  }));
+  const managed_jobs = managedJobRows.map((j) => {
+    const { last_runs_json, ...rest } = j;
+    return { ...rest, last_runs: parseJsonArray(last_runs_json) };
+  });
 
   let latest_flashcard_pipeline_run = null;
   const pipeRow = db

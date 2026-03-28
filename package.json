@@ -3,6 +3,9 @@
   "version": "0.8.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "dashboard": "node dashboard/server.mjs",
     "config:seed": "node scripts/meimei-config.mjs seed",

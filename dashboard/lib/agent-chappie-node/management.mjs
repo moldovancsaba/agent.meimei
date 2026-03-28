@@ -29,14 +29,11 @@ function getActiveTasksJson(db, projectId) {
 /**
  * @returns {Promise<{ status: number, body: object }>}
  */
-export async function handleManagementRequest(method, pathname, body) {
+export async function handleManagementRequest(dbPath, method, pathname, body) {
   const parsed = parsePath(pathname);
   if (!parsed) return { status: 404, body: { error: "not_found" } };
   const { projectId, parts } = parsed;
   const resource = parts[2];
-  const dbPath = body.__dbPath;
-  if (!dbPath) return { status: 500, body: { error: "internal", detail: "missing __dbPath" } };
-  delete body.__dbPath;
   const db = getAgentChappieDb(dbPath);
 
   if (resource === "sources") {
@@ -106,7 +103,7 @@ export async function handleManagementRequest(method, pathname, body) {
     }
   }
 
-  if (resource === "jobs" && parts[1] === projectId) {
+  if (resource === "jobs") {
     if (method === "POST" && parts.length === 3) {
       db.prepare(
         `insert into managed_jobs (

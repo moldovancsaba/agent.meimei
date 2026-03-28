@@ -40,7 +40,7 @@ async function buildDashboardSignals() {
     lines.push("- Apple Mail: status unknown. Do not invent unread counts.");
   }
   lines.push(
-    "- Checklist (#727): MeiMei hosts the operator shell + HTTP bridge to the local Python worker (SQLite, BI); iframe shows the deployed Next app. Set MEIMEI_AGENT_CHAPPIE_ROOT and shared secret; optional MEIMEI_AGENT_CHAPPIE_AUTO_START=1. What next (#724) is MeiMei AI-ranked suggestions. Lead enrichment, AI SDR analytics (#651), Memory, Mission control, and Explain URL are also under Apps; Tools include Supabase connector and Environment variables."
+    "- Checklist (#727): MeiMei Node engine by default (SQLite in data/agent-chappie + Ollama). HTTP bridge for the deployed Next app; set MEIMEI_AGENT_CHAPPIE_ENGINE=python + MEIMEI_AGENT_CHAPPIE_ROOT for the legacy worker. What next (#724) is MeiMei AI-ranked suggestions. Lead enrichment, AI SDR analytics (#651), Memory, Mission control, and Explain URL are also under Apps; Tools include Supabase connector and Environment variables."
   );
   return lines.join("\n");
 }

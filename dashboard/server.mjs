@@ -89,7 +89,9 @@ import {
   readRawBody,
   forwardToWorker,
   filterForwardResponseHeaders,
-  getAgentChappieRuntimeSummary
+  getAgentChappieRuntimeSummary,
+  isNodeAgentChappieEngine,
+  runNodeAgentChappieBridge
 } from "./lib/agent-chappie-bridge.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -489,7 +491,7 @@ async function processChecklist(body = {}) {
       ok: true,
       title: "Checklist (Agent.Chappie)",
       summary:
-        "Local Mac worker (checklist repo) holds SQLite brain + business intelligence; MeiMei proxies it and routes model calls through the LLM gateway. Deployed Next.js + Neon feed the online workspace as today — point AGENT_API_BASE_URL at the MeiMei bridge URL when the worker is reached via this dashboard.",
+        "Default: MeiMei **Node engine** (SQLite under data/agent-chappie + Ollama via dashboard). Optional MEIMEI_AGENT_CHAPPIE_ENGINE=python uses the legacy checklist-repo worker. Deployed Next.js + Neon unchanged — AGENT_API_BASE_URL → MeiMei bridge with matching shared secret when set.",
       appUrl,
       openPath: checklistPublicPath,
       repo: "https://github.com/moldovancsaba/checklist",
@@ -2973,7 +2975,7 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
   const main = `<main class="hero">
       <section class="route-card u-mb12">
         <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
-        <p class="muted u-mb12">Python worker + SQLite brain and BI stay in the <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">checklist</a> repo. MeiMei proxies <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> → worker (injects shared secret). Model calls use MeiMei <code class="route-code">/api/llm/gateway/generate</code> when the worker is started via MeiMei. Neon / online webapp: set <code class="route-code">MEIMEI_AGENT_CHAPPIE_DATABASE_URL</code> (or <code class="route-code">DATABASE_URL</code>) for the worker process.</p>
+        <p class="muted u-mb12">By default the <strong>Node engine</strong> runs inside MeiMei (SQLite in <code class="route-code">data/agent-chappie/</code>, LLM via <code class="route-code">/api/llm/gateway/generate</code>). MeiMei exposes <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> for the online Next app (shared secret when configured). Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> to use the legacy <a href="https://github.com/moldovancsaba/checklist" target="_blank" rel="noopener noreferrer">checklist</a> worker instead.</p>
         <div id="checklist-runtime-panel" class="result-card">
           <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
         </div>
@@ -3036,12 +3038,13 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
         }
         var bridge = window.location.origin + apiDashPrefix() + bridgePrefix;
         var lines = [
-          "<p class=\\"u-m0\\"><strong>Checklist repo</strong>: " + (rt.checklistRepoRoot ? "configured" : "not set") + " — set <code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_ROOT</code></p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Worker</strong>: " + (rt.workerReachable ? "reachable" : "down") + " at " + (rt.workerHost || "?") + ":" + (rt.workerPort || "?") + "</p>",
+          "<p class=\\"u-m0\\"><strong>Engine</strong>: " + (rt.engine === "python" ? "python (external worker)" : "node (in MeiMei)") + "</p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Python repo</strong>: " + (rt.checklistRepoRoot ? "MEIMEI_AGENT_CHAPPIE_ROOT set" : "not used (node default)") + "</p>",
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Worker</strong>: " + (rt.workerReachable ? "reachable" : "down") + " — " + (rt.workerHost || "?") + (rt.workerPort != null ? ":" + rt.workerPort : "") + "</p>",
           "<p class=\\"muted u-m0 u-mt8\\"><strong>Local SQLite</strong>: " + (rt.localDbPath || "—") + "</p>",
           "<p class=\\"muted u-m0 u-mt8\\"><strong>Online DB env</strong>: " + (rt.onlineDatabaseConfigured ? "DATABASE_URL set for worker" : "not set (Neon optional)") + "</p>",
           "<p class=\\"muted u-m0 u-mt8\\"><strong>MeiMei bridge</strong> (for Next.js <code class=\\"route-code\\">AGENT_API_BASE_URL</code>):<br /><code class=\\"route-code\\">" + bridge + "</code></p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Auto-start</strong>: " + (rt.autoStart ? "on (<code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_AUTO_START=1</code>)" : "off — run <code class=\\"route-code\\">python3 scripts/worker_bridge.py</code> from the repo") + "</p>"
+          "<p class=\\"muted u-m0 u-mt8\\"><strong>Auto-start</strong>: " + (rt.engine === "node" ? "n/a (Node engine)" : (rt.autoStart ? "on (<code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_AUTO_START=1</code>)" : "off — run worker from checklist repo")) + "</p>"
         ];
         panel.innerHTML = "<div class=\\"result-card\\">" + lines.join("") + "</div>";
       }
@@ -6058,19 +6061,6 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 405, { ok: false, error: "method_not_allowed" });
         return;
       }
-      const cfg = getAgentChappieConfig(repoRoot);
-      if (cfg.autoStart && cfg.root) {
-        try {
-          await ensureWorkerRunning(cfg, port);
-        } catch (error) {
-          sendJson(res, 503, {
-            ok: false,
-            error: "agent_chappie_worker_start_failed",
-            detail: error instanceof Error ? error.message : String(error)
-          });
-          return;
-        }
-      }
       const suffix = normalizedPath.slice(AGENT_CHAPPIE_BRIDGE_PREFIX.length);
       const workerPathPart =
         !suffix || suffix === "/" ? "/" : suffix.startsWith("/") ? suffix : `/${suffix}`;
@@ -6086,6 +6076,55 @@ const server = http.createServer(async (req, res) => {
       }
       const rawCt = req.headers["content-type"];
       const contentType = Array.isArray(rawCt) ? rawCt[0] : rawCt;
+      const bridgeSecret = String(
+        process.env.MEIMEI_AGENT_CHAPPIE_SHARED_SECRET || process.env.AGENT_SHARED_SECRET || ""
+      ).trim();
+      const pathNoQuery = (pathWithQuery.split("?")[0] || "/").replace(/\/+$/, "") || "/";
+      const bridgeNeedsSecret = !(method === "GET" && pathNoQuery === "/health");
+      if (bridgeNeedsSecret && bridgeSecret) {
+        const hdr = req.headers["x-agent-shared-secret"];
+        if (hdr !== bridgeSecret) {
+          sendJson(res, 401, { error: "unauthorized" });
+          return;
+        }
+      }
+      if (isNodeAgentChappieEngine()) {
+        try {
+          const out = await runNodeAgentChappieBridge({
+            repoRoot,
+            method,
+            pathWithQuery,
+            body,
+            contentType
+          });
+          const fh = filterForwardResponseHeaders(out.headers);
+          res.writeHead(out.statusCode, {
+            ...fh,
+            "cache-control": "no-store, max-age=0"
+          });
+          res.end(out.body);
+        } catch (error) {
+          sendJson(res, 502, {
+            ok: false,
+            error: "agent_chappie_node_failed",
+            detail: error instanceof Error ? error.message : String(error)
+          });
+        }
+        return;
+      }
+      const cfg = getAgentChappieConfig(repoRoot);
+      if (cfg.autoStart && cfg.root) {
+        try {
+          await ensureWorkerRunning(cfg, port);
+        } catch (error) {
+          sendJson(res, 503, {
+            ok: false,
+            error: "agent_chappie_worker_start_failed",
+            detail: error instanceof Error ? error.message : String(error)
+          });
+          return;
+        }
+      }
       try {
         const out = await forwardToWorker({
           cfg,

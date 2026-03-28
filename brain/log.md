@@ -47,3 +47,13 @@
 [2026-03-28T15:21:37.844Z] Thought about: how is the weather...
 [2026-03-28T15:24:16.674Z] Fetched 2 emails from Mail
 [2026-03-28T15:33:31.956Z] Fetched 4 emails from Mail
+[2026-03-28T18:18:15.879Z] Enriched lead: email -> {"name":"Alex Johnson","title":"Senior Software En...
+[2026-03-28T18:18:16.099Z] Mission control viewed (filter: all)
+[2026-03-28T18:18:23.370Z] Generated 3 recommendations
+[2026-03-28T18:36:48.062Z] Mission control viewed (filter: all)
+[2026-03-28T18:38:14.489Z] Mission control viewed (filter: all)
+[2026-03-28T18:40:09.149Z] Mission control viewed (filter: all)
+[2026-03-28T18:40:48.044Z] Mission control viewed (filter: all)
+[2026-03-28T18:41:34.648Z] Mission control viewed (filter: all)
+[2026-03-28T18:41:36.551Z] Mission control viewed (filter: all)
+[2026-03-28T18:41:37.392Z] Mission control viewed (filter: all)

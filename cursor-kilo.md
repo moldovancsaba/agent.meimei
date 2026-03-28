@@ -23,9 +23,9 @@
 
 ## Current focus (one line each)
 
-- **Product direction (operator OC):** AI-native agent.meimei platform with real LLM integration (not fake data)
-- **CURSOR — idle:** All tasks complete — investigating ideabank
-- **KILO — done 2026-03-28:** Phase 1-2-3 complete + architecture documented — system 100% LLM-based
+- **Product direction (operator OC):** AI-native agent.meimei platform — Wave 2 Model routing complete
+- **CURSOR — assigned:** #647 — Autonomous brain learning every 3 hours
+- **KILO — done 2026-03-28:** Wave 2 complete — model routing, brain-muscle split, token tracking
 
 ---
 
@@ -42,6 +42,15 @@
 9. **[CURSOR — done 2026-03-28]** Phase 3: Context-aware suggestions — `GET /api/command/suggestions`, `dashboard/lib/home-suggestions.mjs` (`brain.readLayers` identity/user/context + Mail unread signals + `callOllama` JSON), `.ds-flashcard` grid on home
 10. **[KILO — done 2026-03-28]** Daily Briefing conversion — external script to direct LLM (last remaining external script dependency) — now uses `callOllamaJson` with Brain context + Mail data
 11. **[KILO — done 2026-03-28]** System architecture documentation — comprehensive `ARCHITECTURE.md` with diagrams, data flows, component details
+12. **[KILO — done 2026-03-28]** Wave 1: #564 Durable memory backbone — token counting, log compaction, deduplication, snapshots
+13. **[KILO — done 2026-03-28]** Wave 1: #614 Session discipline — context capping at 4096 tokens, per-layer budgets
+14. **[KILO — done 2026-03-28]** Wave 1: #613 Prompt caching — LRU cache with 30min TTL, /api/llm/cache/* endpoints
+15. **[CURSOR — assigned 2026-03-28]** Wave 1: #647 Autonomous brain learning — cron job every 3 hours
+16. **[KILO — done 2026-03-28]** Wave 2: #517/561 Per-channel model routing — brain/muscle split with task-specific models
+17. **[KILO — done 2026-03-28]** Wave 2: #612 Brain-muscle architecture — llama3 for reasoning, qwen3.5 for fast tasks
+18. **[KILO — done 2026-03-28]** Wave 2: #615 Ollama heartbeat — checkOllamaHealth() in routing config
+19. **[KILO — done 2026-03-28]** Wave 2: #617 Token tracking — /api/llm/stats endpoint with per-model/per-task stats
+20. **[OPEN]** GitHub issues closed: #601, #602, #603, #604, #605, #635, #564, #614, #613, #517, #561, #612, #615, #617
 
 ---
 
@@ -62,6 +71,8 @@
 
 ## Handoff log (recent)
 
+- **2026-03-28 19:25** — KILO: Wave 2 complete — Closed 5 GitHub issues (#517, #561, #612, #615, #617). LLM routing engine with brain-muscle architecture. Per-channel model selection. Token tracking by model/task. Ollama health monitoring. New endpoints: /api/llm/routing, /api/llm/stats. Total issues closed: 14.
+- **2026-03-28 17:15** — KILO: Wave 1 complete — Closed 9 GitHub issues (#601-#605, #635, #564, #614, #613). Brain backbone upgraded with token management, log compaction, deduplication, snapshots. Prompt caching added. New endpoints: /api/brain/health, /api/llm/cache/stats. Assigned #647 to CURSOR for autonomous learning.
 - **2026-03-28** — OC: **GitHub edits via `gh` approved** — recorded in `AGENTS.md` + this file; use for board/issue sync with `mvp-factory-control`.
 - **2026-03-28 15:35** — KILO: Fixed naming — System has **4 apps + 4 tools = 8 total** (not 6 miniapps). Apps: What Next, Explain It, Lead Enrichment, Inbox. Tools: AI Routing, API Access, Memory, Mission Control. Updated `ARCHITECTURE.md` and this file.
 - **2026-03-28 15:20** — KILO: Task 11 complete — Comprehensive `ARCHITECTURE.md` documentation. Includes: system diagram, LLM layer details, Brain system architecture, all 8 app/tool specs, AI Command Interface flows, data flow examples, network topology. Ready for OC review and onboarding.

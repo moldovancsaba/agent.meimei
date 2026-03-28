@@ -463,6 +463,30 @@ async function processSupabaseConnector(body = {}) {
   return { ok: false, error: "Unknown action. Use overview, health, or preview_fetch." };
 }
 
+const DEFAULT_MEIMEI_CHECKLIST_APP_URL = "https://agent-chappie.doneisbetter.com/checklist";
+
+function checklistResolvedAppUrl() {
+  return String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim() || DEFAULT_MEIMEI_CHECKLIST_APP_URL;
+}
+
+/** Agent.Chappie — catalog + embed; app runs on hosted URL or local Next (see checklist repo). */
+async function processChecklist(body = {}) {
+  const action = String(body.action || "overview");
+  const appUrl = checklistResolvedAppUrl();
+  if (action === "overview") {
+    return {
+      ok: true,
+      title: "Checklist (Agent.Chappie)",
+      summary:
+        "Hosted competitive workspace. Local development and LLM gateway: github.com/moldovancsaba/checklist and docs/meimei-integration.md.",
+      appUrl,
+      openPath: checklistPublicPath,
+      repo: "https://github.com/moldovancsaba/checklist"
+    };
+  }
+  return { ok: false, error: "Unknown action. Use overview." };
+}
+
 async function processLeadOutreach(body = {}, repoRoot) {
   const action = String(body.action || "overview");
   if (action === "overview") {
@@ -618,11 +642,14 @@ const miniappCfg = miniappRuntimeConfig(loadRegistrySync());
 const miniappIssueRoute = miniappCfg.miniappIssueRoute;
 const dashboardCatalog = miniappCfg.catalog;
 const R = miniappCfg.routes;
-const appsCatalog = miniappCfg.catalog.filter((c) => c.category === "apps");
-const toolsCatalog = miniappCfg.catalog.filter((c) => c.category === "tools");
 const explainItRoute = R["explain-it"]?.internalPath || "/516/Explain_it";
 const explainItApiRoute = R["explain-it"]?.apiPath || "/api/functions/explain-it";
 const explainItLabel = R["explain-it"]?.displayName || "Explain it";
+const checklistRoute = R["checklist"]?.internalPath || "/Checklist";
+const checklistIssueId = R["checklist"]?.issueId ?? 727;
+const checklistPublicPath = `/${checklistIssueId}${checklistRoute}`;
+const checklistApiRoute = R["checklist"]?.apiPath || "/api/functions/checklist";
+const checklistLabel = R["checklist"]?.displayName || "Checklist";
 const whatNextRoute = R["what-next"]?.internalPath || "/724/What_next";
 const whatNextApiRoute = R["what-next"]?.apiPath || "/api/functions/what-next";
 const whatNextLabel = R["what-next"]?.displayName || "What next?";
@@ -1511,12 +1538,13 @@ function renderPage(state, lastResult, layoutDoc) {
 }
 
 function renderAppsPage(layoutDoc) {
-  const cardsHtml = appsCatalog.map((app) => renderFlashcard({
+  const apps = miniappRuntimeConfig(loadRegistrySync()).catalog.filter((c) => c.category === "apps");
+  const cardsHtml = apps.map((app) => renderFlashcard({
     kind: `APP #${app.issueId}`,
     title: app.name,
     content: toSummary160(app.description),
     href: app.route,
-    settingsHref: `${app.route}/settings`
+    settingsHref: app.id === "checklist" ? "" : `${app.route}/settings`
   })).join("");
 
   return `<!doctype html>
@@ -1560,7 +1588,8 @@ function renderAppsPage(layoutDoc) {
 }
 
 function renderToolsPage(layoutDoc) {
-  const cardsHtml = toolsCatalog.map((app) => renderFlashcard({
+  const tools = miniappRuntimeConfig(loadRegistrySync()).catalog.filter((c) => c.category === "tools");
+  const cardsHtml = tools.map((app) => renderFlashcard({
     kind: `TOOL #${app.issueId}`,
     title: app.name,
     content: toSummary160(app.description),
@@ -2894,6 +2923,56 @@ function renderWhatNextPage(layoutDoc) {
       window.__meimeiRunBriefing && window.__meimeiRunBriefing();
     });
   </script>
+</body>
+</html>`;
+}
+
+function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
+  const rawBase = checklistResolvedAppUrl();
+  const base = rawBase.replace(/\/+$/, "");
+  const suf = String(pathSuffix || "");
+  const embedSrc =
+    suf && suf !== "/"
+      ? `${base}${suf.startsWith("/") ? suf : `/${suf}`}`
+      : rawBase;
+  const topbar = `<div class="topbar">
+      <a class="button secondary" href="${escapeHtml(appsRoute)}">&larr; Back to Apps</a>
+      <span class="title">${escapeHtml(checklistLabel)}</span>
+    </div>`;
+  const main = `<main class="hero">
+      <section class="route-card checklist-embed-card">
+        <h1>${escapeHtml(checklistLabel)}</h1>
+        <p class="lede u-mb12">Issue <strong>#${checklistIssueId}</strong> — Agent.Chappie runs inside the frame. If it stays blank, the host may block embedding — use <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">open in new tab</a>.</p>
+        <div class="checklist-embed-wrap">
+          <iframe
+            class="checklist-embed-frame"
+            title="${escapeHtml(checklistLabel)}"
+            src="${escapeHtml(embedSrc)}"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </div>
+      </section>
+    </main>`;
+  const layout = buildLayoutFlowHtml(layoutDoc, miniappPageKey("checklist"), { topbar, main }, escapeAttr);
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(checklistLabel)} - agent.meimei</title>
+  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
+</head>
+<body data-theme="green" data-page="checklist">
+  <div class="shell">
+    ${layout}
+  </div>
+  <style>
+    .checklist-embed-card { display: flex; flex-direction: column; min-height: calc(100vh - 10rem); }
+    .checklist-embed-wrap { flex: 1; display: flex; flex-direction: column; min-height: min(720px, 72vh); }
+    .checklist-embed-frame { flex: 1; width: 100%; min-height: 480px; border: 1px solid var(--line); border-radius: 14px; background: rgba(4, 10, 20, 0.72); }
+  </style>
 </body>
 </html>`;
 }
@@ -4788,10 +4867,6 @@ function renderMissionControlPage(layoutDoc) {
 
     function renderDashboard(data) {
       const overview = data.overview || {};
-      document.querySelector("[data-stat='totalRuns']").textContent = overview.totalRuns || 0;
-      document.querySelector("[data-stat='successRate']").textContent = (overview.successRate || 0) + "%";
-      document.querySelector("[data-stat='avgDuration']").textContent = overview.avgDuration || "0s";
-      document.querySelector("[data-stat='activeAgents']").textContent = overview.activeAgents || 0;
 
       const runs = data.recentRuns || [];
       const errors = data.errors || [];
@@ -6099,6 +6174,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (
+      req.method === "GET" &&
+      (normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`))
+    ) {
+      const suffix =
+        normalizedPath === checklistPublicPath ? "" : normalizedPath.slice(checklistPublicPath.length);
+      const html = renderChecklistEmbedPage(getLayoutDoc(), suffix);
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, max-age=0"
+      });
+      res.end(html);
+      return;
+    }
+
     if (req.method === "GET" && resolvedMiniappRoute === whatNextRoute) {
       const html = renderWhatNextPage(getLayoutDoc());
       res.writeHead(200, {
@@ -6313,6 +6403,20 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const result = await summarizeUrlSource(body.url);
       sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "POST" && normalizedPath === checklistApiRoute) {
+      const body = (await readJson(req)) || {};
+      try {
+        const out = await processChecklist(body);
+        sendJson(res, out.ok ? 200 : 400, out);
+      } catch (error) {
+        sendJson(res, 500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       return;
     }
 

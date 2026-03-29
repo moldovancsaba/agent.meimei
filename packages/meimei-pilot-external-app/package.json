@@ -1,0 +1,13 @@
+{
+  "name": "@meimei/pilot-external-app",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Pilot external app using @meimei/sdk only (MM-KERNEL-602)",
+  "type": "module",
+  "bin": {
+    "meimei-pilot-external": "./pilot.mjs"
+  },
+  "dependencies": {
+    "@meimei/sdk": "*"
+  }
+}

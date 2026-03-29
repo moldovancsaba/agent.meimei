@@ -342,7 +342,7 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Deliverables
 
-- Explicit key prefix or allowlist per app; no blanket env read.
+- [x] `GET …/env?keys=` with `policy.env.allowKeys` only (`kernel-app-http-facades.mjs`).
 
 ---
 
@@ -356,6 +356,10 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 ### Requirements
 
 - Only if apps require file access: jail paths in policy; deny `..` traversal.
+
+### Deliverables
+
+- [x] Placeholder `GET …/fs/roots` → **501** until install-path serving exists; `filesystem.roots` reserved in policy schema.
 
 ---
 
@@ -371,11 +375,11 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Deliverables
 
-- Package in repo workspace or separate repo (decide in PR); semver; uses HTTPS base URL + auth headers.
+- [x] `packages/meimei-sdk` (workspace); `MeiMeiKernelClient` — inference, jobs, env.
 
 ### Acceptance criteria
 
-- Pilot app has **zero** imports from `dashboard/lib/*`.
+- [x] Pilot package **`packages/meimei-pilot-external-app`** imports only `@meimei/sdk`.
 
 ---
 
@@ -385,6 +389,10 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 **Type:** Task  
 **Dependencies:** MM-KERNEL-401
+
+### Deliverables
+
+- [x] `npm run kernel:sdk:selftest` (`scripts/meimei-sdk-contract-selftest.mjs`).
 
 ---
 
@@ -398,8 +406,8 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Technical design
 
-- **Delivered:** **`tryKernelExternalAppPost`** in **`dashboard/server.mjs`** (fallback **after** built-in POST routes). **`POST /api/functions/<suffix>`** → dynamic **`import()`** of **`manifest.entry.module`** (+ optional **`api.subroutes`** exports). **Registry file** dispatch is **on by default**; set **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable. **`kernel-external-app-dispatch.mjs`** + **`npm run kernel:external-dispatch:selftest`** (CI).
-- **Open:** none for in-repo static-import removal (**MM-KERNEL-603** done); optional future: generated catalog from manifests (**MM-KERNEL-601**).
+- **Delivered:** **`tryKernelExternalAppPost`** in **`dashboard/server.mjs`** (fallback **after** built-in POST routes). **`POST /api/functions/<suffix>`** → dynamic **`import()`** of **`manifest.entry.module`** (+ optional **`api.subroutes`** exports). **Registry file** dispatch is **on by default**; set **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable. **`kernel-external-app-dispatch.mjs`** + **`npm run kernel:external-dispatch:selftest`** (CI). Dispatch asserts **`assertManifestCapabilitiesSatisfiedForDispatch`** after auth.
+- **Open:** none for in-repo static-import removal (**MM-KERNEL-603** done); **MM-KERNEL-601** merged catalog shipped (**`kernel-catalog-merge.mjs`** + Apps/Tools pages).
 
 ### Acceptance criteria
 
@@ -422,7 +430,7 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Deliverables
 
-- ADR-002 acceptance criteria closure; UX note for catalog deep links.
+- [x] [`docs/architecture/meimei-kernel-external-app-shells-v1.md`](../architecture/meimei-kernel-external-app-shells-v1.md) — proxy / iframe / catalog options vs ADR-002.
 
 ---
 
@@ -434,6 +442,10 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 **Type:** Task  
 **Dependencies:** MM-KERNEL-202, MM-KERNEL-201
+
+### Deliverables
+
+- [x] **`dashboard/lib/kernel-catalog-merge.mjs`** + **`catalog-pages.mjs`** use **`getMergedCatalog()`** from **`server.mjs`**.
 
 ---
 
@@ -476,6 +488,10 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 **Type:** Epic  
 **Dependencies:** MM-KERNEL-603 (all apps migrated or explicitly legacy)
 
+### Deliverables (incremental)
+
+- [x] **`npm run kernel:registry:snapshot`** — JSON snapshot of registry + manifests for audit / drift detection. **`functions/registry.v1.json`** remains operator SoT for legacy miniapps until full generation exists.
+
 ---
 
 # Theme T6 — Governance & ops
@@ -490,7 +506,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 ### Deliverables
 
-- `docs/compliance/` or `docs/architecture/` short STRIDE-oriented doc; Mermaid data-flow.
+- [x] [`docs/security/meimei-kernel-threat-model-v1.md`](../security/meimei-kernel-threat-model-v1.md).
 
 ---
 
@@ -503,7 +519,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 ### Deliverables
 
-- `docs/operations/kernel-apps.v1.md` (path TBD).
+- [x] [`docs/operations/kernel-apps.v1.md`](../operations/kernel-apps.v1.md).
 
 ---
 
@@ -516,7 +532,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 ### Acceptance criteria
 
-- Dashboard or JSON feed can filter or group by `app_id`.
+- [x] **`GET /api/meimei/monitor/feed?app_id=`**; feed rows expose **`app_id`** when present on payload / **`meimei_meta`**.
 
 ---
 
@@ -537,6 +553,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 | Date | Change |
 |------|--------|
+| 2026-03-29 | **MM-KERNEL-302–303d, 401–402, 501 policy gate, 502, 601, 604 snapshot, 701–703, pilot SDK package:** façades, merged catalog, monitor `app_id`, workspaces `@meimei/sdk`, CI selftests. |
 | 2026-03-29 | **Doc pass:** dependency graph — **ADR-003 (accepted)** (was marked proposed). |
 | 2026-03-30 | **MM-KERNEL-301** auth; **MM-KERNEL-501** builtins + registry (**default on** since follow-up: `MEIMEI_KERNEL_EXTERNAL_APPS=0` disables); **MM-KERNEL-603** all in-repo manifests, no static `server.mjs` app imports, static-import CI guard. |
 | 2026-03-29 | MM-KERNEL-501 (partial): `kernel-external-app-dispatch.mjs`, `MEIMEI_KERNEL_EXTERNAL_APPS=1`, server fallback POST, `kernel:external-dispatch:selftest` in CI. |

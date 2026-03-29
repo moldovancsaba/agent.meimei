@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capabilities": {
+    "allow": ["inference", "jobs.enqueue"],
+    "deny": []
+  },
+  "env": {
+    "allowKeys": ["MYAPP_API_KEY", "MYAPP_WEBHOOK_SECRET"]
+  },
+  "filesystem": {
+    "roots": ["/var/lib/meimei/apps/myapp/scoped"]
+  }
+}

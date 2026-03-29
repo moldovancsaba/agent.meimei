@@ -130,18 +130,20 @@ function wrapResponse(raw, meta) {
       backend_used: "ollama",
       latency_ms: meta.latencyMs,
       trace_id: meta.traceId,
-      ollama_model_requested: meta.resolvedModel
+      ollama_model_requested: meta.resolvedModel,
+      ...(meta.appId ? { app_id: meta.appId } : {})
     }
   };
 }
 
 /**
  * @param {unknown} body
- * @param {{ traceId: string }} ctx
+ * @param {{ traceId: string, appId?: string }} ctx
  * @returns {Promise<{ statusCode: number, json: object }>}
  */
 export async function handleMeimeiInferenceRoute(body, ctx) {
   const traceId = ctx.traceId;
+  const appId = typeof ctx.appId === "string" && ctx.appId ? ctx.appId : undefined;
 
   if (!body || typeof body !== "object") {
     return {
@@ -241,7 +243,8 @@ export async function handleMeimeiInferenceRoute(body, ctx) {
         meimei_meta: {
           backend_used: "ollama",
           latency_ms: Date.now() - t0,
-          trace_id: traceId
+          trace_id: traceId,
+          ...(appId ? { app_id: appId } : {})
         }
       }
     };
@@ -259,7 +262,8 @@ export async function handleMeimeiInferenceRoute(body, ctx) {
         meimei_meta: {
           backend_used: "ollama",
           latency_ms: latencyMs,
-          trace_id: traceId
+          trace_id: traceId,
+          ...(appId ? { app_id: appId } : {})
         }
       }
     };
@@ -278,7 +282,8 @@ export async function handleMeimeiInferenceRoute(body, ctx) {
         meimei_meta: {
           backend_used: "ollama",
           latency_ms: latencyMs,
-          trace_id: traceId
+          trace_id: traceId,
+          ...(appId ? { app_id: appId } : {})
         }
       }
     };
@@ -286,7 +291,7 @@ export async function handleMeimeiInferenceRoute(body, ctx) {
 
   return {
     statusCode: 200,
-    json: wrapResponse(rawJson, { resolvedModel, latencyMs, traceId })
+    json: wrapResponse(rawJson, { resolvedModel, latencyMs, traceId, appId })
   };
 }
 

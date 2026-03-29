@@ -240,6 +240,26 @@ export function createMeimeiJobQueue(repoRoot) {
     LIMIT ?
   `);
 
+  const listMonitorGlobalForAppStmt = db.prepare(`
+    SELECT id, trace_id, adapter_name, direction, status, payload, result_json, error_message,
+           created_at, updated_at, payload_kind, target_adapter, source_adapter
+    FROM meimei_jobs
+    WHERE COALESCE(payload_kind, 'inference_v1') IN ('inference_v1', 'app_task', 'checklist_trace_v1')
+      AND json_extract(payload, '$.kernel_app_id') = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `);
+
+  const listMonitorTraceForAppStmt = db.prepare(`
+    SELECT id, trace_id, adapter_name, direction, status, payload, result_json, error_message,
+           created_at, updated_at, payload_kind, target_adapter, source_adapter
+    FROM meimei_jobs
+    WHERE trace_id = ?
+      AND json_extract(payload, '$.kernel_app_id') = ?
+    ORDER BY created_at ASC, id ASC
+    LIMIT ?
+  `);
+
   return {
     dbPath,
 
@@ -248,15 +268,20 @@ export function createMeimeiJobQueue(repoRoot) {
     },
 
     /**
-     * @param {{ traceId?: string, adapterName: string, direction?: 'ingress'|'egress', payload: object }} opts
+     * @param {{ traceId?: string, adapterName: string, direction?: 'ingress'|'egress', payload: object, appId?: string }} opts
      * @returns {number} job id
      */
     enqueueIngress(opts) {
-      const meta = deriveRoutingMeta(opts.payload);
+      let payload = opts.payload && typeof opts.payload === "object" ? opts.payload : {};
+      const aid = opts.appId && String(opts.appId).trim();
+      if (aid) {
+        payload = { ...payload, kernel_app_id: aid };
+      }
+      const meta = deriveRoutingMeta(payload);
       const traceId = (opts.traceId && String(opts.traceId).trim()) || crypto.randomUUID();
       const direction = opts.direction === "egress" ? "egress" : "ingress";
       const now = Date.now();
-      const payloadJson = JSON.stringify(opts.payload);
+      const payloadJson = JSON.stringify(payload);
       const adapterName =
         meta.payload_kind === "app_task" && meta.target_adapter
           ? String(meta.target_adapter)
@@ -392,15 +417,22 @@ export function createMeimeiJobQueue(repoRoot) {
     },
 
     /**
-     * @param {{ limit?: number, traceId?: string | null }} opts
+     * @param {{ limit?: number, traceId?: string | null, appId?: string | null }} opts
      */
     listMonitorFeed(opts = {}) {
       const tid = opts.traceId && String(opts.traceId).trim();
+      const aid = opts.appId && String(opts.appId).trim();
       if (tid) {
         const lim = Math.max(1, Math.min(500, Number(opts.limit) || 200));
+        if (aid) {
+          return listMonitorTraceForAppStmt.all(tid, aid, lim);
+        }
         return listMonitorTraceStmt.all(tid, lim);
       }
       const lim = Math.max(1, Math.min(200, Number(opts.limit) || 100));
+      if (aid) {
+        return listMonitorGlobalForAppStmt.all(aid, lim);
+      }
       return listMonitorGlobalStmt.all(lim);
     }
   };

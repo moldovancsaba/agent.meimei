@@ -1,0 +1,11 @@
+{
+  "name": "@meimei/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTTPS client for MeiMei kernel app-scoped façades (MM-KERNEL-401)",
+  "type": "module",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs"
+  }
+}

@@ -103,7 +103,7 @@ export function assertValidManifest(repoRoot, manifest) {
 }
 
 /**
- * @typedef {{ app_id: string, install_path: string, manifest: object, manifest_sha256: string, enabled: boolean, registered_at_ms: number, updated_at_ms: number, auth_secret_sha256?: string, builtin?: boolean }} KernelRegisteredApp
+ * @typedef {{ app_id: string, install_path: string, manifest: object, manifest_sha256: string, enabled: boolean, registered_at_ms: number, updated_at_ms: number, auth_secret_sha256?: string, builtin?: boolean, policy?: object }} KernelRegisteredApp
  */
 
 /**

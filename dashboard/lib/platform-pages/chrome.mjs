@@ -16,11 +16,20 @@ export function renderList(items, d) {
 }
 
 /**
- * @param {{ kind: string, title: string, content: string, href?: string, button?: boolean, attrs?: string, settingsHref?: string }} opts
+ * @param {{ kind: string, title: string, content: string, href?: string, button?: boolean, attrs?: string, settingsHref?: string, openInNewTab?: boolean }} opts
  * @param {{ escapeHtml: (s: string) => string }} d
  */
 export function renderFlashcard(
-  { kind, title, content, href = "", button = false, attrs = "", settingsHref = "" },
+  {
+    kind,
+    title,
+    content,
+    href = "",
+    button = false,
+    attrs = "",
+    settingsHref = "",
+    openInNewTab = false
+  },
   d
 ) {
   const cardHtml = `<span class="ds-flashcard-kind">${d.escapeHtml(kind)}</span><h3 class="ds-flashcard-title">${d.escapeHtml(title)}</h3><div class="ds-flashcard-content">${d.escapeHtml(content)}</div>`;
@@ -30,7 +39,8 @@ export function renderFlashcard(
   const settingsLink = settingsHref
     ? `<a class="ds-flashcard-settings" href="${d.escapeHtml(settingsHref)}" title="Settings" onclick="event.stopPropagation();">⚙️</a>`
     : "";
-  return `<a class="ds-flashcard" href="${d.escapeHtml(href)}">${cardHtml}${settingsLink}</a>`;
+  const newTabAttrs = openInNewTab ? ` target="_blank" rel="noopener noreferrer"` : "";
+  return `<a class="ds-flashcard" href="${d.escapeHtml(href)}"${newTabAttrs}>${cardHtml}${settingsLink}</a>`;
 }
 
 /**

@@ -149,6 +149,16 @@ import { startMeimeiJobWorker } from "./lib/meimei-job-worker.mjs";
 import { createMeimeiJobQueue } from "./lib/meimei-job-queue.mjs";
 import { formatMonitorFeedRows } from "./lib/meimei-monitor-feed.mjs";
 import { tryKernelExternalAppPost } from "./lib/kernel-external-app-dispatch.mjs";
+import { mergeCatalogWithKernelApps } from "./lib/kernel-catalog-merge.mjs";
+import {
+  parseKernelAppFacadePath,
+  handleKernelAppInferenceFacade,
+  handleKernelAppJobsEnqueueFacade,
+  handleKernelAppEnvReadFacade,
+  handleKernelAppFsRootsFacade
+} from "./lib/kernel-app-http-facades.mjs";
+import { loadExternalLaunchersSync } from "./lib/external-launchers.mjs";
+import { handlePaperclipMeiBridgePost } from "./lib/paperclip-mei-bridge.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -912,7 +922,9 @@ function renderAdminPage(state, lastResult, layoutDoc) {
 function catalogPageUiDeps() {
   return {
     loadRegistrySync,
+    loadExternalLaunchersSync: () => loadExternalLaunchersSync(repoRoot),
     miniappRuntimeConfig,
+    getMergedCatalog: () => mergeCatalogWithKernelApps(repoRoot, loadRegistrySync()),
     renderFlashcard,
     toSummary160,
     escapeHtml,
@@ -1242,17 +1254,53 @@ const server = http.createServer(async (req, res) => {
         const defaultLimit = traceFilter ? 200 : 100;
         const cap = traceFilter ? 500 : 200;
         const limit = Math.max(1, Math.min(cap, Number(limitRaw) || defaultLimit));
+        const appFilter = String(url.searchParams.get("app_id") || "").trim();
         const rows = meimeiJobQueueRead.listMonitorFeed({
           limit,
-          traceId: traceFilter || null
+          traceId: traceFilter || null,
+          appId: appFilter || null
         });
         const items = formatMonitorFeedRows(rows);
         sendJson(res, 200, {
           ok: true,
           trace_filter: traceFilter || null,
+          app_id_filter: appFilter || null,
           order: traceFilter ? "chronological" : "newest_first",
           items
         });
+      } catch (error) {
+        sendJson(res, 500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    const kernelAppFacade = parseKernelAppFacadePath(normalizedPath);
+    if (kernelAppFacade) {
+      try {
+        if (kernelAppFacade.facet === "inference" && req.method === "POST") {
+          const out = await handleKernelAppInferenceFacade(req, readJson, repoRoot, kernelAppFacade.appId);
+          sendJson(res, out.statusCode, out.json);
+          return;
+        }
+        if (kernelAppFacade.facet === "jobs/enqueue" && req.method === "POST") {
+          const out = await handleKernelAppJobsEnqueueFacade(req, readJson, repoRoot, kernelAppFacade.appId);
+          sendJson(res, out.statusCode, out.json);
+          return;
+        }
+        if (kernelAppFacade.facet === "env" && req.method === "GET") {
+          const out = handleKernelAppEnvReadFacade(req, url, repoRoot, kernelAppFacade.appId);
+          sendJson(res, out.statusCode, out.json);
+          return;
+        }
+        if (kernelAppFacade.facet === "fs/roots" && req.method === "GET") {
+          const out = handleKernelAppFsRootsFacade(req, repoRoot, kernelAppFacade.appId);
+          sendJson(res, out.statusCode, out.json);
+          return;
+        }
+        sendJson(res, 405, { ok: false, error: "method_not_allowed" });
       } catch (error) {
         sendJson(res, 500, {
           ok: false,
@@ -1997,6 +2045,21 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && normalizedPath === "/api/llm/cache/clear") {
       const result = clearCache();
       sendJson(res, 200, result);
+      return;
+    }
+
+    // Paperclip HTTP adapter → MeiMei inference (optional comment back to Paperclip API).
+    if (req.method === "POST" && normalizedPath === "/api/integrations/paperclip/webhook") {
+      try {
+        const body = await readJson(req);
+        const out = await handlePaperclipMeiBridgePost(req, body);
+        sendJson(res, out.status, out.json);
+      } catch (error) {
+        sendJson(res, 500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
       return;
     }
 

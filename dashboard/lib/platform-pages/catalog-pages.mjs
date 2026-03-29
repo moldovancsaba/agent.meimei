@@ -10,8 +10,14 @@
  * @param {unknown} layoutDoc
  * @param {object} d registry, flashcards, layout helpers, and surface (from `server.mjs`)
  */
+function mergedCatalog(d) {
+  return typeof d.getMergedCatalog === "function"
+    ? d.getMergedCatalog()
+    : d.miniappRuntimeConfig(d.loadRegistrySync()).catalog;
+}
+
 export function renderAppsPage(layoutDoc, d) {
-  const apps = d.miniappRuntimeConfig(d.loadRegistrySync()).catalog.filter((c) => c.category === "apps");
+  const apps = mergedCatalog(d).filter((c) => c.category === "apps");
   const cardsHtml = apps
     .map((app) =>
       d.renderFlashcard({
@@ -23,6 +29,30 @@ export function renderAppsPage(layoutDoc, d) {
       })
     )
     .join("");
+
+  const ext = typeof d.loadExternalLaunchersSync === "function" ? d.loadExternalLaunchersSync() : { launchers: [] };
+  const launchers = Array.isArray(ext.launchers) ? ext.launchers : [];
+  const externalCardsHtml = launchers
+    .map((L) =>
+      d.renderFlashcard({
+        kind: "EXTERNAL (local)",
+        title: L.displayName,
+        content: d.toSummary160(L.description),
+        href: L.launchUrl,
+        settingsHref: "",
+        openInNewTab: true
+      })
+    )
+    .join("");
+
+  const externalSection =
+    externalCardsHtml.length > 0
+      ? `<section class="card section">
+      <h2>External (local)</h2>
+      <p class="sub">Separate processes on this machine — opens in a new tab. Not kernel miniapps.</p>
+      <div class="ds-flashcard-grid">${externalCardsHtml}</div>
+    </section>`
+      : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -44,6 +74,7 @@ export function renderAppsPage(layoutDoc, d) {
       <p class="sub">Everyday tasks at your fingertips.</p>
       <div class="ds-flashcard-grid">${cardsHtml}</div>
     </section>
+    ${externalSection}
   </div>
   <script>
     ${d.renderGlobalNavScript()}
@@ -57,7 +88,7 @@ export function renderAppsPage(layoutDoc, d) {
  * @param {object} d registry, flashcards, layout helpers, and surface (from `server.mjs`)
  */
 export function renderToolsPage(layoutDoc, d) {
-  const tools = d.miniappRuntimeConfig(d.loadRegistrySync()).catalog.filter((c) => c.category === "tools");
+  const tools = mergedCatalog(d).filter((c) => c.category === "tools");
   const systemMonitorCard = d.renderFlashcard({
     kind: "PLATFORM",
     title: "System monitor",

@@ -143,6 +143,20 @@ export function formatMonitorRow(row) {
   const resultParsed = row.result_json ? safeParseJson(row.result_json) : null;
   const artifactPath = extractArtifactPath(parsed, resultParsed);
 
+  let appId = null;
+  if (parsed && typeof parsed === "object" && parsed.kernel_app_id != null && String(parsed.kernel_app_id).trim()) {
+    appId = String(parsed.kernel_app_id).trim();
+  } else if (
+    resultParsed &&
+    typeof resultParsed === "object" &&
+    resultParsed.meimei_meta &&
+    typeof resultParsed.meimei_meta === "object" &&
+    resultParsed.meimei_meta.app_id != null &&
+    String(resultParsed.meimei_meta.app_id).trim()
+  ) {
+    appId = String(resultParsed.meimei_meta.app_id).trim();
+  }
+
   const errorSnippet =
     row.status === "failed" && row.error_message
       ? String(row.error_message).replace(/\s+/g, " ").trim().slice(0, 160)
@@ -154,6 +168,7 @@ export function formatMonitorRow(row) {
   return {
     id: Number(row.id),
     trace_id: String(row.trace_id || ""),
+    app_id: appId,
     payload_kind: kind,
     status: String(row.status || ""),
     adapter_name: row.adapter_name != null ? String(row.adapter_name) : "",

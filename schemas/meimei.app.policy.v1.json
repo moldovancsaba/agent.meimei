@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent.meimei/schema/meimei.app.policy.v1.json",
+  "title": "MeiMei kernel — per-app policy overlay (v1)",
+  "description": "Optional overlay on a registered or builtin app (MM-KERNEL-302). Stored on registry rows as `policy` or validated standalone.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "inference",
+              "jobs.enqueue",
+              "jobs.claim",
+              "env.read",
+              "filesystem.scoped",
+              "monitor.read"
+            ]
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "inference",
+              "jobs.enqueue",
+              "jobs.claim",
+              "env.read",
+              "filesystem.scoped",
+              "monitor.read"
+            ]
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "MM-KERNEL-303c — keys an app may read via app-scoped env API.",
+      "properties": {
+        "allowKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      }
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "MM-KERNEL-303d — reserved; façade enforces roots when implemented.",
+      "properties": {
+        "roots": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      }
+    }
+  }
+}

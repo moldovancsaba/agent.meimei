@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "launchers": [
+    {
+      "id": "paperclip",
+      "displayName": "Paperclip",
+      "description": "Open-source orchestration for AI companies — local control plane (separate process). Opens in a new tab.",
+      "catalogOrder": 100,
+      "launchUrl": "http://127.0.0.1:3100",
+      "healthUrl": "http://127.0.0.1:3100/api/health"
+    }
+  ]
+}

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-03-29 — Kernel program: policy, app façades, SDK, catalog merge, monitor `app_id`
+
+- **`dashboard/lib/kernel-app-http-facades.mjs`** — `POST /api/meimei/v1/apps/{app_id}/inference|jobs/enqueue`, `GET …/env`, `GET …/fs/roots` (**501** placeholder).
+- **`dashboard/lib/kernel-external-app-dispatch.mjs`** — after auth, **`assertManifestCapabilitiesSatisfiedForDispatch`**.
+- **`dashboard/lib/kernel-app-policy.mjs`** — manifests with no `capabilities` inherit full v1 cap set for policy resolution; registry row **`policy`** supported.
+- **`dashboard/lib/kernel-catalog-merge.mjs`**, **`catalog-pages.mjs`**, **`server.mjs`** — merged Apps/Tools catalog; monitor feed **`app_id`** query + row field; inference worker passes **`appId`** from queued payload.
+- **`packages/meimei-sdk`**, **`packages/meimei-pilot-external-app`** — workspace packages; **`npm run kernel:sdk:selftest`**, **`kernel:policy:selftest`**, **`kernel:validate-app-policy`**, **`kernel:registry:snapshot`** in **`npm run ci`**.
+- **Docs:** [`docs/api/meimei-app-facades-v1.md`](../api/meimei-app-facades-v1.md), [`docs/operations/kernel-apps.v1.md`](../operations/kernel-apps.v1.md), [`docs/security/meimei-kernel-threat-model-v1.md`](../security/meimei-kernel-threat-model-v1.md), [`docs/architecture/meimei-kernel-external-app-shells-v1.md`](../architecture/meimei-kernel-external-app-shells-v1.md).
+
 ## 2026-03-29 — Docs: planning corpus second pass (`docs/planning/*`)
 
 - **`meimei-https-full-integration-program.v1.md`** — Status **In progress** (phase-0/1 + TLS-060 delivered); ADR-003 **Accepted** in header and §2 snapshot; **TLS-001** / **TLS-003** rows aligned with reality; §9 changelog row.

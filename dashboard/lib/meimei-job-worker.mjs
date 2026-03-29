@@ -140,7 +140,11 @@ export function startMeimeiJobWorker(opts) {
       }
 
       try {
-        const out = await handleMeimeiInferenceRoute(body.request, { traceId });
+        const appId =
+          typeof body.kernel_app_id === "string" && body.kernel_app_id.trim()
+            ? body.kernel_app_id.trim()
+            : undefined;
+        const out = await handleMeimeiInferenceRoute(body.request, { traceId, appId });
         if (out.statusCode >= 200 && out.statusCode < 300) {
           queue.markCompleted(id, JSON.stringify(out.json));
           enqueueCorrelationReply(queue, repoRoot, body, traceId, out.json);

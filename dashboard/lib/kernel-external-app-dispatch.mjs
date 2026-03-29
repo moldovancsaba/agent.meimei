@@ -7,6 +7,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertKernelAppDispatchAuth } from "./kernel-app-auth.mjs";
+import { assertManifestCapabilitiesSatisfiedForDispatch } from "./kernel-app-policy.mjs";
 import { exportNameForApiPathSuffix } from "./kernel-app-api-match.mjs";
 import { resolveBuiltinPostMatch, clearBuiltinKernelAppsCache } from "./kernel-builtin-apps.mjs";
 import { clearChecklistHandleApiCache } from "./checklist-app-handler.mjs";
@@ -118,6 +119,14 @@ export async function tryKernelExternalAppPost(repoRoot, normalizedPath, req, re
   const auth = assertKernelAppDispatchAuth(req, match);
   if (!auth.ok) {
     return { status: auth.status, payload: auth.payload };
+  }
+
+  const sat = assertManifestCapabilitiesSatisfiedForDispatch(match);
+  if (!sat.ok) {
+    return {
+      status: 403,
+      payload: { ok: false, error: "policy_invalid", code: "FORBIDDEN", detail: sat.error }
+    };
   }
 
   const handler = await getOrLoadHandler(match, exportName);

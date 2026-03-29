@@ -82,8 +82,7 @@ Inventory of environment variable **names** referenced in this repository’s No
 
 | Name |
 |------|
-| `AGENT_SHARED_SECRET` |
-| `MEIMEI_AGENT_CHAPPIE_SHARED_SECRET` |
+| `MEIMEI_CHECKLIST_SHARED_SECRET` |
 | `MEIMEI_CHECKLIST_LOCAL_UPSTREAM` |
 | `MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX` |
 | `MEIMEI_INFERENCE_MAX_CONTEXT` |
@@ -94,7 +93,7 @@ Inventory of environment variable **names** referenced in this repository’s No
 | `MEIMEI_PUBLIC_PREFIX` |
 | `OLLAMA_HOST` |
 
-### Agent Chappie bridge, Python worker env, Neon queue consumer
+### Checklist bridge, Python worker env, Neon queue consumer
 
 | Name |
 |------|
@@ -104,15 +103,15 @@ Inventory of environment variable **names** referenced in this repository’s No
 | `AGENT_WORKER_PORT` |
 | `APP_QUEUE_BASE_URL` |
 | `DATABASE_URL` |
-| `MEIMEI_AGENT_CHAPPIE_AUTO_START` |
-| `MEIMEI_AGENT_CHAPPIE_DATABASE_URL` |
-| `MEIMEI_AGENT_CHAPPIE_DB_PATH` |
-| `MEIMEI_AGENT_CHAPPIE_ENGINE` |
-| `MEIMEI_AGENT_CHAPPIE_PYTHON` |
-| `MEIMEI_AGENT_CHAPPIE_ROOT` |
-| `MEIMEI_AGENT_CHAPPIE_SHARED_SECRET` |
-| `MEIMEI_AGENT_CHAPPIE_WORKER_HOST` |
-| `MEIMEI_AGENT_CHAPPIE_WORKER_PORT` |
+| `MEIMEI_CHECKLIST_AUTO_START` |
+| `MEIMEI_CHECKLIST_DATABASE_URL` |
+| `MEIMEI_CHECKLIST_DB_PATH` |
+| `MEIMEI_CHECKLIST_ENGINE` |
+| `MEIMEI_CHECKLIST_PYTHON` |
+| `MEIMEI_CHECKLIST_ROOT` |
+| `MEIMEI_CHECKLIST_SHARED_SECRET` |
+| `MEIMEI_CHECKLIST_WORKER_HOST` |
+| `MEIMEI_CHECKLIST_WORKER_PORT` |
 | `MEIMEI_LLM_GATEWAY_SECRET` |
 | `OLLAMA_URL` (injected into child process env from bridge) |
 | `WORKER_COMPLETE_ATTEMPTS` |
@@ -175,7 +174,7 @@ Inventory of environment variable **names** referenced in this repository’s No
 | Name |
 |------|
 | `CHECKLIST_WEB_APP` |
-| `MEIMEI_AGENT_CHAPPIE_ENGINE` |
+| `MEIMEI_CHECKLIST_ENGINE` |
 | `MEIMEI_BRIEFING_DIR` |
 | `MEIMEI_BRIEFING_FOLDER` |
 | `MEIMEI_BRIEFING_NOTES_ACCOUNT` |

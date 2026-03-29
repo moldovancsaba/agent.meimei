@@ -599,7 +599,7 @@ function clearCache() {
 }
 
 /**
- * Ollama-compatible non-streaming generate for external callers (e.g. Agent.Chappie worker).
+ * Ollama-compatible non-streaming generate for external callers (e.g. Checklist Python worker).
  * Body matches POST /api/generate shape: { model, prompt, stream?: false, format?, system?, options? }.
  */
 async function gatewayOllamaGenerate(payload) {

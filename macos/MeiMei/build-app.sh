@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Wrap the SwiftPM binary in a minimal .app with LSUIElement (no Dock icon).
-# Bundle name and executable are MeiMei (Spotlight + process name).
+# Display name: MeiMei Control. Executable remains MeiMei (SwiftPM product).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 swift build -c release
 BIN=".build/release/MeiMei"
-DEST="${1:-$ROOT/build/MeiMei.app}"
+DEST="${1:-$ROOT/build/MeiMei Control.app}"
 mkdir -p "$DEST/Contents/MacOS" "$DEST/Contents/Resources"
 cp "$BIN" "$DEST/Contents/MacOS/MeiMei"
 chmod +x "$DEST/Contents/MacOS/MeiMei"
@@ -35,7 +35,7 @@ fi
 
 mkdir -p "$ROOT/build"
 touch "$ROOT/build/.metadata_never_index"
-rm -rf "$ROOT/build/MeiMeiMenuBar.app"
+rm -rf "$ROOT/build/MeiMeiMenuBar.app" "$ROOT/build/MeiMei.app"
 
 icon_keys=""
 if [[ -f "$DEST/Contents/Resources/AppIcon.icns" ]]; then
@@ -54,9 +54,9 @@ cat >"$DEST/Contents/Info.plist" <<EOF
   <key>CFBundleIdentifier</key>
   <string>me.agent.meimei.menubar</string>
   <key>CFBundleName</key>
-  <string>MeiMei</string>
+  <string>MeiMei Control</string>
   <key>CFBundleDisplayName</key>
-  <string>MeiMei</string>$icon_keys
+  <string>MeiMei Control</string>$icon_keys
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

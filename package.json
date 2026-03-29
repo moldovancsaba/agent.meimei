@@ -1,6 +1,6 @@
 {
   "name": "agent-meimei",
-  "version": "0.8.0",
+  "version": "0.8.4",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,6 +9,8 @@
   "scripts": {
     "dashboard": "node dashboard/server.mjs",
     "dashboard:probe": "node scripts/meimei-dashboard-probe.mjs",
+    "dashboard:smoke:miniapps": "node scripts/meimei-dashboard-miniapps-smoke.mjs",
+    "boundary:check": "node scripts/meimei-repo-boundaries-check.mjs && node scripts/meimei-apps-cross-import-check.mjs",
     "config:seed": "node scripts/meimei-config.mjs seed",
     "config:export": "node scripts/meimei-config.mjs export-template",
     "readiness": "./scripts/oc-readiness",
@@ -45,9 +47,9 @@
     "menubar:services:start": "bash -c 'exec scripts/meimei-menubar-orchestrate-start.sh \"$PWD\"'",
     "menubar:services:stop": "bash -c 'exec scripts/meimei-menubar-orchestrate-stop.sh \"$PWD\"'",
     "start": "node dashboard/server.mjs",
-    "ci": "npm run registry:validate && npm run policy:validate && npm run audit:validate && npm run telemetry:validate && npm run handoff:validate -- handoffs/sample.stage-gate.v1.json && npm run adapter:whatsapp:validate && npm run imessage:validate && npm run release:gates -- releases/sample.release-gate.v1.json",
-    "agent-chappie:queue-consumer": "node scripts/agent-chappie-queue-consumer.mjs",
-    "agent-chappie:sync-checklist-theme": "node scripts/sync-agent-chappie-checklist-theme.mjs"
+    "ci": "npm run boundary:check && npm run registry:validate && npm run policy:validate && npm run audit:validate && npm run telemetry:validate && npm run handoff:validate -- handoffs/sample.stage-gate.v1.json && npm run adapter:whatsapp:validate && npm run imessage:validate && npm run release:gates -- releases/sample.release-gate.v1.json",
+    "checklist:queue-consumer": "node scripts/checklist-queue-consumer.mjs",
+    "checklist:sync-theme": "node scripts/sync-checklist-theme.mjs"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

@@ -168,3 +168,10 @@ As a MeiMei user, I want to enable or disable sources and sinks so that the brie
 - Treat source adapters and sink adapters as implementation details.
 - Keep Apple Notes as the default sink until a future product decision changes it.
 - Use `add-on` for this backlog layer, not a new function name.
+
+## Operator transport & secrets (R8 / R4)
+
+| Topic | Guidance |
+|-------|----------|
+| **Local vs TLS** | Operators typically use **HTTP loopback** to the dashboard (listen and bind from `config/dashboard-surface.v1.json`). With an HTTPS reverse proxy (`scripts/meimei-domain.mjs`, LaunchAgents), browser URLs gain **`MEIMEI_PUBLIC_PREFIX`** (often `/dashboard`). Registry **`api.path`** values are logical — prepend the public prefix when calling through TLS. |
+| **Secrets** | Use the MeiMei env store and [`meimei-env-ui-contract.v1.md`](../architecture/meimei-env-ui-contract.v1.md); one source of truth; no secrets embedded in static HTML or client bundles. |

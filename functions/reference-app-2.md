@@ -27,3 +27,10 @@ Optional **`MEIMEI_APP_INBOX_WORKER=0`** disables the inbox loop. **`MEIMEI_APP_
 |--------|--------|
 | `config` | Metadata + `enabled` |
 | `inbox` | Recent **`app_task`** rows for this inbox (debug) |
+
+## Operator transport & secrets (R8 / R4)
+
+| Topic | Guidance |
+|-------|----------|
+| **Local vs TLS** | Operators typically use **HTTP loopback** to the dashboard (listen and bind from `config/dashboard-surface.v1.json`). With an HTTPS reverse proxy (`scripts/meimei-domain.mjs`, LaunchAgents), browser URLs gain **`MEIMEI_PUBLIC_PREFIX`** (often `/dashboard`). Registry **`api.path`** values are logical — prepend the public prefix when calling through TLS. |
+| **Secrets** | Use the MeiMei env store and [`meimei-env-ui-contract.v1.md`](../architecture/meimei-env-ui-contract.v1.md); one source of truth; no secrets embedded in static HTML or client bundles. |

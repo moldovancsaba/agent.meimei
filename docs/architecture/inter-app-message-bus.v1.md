@@ -136,15 +136,15 @@ A sovereign app may run a simple cycle:
 
 ---
 
-## 8. Horizon: traceability (the “black box” trap)
+## 8. Traceability (Queue Explorer) — Milestone H
 
 With a single app and `inference_v1`, debugging is tractable: inspect the queue row, then Ollama / router logs.
 
 With **chains** (App A → `app_task` → B → `app_task` → C), SQLite becomes a **distributed state machine** in one file. If C **silently** drops or mis-routes work, A can wait **indefinitely** with no obvious error—pure “black box” pain.
 
-**Operational requirement immediately after Milestone G is proven:** **traceability** for operators. Plan a **Queue Explorer** (or equivalent) in the dashboard: read-only view of recent `meimei_jobs` rows with filters by `trace_id`, `adapter_name` / target, `kind`, and `status`, plus enough payload summary to reconstruct **lineage** (which job spawned which reply). This is not optional for running a local MAS in production; it is how you avoid weeks of printf archaeology.
+**Shipped (Milestone H):** Dashboard **System monitor** at **`/system-monitor`** (after `MEIMEI_PUBLIC_PREFIX`, e.g. `/dashboard/system-monitor`). Read-only UI polling **`GET /api/meimei/monitor/feed`** (~2.5s): unified **newest-first** stream of `app_task` + `inference_v1` rows with human-readable lines from denormalized `source_adapter` / `target_adapter` / intent. **Click a row** to filter by **`trace_id`** and show **chronological lineage** (ingress → inference → egress). **Claim Check:** if a row carries **`artifact_path`**, the UI shows a **📎 Artifact generated** line with the path only—no large body fetch into the browser. **No** retry / delete / edit.
 
-Exact UI and API shape are **TBD**; the product commitment is: **visual lineage of `app_task` traffic** before inter-app traffic grows past demo scale. The UI renders human-friendly lines (e.g. “Checklist requested … from Calendar”) from **structured rows**—never require apps to emit natural-language protocols on the bus.
+The UI renders friendly lines (e.g. `Ref-1 ➔ Ref-2 : [ping]`) from **structured columns + short payload hints**—apps do not emit natural-language protocols on the bus.
 
 ---
 

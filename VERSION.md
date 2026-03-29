@@ -3,12 +3,13 @@
 ## Current
 
 - Line: `foundation`
-- Version: `0.8.0`
-- Date: `2026-03-28`
-- Codename: `gtm-env-operator-726`
+- Version: `0.8.4`
+- Date: `2026-03-29`
+- Codename: `platform-phase0-boundaries-0.8.4`
 
 ## Included issue deliveries
 
+- **2026-03-29 — Phase 0 platform alignment (0.8.1–0.8.4):** Mandatory repo boundaries doc; Checklist POST shell + local Next proxy/page + HTTP bridge extracted from `dashboard/server.mjs`; lead-outreach / ai-sdr-analytics / supabase-connector / lead-enrichment handlers in `apps/*`; Apps·Tools·knowmore catalog HTML in `dashboard/lib/platform-pages/catalog-pages.mjs`; `npm run boundary:check` = single Checklist POST invariant + no `apps/*` → sibling `apps/*` imports; all `functions/*.md` gain **Operator transport & secrets (R8 / R4)**; MeiMei Checklist integration (`integrations/checklist-web/`, `dashboard/lib/checklist-node/*`, renamed scripts). See `docs/releases/CHANGELOG.md` and `docs/releases/DELIVERY-phase-0-2026-03-29.v1.md`.
 - `mvp-factory-control#631` - Supabase connector miniapp + Lead Enrichment `source: supabase` (PostgREST)
 - `mvp-factory-control#650` - Lead enrichment workflow queue and `workflow_*` API
 - `mvp-factory-control#651` - AI SDR analytics dashboard miniapp (SDR JSONL + workflow funnel)

@@ -40,7 +40,7 @@ async function buildDashboardSignals() {
     lines.push("- Apple Mail: status unknown. Do not invent unread counts.");
   }
   lines.push(
-    "- Checklist (#727): MeiMei Node engine by default (SQLite in data/agent-chappie + Ollama). HTTP bridge for the deployed Next app; set MEIMEI_AGENT_CHAPPIE_ENGINE=python + MEIMEI_AGENT_CHAPPIE_ROOT for the legacy worker. What next (#724) is MeiMei AI-ranked suggestions. Lead enrichment, AI SDR analytics (#651), Memory, Mission control, and Explain URL are also under Apps; Tools include Supabase connector and Environment variables."
+    "- Checklist (#727): MeiMei Node engine by default (SQLite in data/checklist + Ollama). HTTP bridge for the deployed Next app; set MEIMEI_CHECKLIST_ENGINE=python + MEIMEI_CHECKLIST_ROOT for the checklist-repo worker. What next (#724) is MeiMei AI-ranked suggestions. Lead enrichment, AI SDR analytics (#651), Memory, Mission control, and Explain URL are also under Apps; Tools include Supabase connector and Environment variables."
   );
   return lines.join("\n");
 }
@@ -72,7 +72,7 @@ export async function generateHomeSuggestions(repoRoot) {
 
 Rules:
 - The "suggestions" array MUST have length 3.
-- Each item maps to dashboard actions: checklist (Agent.Chappie), inbox, lead enrichment, memory, mission control, explain URL, what next (MeiMei AI suggestions), or teaching a fact.
+- Each item maps to dashboard actions: checklist, inbox, lead enrichment, memory, mission control, explain URL, what next (MeiMei AI suggestions), or teaching a fact.
 - Use ONLY the provided unread count from signals for email numbers; never invent counts.
 - Titles can be punchy (e.g. "You have 5 unread emails" when the signal says so).
 - exampleQuery must be a short phrase for the command bar.

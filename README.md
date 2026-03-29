@@ -39,7 +39,7 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 - `reliability-telemetry-baseline-v1.md` - baseline telemetry event schema and SLO summary metrics.
 - `design-system-v1.md` - centralized UI tokens/components/themes, **global layout system** (`.layout-flow` / `.layout-box`), and integration rules.
 - `config/page-layout.v1.json` - persisted per-page block order, spans, and desktop column count (edited from **Admin → Page layout**).
-- `macos/MeiMei/` - optional macOS menu bar app for the local dashboard (`npm run menubar:build`; `npm run menubar:install` copies **MeiMei.app** to `~/Applications` for Spotlight — see `macos/MeiMei/README.md`).
+- `macos/MeiMei/` - optional macOS menu bar control app **MeiMei Control** (`npm run menubar:build`; `npm run menubar:install` copies **MeiMei Control.app** to `~/Applications` for Spotlight — see `macos/MeiMei/README.md`).
 - `project-vocabulary-v1.md` - canonical product vocabulary and documentation wording rules.
 - `channel-adapter-contract-v1.md` - canonical interface for all channel adapters.
 - `channel-adapter-lifecycle-v1.md` - required ingress-to-delivery adapter lifecycle.
@@ -104,7 +104,7 @@ Current baseline includes:
 
 Current version line:
 
-- `foundation 0.8.0` (`gtm-env-operator-726`, `2026-03-28`)
+- `foundation 0.8.4` (`platform-phase0-boundaries-0.8.4`, `2026-03-29`) — prior train: `0.8.0` (`gtm-env-operator-726`, `2026-03-28`)
 
 Release metadata source of truth:
 
@@ -113,6 +113,20 @@ Release metadata source of truth:
 ## Next step
 
 Start by reading `agent.md`, `architecture.md`, and `skills/catalog.md`.
+
+## First launch (Product Owner / consumer path)
+
+MeiMei is meant to run under macOS `launchd` and be driven from Spotlight and the menu bar—not a permanent Terminal window. **Prerequisites (once per machine):** Node.js 22+, repo checkout, and `npm install` at the repo root (typical for whoever provisions the Mac: developer or IT).
+
+1. **One-time build and install:** Build **MeiMei Control** with `npm run menubar:build` (or `./macos/MeiMei/build-app.sh`), then install for Spotlight with `npm run menubar:install` (copies **MeiMei Control.app** to `~/Applications`). There is no prebuilt `.app` in the repo; details: `macos/MeiMei/README.md`.
+2. **Launch:** Spotlight (**⌘Space**), type **MeiMei Control** (or **meimei**), press Enter.
+3. **Repository path:** Prefer **`npm run menubar:install` from your checkout** — it records the path in **`~/.meimei/repository_root`** so **MeiMei Control** can start the platform without opening Preferences. Otherwise set **Preferences → MeiMei repository root**, or use **`~/Projects/agent.meimei`** (and similar) so auto-discovery finds it, or set **`MEIMEI_REPO_ROOT`**. Orange **triangle** means “no valid checkout found,” not “MeiMei is broken.”
+4. **Start the engine:** **Start MeiMei platform…**. This boots the LaunchAgents: dashboard HTTP on loopback **`127.0.0.1:45285`** and the HTTPS proxy on **`https://meimei.localhost:8443`** (defaults; see `config/dashboard-surface.v1.json` if customized).
+5. **Open UI:** **Open dashboard** → opens **`https://meimei.localhost:8443/dashboard/`** in the browser.
+6. **Enable reference apps:** In the UI go to **Tools → Environment variables**, set **`REFAPP_FEATURE_TOGGLE=1`**, save, then use **Restart** from the menu bar so the Node process reloads env.
+7. **Test the bus:** **Apps → Reference app 1** → **Send ping to App 2**. Ollama is **not** required for ping/pong. Optional: **Tools → System monitor** for a live read-only `meimei_jobs` feed and `trace_id` lineage.
+
+**Do not assume `localhost:3000`.** This stack’s default dashboard port is **45285** (HTTP); the usual consumer entry is **HTTPS on 8443** as above.
 
 ## Launch
 

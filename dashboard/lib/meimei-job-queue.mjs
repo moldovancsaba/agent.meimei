@@ -206,6 +206,25 @@ export function createMeimeiJobQueue(repoRoot) {
     LIMIT ?
   `);
 
+  /** Milestone H: read-only monitor feed — global newest-first, or full trace timeline ascending. */
+  const listMonitorGlobalStmt = db.prepare(`
+    SELECT id, trace_id, adapter_name, direction, status, payload, result_json, error_message,
+           created_at, updated_at, payload_kind, target_adapter, source_adapter
+    FROM meimei_jobs
+    WHERE COALESCE(payload_kind, 'inference_v1') IN ('inference_v1', 'app_task')
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `);
+
+  const listMonitorTraceStmt = db.prepare(`
+    SELECT id, trace_id, adapter_name, direction, status, payload, result_json, error_message,
+           created_at, updated_at, payload_kind, target_adapter, source_adapter
+    FROM meimei_jobs
+    WHERE trace_id = ?
+    ORDER BY created_at ASC, id ASC
+    LIMIT ?
+  `);
+
   return {
     dbPath,
 
@@ -325,6 +344,19 @@ export function createMeimeiJobQueue(repoRoot) {
     listAppTasksForTraceParty(traceId, partyAdapter, limit = 30) {
       const lim = Math.max(1, Math.min(100, Number(limit) || 30));
       return listTraceForPartyStmt.all(String(traceId), String(partyAdapter), String(partyAdapter), lim);
+    },
+
+    /**
+     * @param {{ limit?: number, traceId?: string | null }} opts
+     */
+    listMonitorFeed(opts = {}) {
+      const tid = opts.traceId && String(opts.traceId).trim();
+      if (tid) {
+        const lim = Math.max(1, Math.min(500, Number(opts.limit) || 200));
+        return listMonitorTraceStmt.all(tid, lim);
+      }
+      const lim = Math.max(1, Math.min(200, Number(opts.limit) || 100));
+      return listMonitorGlobalStmt.all(lim);
     }
   };
 }

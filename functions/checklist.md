@@ -9,7 +9,30 @@
 
 Competitor monitoring and decision-support tool. Migrated from standalone Original Checklist app.
 
-## Actions
+## POST dispatch (MeiMei dashboard)
+
+`dashboard/server.mjs` exposes **one** `POST` route for this API. Requests are routed as follows:
+
+1. **Checklist shell** — `action` omitted, empty, or one of `overview`, `worker_health`, `ensure_worker` → **`dashboard/lib/checklist-api-shell.mjs`** (`processChecklistShell` / `handleChecklistPostShell`). Matches `functions/registry.v1.json` examples.
+2. **Legacy JSON miniapp** — any other `action` → `apps/checklist/index.mjs` (competitors, pipeline, checklist CRUD, annotations).
+
+## MeiMei Checklist bridge & Node engine
+
+Hosted **consultant-followup-web** talks to the Mac via the dashboard HTTP bridge (not the `POST /api/functions/checklist` route above).
+
+| Item | Detail |
+|------|--------|
+| Bridge path | `/api/checklist/bridge` (after `MEIMEI_PUBLIC_PREFIX` strip internally — same pattern as other dashboard APIs; browser/proxy URL is often `/dashboard/api/checklist/bridge`) |
+| Registry shell | `dashboard/lib/checklist-api-shell.mjs` |
+| Local Next proxy + fallback page | `dashboard/lib/checklist-local-integration.mjs` (`tryProxyChecklistRequest`, `renderChecklistLocalShellPage`) |
+| HTTP bridge handler | `dashboard/lib/checklist-bridge-http.mjs` (`serveChecklistBridgeHttp`) |
+| Bridge + Node engine | `dashboard/lib/checklist-bridge.mjs`, `dashboard/lib/checklist-node/*` (`MEIMEI_CHECKLIST_ENGINE=node`) |
+| Auth | `MEIMEI_CHECKLIST_SHARED_SECRET` on MeiMei; requests must send `x-meimei-checklist-secret` with the same value (`GET /health` exempt when secret is set) |
+| Python worker | `MEIMEI_CHECKLIST_ENGINE=python` + `MEIMEI_CHECKLIST_ROOT` → localhost `worker_bridge.py`; MeiMei still maps secrets into the worker’s expected env |
+| Local SQLite (node) | Default `data/checklist/agent_brain.sqlite3` (override with `MEIMEI_CHECKLIST_DB_PATH`) |
+| Neon queue consumer | `npm run checklist:queue-consumer` — see `integrations/checklist-web/README.md` |
+
+## Actions (legacy JSON miniapp)
 
 | Action | Description |
 |--------|-------------|
@@ -61,8 +84,18 @@ curl -s -X POST http://127.0.0.1:45285/api/functions/checklist \
 
 - `dashboard/lib/llm.mjs` (callOllamaJson, parseJsonResponse)
 - `dashboard/lib/brain/index.mjs` (brain.log, brain.buildContext)
+- `checklist-api-shell.mjs` + `checklist-local-integration.mjs` + `checklist-bridge-http.mjs` + `checklist-bridge.mjs` + `checklist-node/*`
 - Ollama at localhost:11434
 
 ## Status
 
 ✅ Production — LLM-powered recommendations
+
+## Operator transport & secrets (R8 / R4)
+
+For Checklist-specific paths, headers (`x-meimei-checklist-secret`), and proxy URLs, see **MeiMei Checklist bridge & Node engine** above. General rules:
+
+| Topic | Guidance |
+|-------|----------|
+| **Local vs TLS** | Operators typically use **HTTP loopback** to the dashboard (listen and bind from `config/dashboard-surface.v1.json`). With an HTTPS reverse proxy (`scripts/meimei-domain.mjs`, LaunchAgents), browser URLs gain **`MEIMEI_PUBLIC_PREFIX`** (often `/dashboard`). Registry **`api.path`** values are logical — prepend the public prefix when calling through TLS. |
+| **Secrets** | Use the MeiMei env store and [`meimei-env-ui-contract.v1.md`](../architecture/meimei-env-ui-contract.v1.md); one source of truth; no secrets embedded in static HTML or client bundles. |

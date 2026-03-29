@@ -24,7 +24,7 @@ const KEYWORD_PATTERNS = [
   { intent: "learn_fact", keywords: ["remember that", "learn that", "note that", "save this", "remember this"] },
   {
     intent: "checklist",
-    keywords: ["agent chappie", "checklist app", "checklist", "chappie", "three moves", "competitive workspace"]
+    keywords: ["checklist app", "checklist", "three moves", "competitive workspace", "mei mei checklist"]
   },
   { intent: "get_recommendations", keywords: ["what next", "what should", "recommend", "prioritize", "priorities", "next step", "todo"] },
   { intent: "sdr_analytics", keywords: ["sdr analytics", "outreach metrics", "outreach dashboard", "campaign metrics"] },
@@ -87,7 +87,7 @@ enrich_lead = enrich a business contact or email
 check_inbox = check or read emails
 view_memory = view agent identity or stored knowledge
 check_status = check MeiMei system health or OpenClaw agents
-checklist = open Agent.Chappie Checklist (MeiMei shell + local worker bridge + online app)
+checklist = open Checklist (MeiMei shell + local worker bridge + online app)
 get_recommendations = ask what to do next or get AI priorities
 sdr_analytics = outbound / SDR metrics and funnel dashboard
 supabase_connector = Supabase database connector tool

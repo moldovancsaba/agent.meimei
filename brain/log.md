@@ -70,3 +70,12 @@
 [2026-03-28T22:27:57.101Z] Summarized URL: https://example.com
 [2026-03-29T06:07:43.208Z] Summarized URL: https://index.hu
 [2026-03-29T06:07:55.749Z] Summarized URL: https://index.hu
+[2026-03-29T11:09:07.284Z] Generated 3 recommendations
+[2026-03-29T11:09:31.848Z] Summarized URL: https://example.com
+[2026-03-29T11:09:32.569Z] Mission control viewed (filter: all)
+[2026-03-29T11:10:00.902Z] Generated 3 recommendations
+[2026-03-29T11:10:11.485Z] Summarized URL: https://example.com
+[2026-03-29T11:10:11.802Z] Mission control viewed (filter: all)
+[2026-03-29T12:04:08.010Z] Generated 3 recommendations
+[2026-03-29T12:04:30.562Z] Summarized URL: https://example.com
+[2026-03-29T12:04:30.913Z] Mission control viewed (filter: all)

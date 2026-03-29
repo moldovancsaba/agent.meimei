@@ -33,11 +33,15 @@ enum MeiMeiLaunchServices {
   private static let lastRepoKey = "meimei.lastRepoRoot"
   private static let startScriptName = "meimei-menubar-orchestrate-start.sh"
   private static let stopScriptName = "meimei-menubar-orchestrate-stop.sh"
+  /// Written by `npm run menubar:install` so Control finds the checkout without opening Preferences.
+  private static var repositoryRootFilePath: String {
+    NSHomeDirectory() + "/.meimei/repository_root"
+  }
 
   static func start() {
     guard let repo = resolveRepoRoot() else {
       servicesLog.warning(
-        "Missing agent.meimei repository root — set it in MeiMei → Preferences, or build the app inside the repo (macos/MeiMei/build)."
+        "Missing agent.meimei repository root — set it in MeiMei Control → Preferences, or build the app inside the repo (macos/MeiMei/build)."
       )
       return
     }
@@ -104,6 +108,39 @@ enum MeiMeiLaunchServices {
         return u.standardizedFileURL
       }
     }
+
+    if let u = repoRootFromInstallFile() {
+      persistRepoRootIfEmpty(u)
+      return u
+    }
+
+    if let raw = ProcessInfo.processInfo.environment["MEIMEI_REPO_ROOT"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !raw.isEmpty {
+      let u = URL(fileURLWithPath: (raw as NSString).expandingTildeInPath)
+      if FileManager.default.fileExists(atPath: u.appendingPathComponent("scripts/\(startScriptName)").path) {
+        persistRepoRootIfEmpty(u)
+        return u.standardizedFileURL
+      }
+    }
+
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let subs = [
+      "Projects/agent.meimei",
+      "Developer/agent.meimei",
+      "Projects/agent-meimei",
+      "Code/agent.meimei",
+      "workspace/agent.meimei",
+      "agent.meimei",
+      "src/agent.meimei"
+    ]
+    for sub in subs {
+      let u = home.appendingPathComponent(sub)
+      if FileManager.default.fileExists(atPath: u.appendingPathComponent("scripts/\(startScriptName)").path) {
+        persistRepoRootIfEmpty(u)
+        return u.standardizedFileURL
+      }
+    }
+
     var url = Bundle.main.bundleURL.standardizedFileURL
     for _ in 0..<12 {
       let candidate = url.appendingPathComponent("scripts/\(startScriptName)")
@@ -115,6 +152,30 @@ enum MeiMeiLaunchServices {
       url = parent
     }
     return nil
+  }
+
+  private static func repoRootFromInstallFile() -> URL? {
+    let path = repositoryRootFilePath
+    guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+          let s = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !s.isEmpty
+    else {
+      return nil
+    }
+    let u = URL(fileURLWithPath: (s as NSString).expandingTildeInPath)
+    guard FileManager.default.fileExists(atPath: u.appendingPathComponent("scripts/\(startScriptName)").path) else {
+      return nil
+    }
+    return u.standardizedFileURL
+  }
+
+  /// Fill Preferences field once so the UI matches reality (only when user left repo root empty).
+  private static func persistRepoRootIfEmpty(_ url: URL) {
+    let ud = UserDefaults.standard
+    let cur = ud.string(forKey: repoRootKey)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if cur.isEmpty {
+      ud.set(url.path, forKey: repoRootKey)
+    }
   }
 
   @discardableResult
@@ -208,6 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class PlatformHealthController: ObservableObject {
   enum Indicator: String {
     case unknown
+    case needsSetup
     case starting
     case healthy
     case unhealthy
@@ -217,19 +279,24 @@ final class PlatformHealthController: ObservableObject {
 
   private var healthURLString = "http://127.0.0.1:45285/api/health"
   private var pollTask: Task<Void, Never>?
+  /// After platform start, avoid showing red while Node/launchd comes up.
+  private var graceUntil: Date?
 
   var statusLine: String {
     switch indicator {
     case .unknown: return "Status: …"
+    case .needsSetup:
+      return "Cannot find agent.meimei checkout (see Preferences or run npm run menubar:install from the repo)"
     case .starting: return "Status: starting…"
     case .healthy: return "Status: healthy"
-    case .unhealthy: return "Status: unreachable"
+    case .unhealthy: return "Status: unreachable (is platform started?)"
     }
   }
 
   var menuBarSymbolName: String {
     switch indicator {
     case .unknown: return "circle.dashed"
+    case .needsSetup: return "exclamationmark.triangle.fill"
     case .starting: return "arrow.triangle.2.circlepath"
     case .healthy: return "checkmark.circle.fill"
     case .unhealthy: return "xmark.circle.fill"
@@ -239,15 +306,34 @@ final class PlatformHealthController: ObservableObject {
   var menuBarTint: Color {
     switch indicator {
     case .unknown: return .secondary
+    case .needsSetup: return .orange
     case .starting: return .orange
     case .healthy: return .green
     case .unhealthy: return .red
     }
   }
 
+  /// Read UserDefaults and start polling (or show needs-setup). Call when the menu bar item appears — menu content may be lazy-loaded.
+  func bootstrapFromDefaults() {
+    let raw = UserDefaults.standard.string(forKey: "meimei.healthCheckURL")?
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let url = raw.isEmpty ? "http://127.0.0.1:45285/api/health" : raw
+    let configured = MeiMeiLaunchServices.resolveRepoRootForMenu() != nil
+    configure(healthURLString: url, repositoryConfigured: configured)
+  }
+
   /// Call from the main thread (SwiftUI `onAppear` / `onChange`).
-  func configure(healthURLString url: String) {
+  func configure(healthURLString url: String, repositoryConfigured: Bool) {
+    pollTask?.cancel()
+    pollTask = nil
+    if !repositoryConfigured {
+      graceUntil = nil
+      indicator = .needsSetup
+      return
+    }
     healthURLString = url.trimmingCharacters(in: .whitespacesAndNewlines)
+    graceUntil = Date().addingTimeInterval(45)
+    indicator = .starting
     startPolling()
   }
 
@@ -256,13 +342,17 @@ final class PlatformHealthController: ObservableObject {
     pollTask = Task { [weak self] in
       guard let self else { return }
       while !Task.isCancelled {
-        let urlString = await MainActor.run { self.healthURLString }
+        let (urlString, grace) = await MainActor.run { (self.healthURLString, self.graceUntil) }
 
         let ok = await Self.fetchHealthOK(urlString: urlString)
         await MainActor.run {
           if ok {
+            self.graceUntil = nil
             self.indicator = .healthy
-          } else if self.indicator != .starting {
+          } else if let g = grace, Date() < g {
+            self.indicator = .starting
+          } else {
+            self.graceUntil = nil
             self.indicator = .unhealthy
           }
         }
@@ -273,6 +363,7 @@ final class PlatformHealthController: ObservableObject {
 
   func markStarting() {
     DispatchQueue.main.async {
+      self.graceUntil = Date().addingTimeInterval(45)
       self.indicator = .starting
     }
   }
@@ -314,7 +405,10 @@ struct MeiMeiApp: App {
       Image(systemName: platformHealth.menuBarSymbolName)
         .symbolRenderingMode(.palette)
         .foregroundStyle(platformHealth.menuBarTint, platformHealth.menuBarTint)
-        .accessibilityLabel("MeiMei \(platformHealth.indicator.rawValue)")
+        .accessibilityLabel("MeiMei Control \(platformHealth.indicator.rawValue)")
+        .onAppear {
+          platformHealth.bootstrapFromDefaults()
+        }
     }
     .menuBarExtraStyle(.menu)
 
@@ -327,105 +421,105 @@ struct MeiMeiApp: App {
 struct MenuRootView: View {
   @EnvironmentObject private var platformHealth: PlatformHealthController
   @AppStorage("meimei.baseURL") private var baseURL = "https://meimei.localhost:8443"
-  @AppStorage("meimei.openclawChatURL") private var openclawChatURL = "http://127.0.0.1:18789/chat?session=main"
   @AppStorage("meimei.healthCheckURL") private var healthCheckURL = "http://127.0.0.1:45285/api/health"
+  @AppStorage("meimei.repoRoot") private var repoRoot = ""
 
   @State private var platformBusy = false
 
-  /// Path on the HTTPS proxy (after host), default matches `functions/registry.v1.json` checklist route.
-  @AppStorage("meimei.checklistPublicPath") private var checklistPublicPath = "/dashboard/727/Checklist"
+  private var dashboardHomeURL: String {
+    "\(trimmedBase)/dashboard/"
+  }
 
   var body: some View {
+    Group {
     Text(platformHealth.statusLine)
-      .foregroundStyle(.secondary)
+      .foregroundStyle(platformHealth.indicator == .needsSetup ? Color.orange : Color.secondary)
       .disabled(true)
 
-    Divider()
+    if platformHealth.indicator == .needsSetup {
+      Group {
+        if #available(macOS 14.0, *) {
+          SettingsLink {
+            Text("Preferences…")
+          }
+        } else {
+          Button("Preferences…") {
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+          }
+        }
+      }
+      Text("Or reinstall: in the repo run npm run menubar:install")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      Divider()
+    }
 
-    Button("Start MeiMei platform…") {
+    Button("Start platform") {
       runPlatformStart()
     }
     .disabled(platformBusy)
 
-    Button("Stop MeiMei platform…") {
+    Button("Stop platform") {
       runPlatformStop()
     }
     .disabled(platformBusy)
 
-    Button("Restart MeiMei platform…") {
+    Button("Restart platform") {
       runPlatformRestart()
     }
     .disabled(platformBusy)
 
     Divider()
 
-    Button("Open dashboard") {
-      open("\(trimmedBase)/dashboard/")
+    Button("Open dashboard in browser") {
+      open(dashboardHomeURL)
     }
-    Button("Apps") {
-      open("\(trimmedBase)/apps")
-    }
-    Button("Tools") {
-      open("\(trimmedBase)/tools")
-    }
-    Button("Checklist (local Next)") {
-      open(checklistHomeURL)
-    }
-    Button("Checklist · MeiMei weekly pipeline") {
-      open("\(trimmedBase)\(normalizedChecklistPath)/original-checklist")
-    }
-    Button("knowmore") {
-      open("\(trimmedBase)/knowmore")
-    }
-    Button("Admin") {
-      open("\(trimmedBase)/admin")
-    }
+
     Divider()
-    Button("OpenClaw chat") {
-      open(openclawChatURL)
-    }
-    Divider()
-    Button("Copy dashboard URL") {
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString("\(trimmedBase)/dashboard/", forType: .string)
-    }
-    Button("Copy checklist URL") {
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(checklistHomeURL, forType: .string)
-    }
-    Divider()
+
     Button("Reveal control log") {
       NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: controlLogPath)])
     }
-    Button("Preferences…") {
-      NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+
+    Group {
+      if #available(macOS 14.0, *) {
+        SettingsLink {
+          Text("Preferences…")
+        }
+      } else {
+        Button("Preferences…") {
+          NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
+      }
     }
-    Button("Quit MeiMei") {
+
+    Button("Quit MeiMei Control") {
       NSApplication.shared.terminate(nil)
     }
+    }
     .onAppear {
-      platformHealth.configure(healthURLString: healthCheckURL)
+      refreshHealthConfiguration()
     }
-    .onChange(of: healthCheckURL) { new in
-      platformHealth.configure(healthURLString: new)
+    .onChange(of: healthCheckURL) { _ in
+      refreshHealthConfiguration()
     }
+    .onChange(of: repoRoot) { _ in
+      refreshHealthConfiguration()
+      if MeiMeiLaunchServices.resolveRepoRootForMenu() != nil {
+        DispatchQueue.global(qos: .userInitiated).async {
+          MeiMeiLaunchServices.start()
+        }
+      }
+    }
+  }
+
+  private func refreshHealthConfiguration() {
+    let configured = MeiMeiLaunchServices.resolveRepoRootForMenu() != nil
+    platformHealth.configure(healthURLString: healthCheckURL, repositoryConfigured: configured)
   }
 
   private var trimmedBase: String {
     baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-  }
-
-  private var normalizedChecklistPath: String {
-    var p = checklistPublicPath.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !p.hasPrefix("/") { p = "/" + p }
-    while p.count > 1, p.hasSuffix("/") {
-      p = String(p.dropLast())
-    }
-    return p
-  }
-
-  private var checklistHomeURL: String {
-    "\(trimmedBase)\(normalizedChecklistPath)/"
   }
 
   private func open(_ string: String) {
@@ -436,6 +530,13 @@ struct MenuRootView: View {
   private func runPlatformStart() {
     guard let repo = MeiMeiLaunchServices.resolveRepoRootForMenu() else {
       MeiMeiControlLog.append("Start: no repo root")
+      let a = NSAlert()
+      a.messageText = "Repository root required"
+      a.informativeText =
+        "MeiMei Control.app in Applications cannot find your agent.meimei checkout. Open Preferences → Local services and set “MeiMei repository root” (e.g. ~/Projects/agent.meimei), then try Start again."
+      a.alertStyle = .informational
+      a.addButton(withTitle: "OK")
+      a.runModal()
       return
     }
     platformBusy = true
@@ -448,7 +549,10 @@ struct MenuRootView: View {
         arguments: [repo.path],
         timeoutSeconds: 120
       )
-      await MainActor.run { platformBusy = false }
+      await MainActor.run {
+        platformBusy = false
+        refreshHealthConfiguration()
+      }
     }
   }
 
@@ -467,7 +571,10 @@ struct MenuRootView: View {
       } else {
         await MeiMeiLaunchServices.stopPlatformAsync()
       }
-      await MainActor.run { platformBusy = false }
+      await MainActor.run {
+        platformBusy = false
+        refreshHealthConfiguration()
+      }
     }
   }
 
@@ -492,16 +599,17 @@ struct MenuRootView: View {
         arguments: [repo.path],
         timeoutSeconds: 120
       )
-      await MainActor.run { platformBusy = false }
+      await MainActor.run {
+        platformBusy = false
+        refreshHealthConfiguration()
+      }
     }
   }
 }
 
 struct SettingsView: View {
   @AppStorage("meimei.baseURL") private var baseURL = "https://meimei.localhost:8443"
-  @AppStorage("meimei.openclawChatURL") private var openclawChatURL = "http://127.0.0.1:18789/chat?session=main"
   @AppStorage("meimei.repoRoot") private var repoRoot = ""
-  @AppStorage("meimei.checklistPublicPath") private var checklistPublicPath = "/dashboard/727/Checklist"
   @AppStorage("meimei.healthCheckURL") private var healthCheckURL = "http://127.0.0.1:45285/api/health"
 
   var body: some View {
@@ -509,7 +617,7 @@ struct SettingsView: View {
       Section {
         TextField("MeiMei repository root (agent.meimei checkout)", text: $repoRoot, prompt: Text("~/Projects/agent.meimei"))
           .help(
-            "Required if MeiMei.app is not inside the repo. On launch: starts HTTPS proxy + dashboard + health watcher. On quit: stops those services."
+            "Required if MeiMei Control.app is not inside the repo. On launch: starts HTTPS proxy + dashboard + health watcher. On quit: stops those services."
           )
       } header: {
         Text("Local services")
@@ -518,17 +626,13 @@ struct SettingsView: View {
         TextField("Health check URL (GET /api/health)", text: $healthCheckURL)
           .help("Loopback dashboard liveness; must match config/dashboard-surface.v1.json listen port (default 45285).")
       } header: {
-        Text("Menubar status")
+        Text("Status")
       }
       Section {
-        TextField("MeiMei base URL (no trailing slash)", text: $baseURL)
-        TextField("OpenClaw chat URL", text: $openclawChatURL)
-        TextField("Checklist path on proxy", text: $checklistPublicPath, prompt: Text("/dashboard/727/Checklist"))
-          .help(
-            "HTTPS path to the reverse-proxied checklist app (after host). Default matches the registry checklist miniapp. Weekly pipeline opens this path plus /original-checklist. Requires Next.js dev with MEIMEI_CHECKLIST_LOCAL_UPSTREAM and matching basePath."
-          )
+        TextField("HTTPS base URL (no trailing slash)", text: $baseURL)
+          .help("Used for Open dashboard / Apps / Tools links (default local proxy).")
       } header: {
-        Text("URLs")
+        Text("Browser")
       }
     }
     .padding()

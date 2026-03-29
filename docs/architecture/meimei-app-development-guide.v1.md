@@ -113,8 +113,8 @@ Miniapps that are **only** API backends still follow registry + contract docs fo
 ## 7. Registry, routes, and APIs
 
 1. Add or update **`functions/registry.v1.json`** (`id`, `route`, `api.path`, safety, capabilities).
-2. Wire **`dashboard/server.mjs`** (or `apps/<name>/`) to the registry-derived paths—**no hardcoded duplicate routes** for catalog titles.
-3. Document the function in **`functions/<id>.md`** (or equivalent) with API actions and env vars.
+2. Wire **`dashboard/server.mjs`** (thin router) and put product logic in **`apps/<registry-id>/index.mjs`** or an allowed **`dashboard/lib/*`** module per **`meimei-repo-boundaries.v1.md`**. Large catalog GET HTML belongs in **`dashboard/lib/platform-pages/*`**, not inline in `server.mjs`. **No** `apps/foo` importing **`apps/bar`** (CI: `meimei-apps-cross-import-check.mjs`).
+3. Document the function in **`functions/<id>.md`** with API actions, env vars, and **operator transport / secrets (R8 / R4)** (loopback vs TLS prefix, env SoT).
 
 ---
 
@@ -128,7 +128,8 @@ Miniapps that are **only** API backends still follow registry + contract docs fo
 
 ## 9. Testing & CI
 
-- **`npm run ci`** — registry, policy, audit, telemetry samples, adapter validators, release-gates sample.
+- **`npm run ci`** — includes **`npm run boundary:check`** (single Checklist POST branch in `server.mjs` + no forbidden **`apps/*` → `apps/*`** static imports), then registry, policy, audit, telemetry samples, adapter validators, release-gates sample.
+- **`npm run dashboard:smoke:miniapps`** — HTTP smoke against catalog APIs (optional strictness per runbook).
 - **Local:** `npm run dashboard` + adapter daemons as needed; use demo enqueue / file-drop / Obsidian paths for integration smoke tests.
 
 ---
@@ -145,12 +146,14 @@ Miniapps that are **only** API backends still follow registry + contract docs fo
 
 ## 12. Checklist for a new capability
 
-- [ ] Registry entry + contract doc updated  
+- [ ] Registry entry + contract doc updated (including **R8 / R4** transport + secrets section)  
+- [ ] Owning path declared in **`meimei-repo-boundaries.v1.md`** (or propose allowlist change)  
 - [ ] Secrets named per **`meimei-env-ui-contract.v1.md`**; catalog hints updated if common  
 - [ ] LLM work goes through **queue** and/or **`POST /api/meimei/route`**  
 - [ ] UI uses **design-system** classes and layout model  
-- [ ] No duplicate `.env` / JSON writers  
-- [ ] CHANGELOG Unreleased updated for operator-visible behavior  
+- [ ] No duplicate `.env` / JSON writers; **no** cross-`apps/*` imports for product logic  
+- [ ] **`npm run boundary:check`** passes after your change  
+- [ ] CHANGELOG / `docs/releases/CHANGELOG.md` updated for operator-visible behavior  
 
 ---
 

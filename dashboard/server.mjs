@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import http from "node:http";
-import https from "node:https";
 import dns from "node:dns/promises";
 import { readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -60,20 +59,8 @@ import {
   getMessageById,
   markAsRead,
   flagMessage,
-  getUnreadCount,
-  isMailAvailable,
-  createOutgoingDraft
+  getUnreadCount
 } from "./lib/mail-adapter.mjs";
-import { appendSdrEvent, loadSdrEvents, summarizeSdr } from "./lib/sdr-analytics.mjs";
-import {
-  enqueueWorkflowItem,
-  listWorkflowItems,
-  removeWorkflowItem,
-  skipWorkflowItem,
-  runWorkflowItem
-} from "./lib/lead-enrichment-workflow.mjs";
-import { buildGtmAnalyticsPayload } from "./lib/gtm-analytics.mjs";
-import { getSupabaseEnv, supabaseSelectRows, supabaseHealthPing } from "./lib/supabase-connector.mjs";
 import { routeToApp } from "./lib/app-router.mjs";
 import { handleApi as leadEnrichmentHandler } from "../apps/lead-enrichment/index.mjs";
 import { handleApi as inboxHandler } from "../apps/inbox/index.mjs";
@@ -84,6 +71,9 @@ import { handleApi as explainItHandler } from "../apps/explain-it/index.mjs";
 import { handleApi as dailyBriefingHandler } from "../apps/daily-briefing/index.mjs";
 import { handleApi as aiRoutingHandler } from "../apps/ai-routing/index.mjs";
 import { handleApi as checklistHandler } from "../apps/checklist/index.mjs";
+import { handleApi as leadOutreachHandler } from "../apps/lead-outreach/index.mjs";
+import { handleApi as aiSdrAnalyticsHandler } from "../apps/ai-sdr-analytics/index.mjs";
+import { handleApi as supabaseConnectorHandler } from "../apps/supabase-connector/index.mjs";
 import {
   getOpenClawHealth,
   getTelemetry,
@@ -99,24 +89,28 @@ import {
 import { handleReferenceAppQueueApi } from "./lib/reference-app-queue-api.mjs";
 import { handleReferenceApp2QueueApi } from "./lib/reference-app-2-queue-api.mjs";
 import { startReferenceApp2Inbox } from "./lib/meimei-reference-app-inbox.mjs";
+import { serveChecklistBridgeHttp } from "./lib/checklist-bridge-http.mjs";
 import {
-  AGENT_CHAPPIE_BRIDGE_PREFIX,
-  getAgentChappieConfig,
-  ensureWorkerRunning,
-  readRawBody,
-  forwardToWorker,
-  filterForwardResponseHeaders,
-  getAgentChappieRuntimeSummary,
-  isNodeAgentChappieEngine,
-  runNodeAgentChappieBridge
-} from "./lib/agent-chappie-bridge.mjs";
+  renderAppsPage as renderAppsPageCatalog,
+  renderToolsPage as renderToolsPageCatalog,
+  renderKnowmorePage as renderKnowmorePageCatalog
+} from "./lib/platform-pages/catalog-pages.mjs";
+import { renderSystemMonitorPage as renderSystemMonitorPagePlatform } from "./lib/platform-pages/system-monitor-page.mjs";
+import { handleChecklistPostShell } from "./lib/checklist-api-shell.mjs";
+import {
+  tryProxyChecklistRequest,
+  renderChecklistLocalShellPage
+} from "./lib/checklist-local-integration.mjs";
 import { handleMeimeiInferenceRoute } from "./lib/inference-route.mjs";
 import { startMeimeiJobWorker } from "./lib/meimei-job-worker.mjs";
+import { createMeimeiJobQueue } from "./lib/meimei-job-queue.mjs";
+import { formatMonitorFeedRows } from "./lib/meimei-monitor-feed.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 loadSyncAndApplyMeimeiEnv(repoRoot);
+const meimeiJobQueueRead = createMeimeiJobQueue(repoRoot);
 const publicDir = path.join(repoRoot, "public");
 const surface = loadDashboardSurfaceSync();
 const operatorScriptPaths = resolveOperatorScripts(surface, repoRoot);
@@ -142,561 +136,6 @@ async function callOllama(prompt, options = {}) {
   return result.response;
 }
 
-async function enrichLead({ source, sourceData, enrichmentLevel = "standard", priority = "medium" }) {
-  const leadId = "enriched_" + Math.random().toString(36).substring(2, 10);
-  const now = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  let input = "";
-  let prompt = "";
-
-  if (source === "linkedin") {
-    const profileUrl = sourceData.profileUrl || "";
-    input = profileUrl;
-    prompt = `You are a lead enrichment AI. Given a LinkedIn profile URL or username, generate a realistic professional profile.
-
-Input: ${input}
-
-Respond ONLY with a JSON object in this exact format:
-{
-  "name": "Full Name",
-  "title": "Job Title",
-  "company": "Company Name",
-  "companySize": "51-200",
-  "industry": "Technology",
-  "location": "City, State",
-  "linkedin": "${profileUrl.startsWith('http') ? profileUrl : 'https://linkedin.com/in/' + profileUrl}"
-}
-
-Make the data realistic and professional. No extra text, just JSON.`;
-  } else if (source === "email") {
-    const email = sourceData.email || "";
-    input = email;
-    const domain = email.split("@")[1] || "";
-    prompt = `You are a lead enrichment AI. Given an email address, generate a realistic professional profile.
-
-Input: ${input}
-Domain: ${domain}
-
-Respond ONLY with a JSON object in this exact format:
-{
-  "name": "Full Name",
-  "title": "Job Title",
-  "company": "${domain}",
-  "location": "City, State",
-  "email": "${email}"
-}
-
-Infer the name from the email prefix. Make data realistic. No extra text, just JSON.`;
-  } else if (source === "company") {
-    const domain = sourceData.domain || sourceData.company || "";
-    input = domain;
-    prompt = `You are a lead enrichment AI. Given a company domain, generate a realistic company profile.
-
-Input: ${input}
-
-Respond ONLY with a JSON object in this exact format:
-{
-  "company": "Company Name",
-  "domain": "${domain}",
-  "industry": "Technology",
-  "companySize": "51-200"
-}
-
-Make data realistic. No extra text, just JSON.`;
-  } else if (source === "phone") {
-    input = sourceData.phone || "";
-    prompt = `You are a lead enrichment AI. Given a phone number, generate a realistic profile.
-
-Input: ${input}
-
-Respond ONLY with a JSON object in this exact format:
-{
-  "phone": "${input}",
-  "location": "City, State"
-}
-
-No extra text, just JSON.`;
-  } else if (source === "crm") {
-    const crmProvider = String(sourceData.crmProvider || "crm").replace(/"/g, "'");
-    const externalId = String(sourceData.externalId || sourceData.recordId || "").replace(/"/g, "'");
-    const email = String(sourceData.email || "").trim();
-    const notes = String(sourceData.notes || "").slice(0, 2000);
-    let customBlock = "";
-    if (sourceData.customFields != null) {
-      try {
-        customBlock =
-          typeof sourceData.customFields === "object"
-            ? JSON.stringify(sourceData.customFields).slice(0, 4000)
-            : String(sourceData.customFields).slice(0, 4000);
-      } catch {
-        customBlock = "";
-      }
-    }
-    input = JSON.stringify({ crmProvider, externalId, email, notesLen: notes.length });
-    prompt = `You are a lead enrichment AI. The operator supplied fields from a CRM or CRM-style connector (issue #632). Expand into a single professional profile JSON. Treat provided fields as facts; infer only reasonable missing fields and keep confidence honest.
-
-CRM provider: ${crmProvider}
-External / record id: ${externalId}
-Email: ${email}
-Notes: ${notes}
-Custom fields (JSON or text): ${customBlock || "(none)"}
-
-Respond ONLY with JSON:
-{
-  "name": "Full name or best guess from email",
-  "title": "Job title if known or inferred weakly",
-  "company": "Company",
-  "companySize": "e.g. 51-200",
-  "industry": "Industry",
-  "location": "City, Region",
-  "email": "${email}",
-  "linkedin": "https://linkedin.com/in/... if unknown use empty string",
-  "crmProvider": "${crmProvider}",
-  "crmExternalId": "${externalId}"
-}
-No markdown, no commentary.`;
-  } else if (source === "supabase") {
-    let rows;
-    try {
-      rows = await supabaseSelectRows({
-        table: sourceData.table,
-        id: sourceData.id,
-        idColumn: sourceData.idColumn,
-        match: sourceData.match,
-        limit: sourceData.limit || 1
-      });
-    } catch (e) {
-      return {
-        ok: false,
-        error: e instanceof Error ? e.message : String(e)
-      };
-    }
-    if (!rows.length) {
-      return { ok: false, error: "Supabase query returned no rows (#631)." };
-    }
-    const row = rows[0];
-    input = JSON.stringify({ table: sourceData.table, row }).slice(0, 4000);
-    prompt = `You are a lead enrichment AI. The operator loaded a row from Supabase (connector #631). Treat JSON fields as facts; infer missing fields conservatively.
-
-Row JSON:
-${input}
-
-Respond ONLY with JSON:
-{
-  "name": "Full name or best guess",
-  "title": "Role",
-  "company": "Company",
-  "companySize": "e.g. 51-200",
-  "industry": "Industry",
-  "location": "City, Region",
-  "email": "email if present in row",
-  "linkedin": "URL or empty string",
-  "supabaseSource": "table ${String(sourceData.table || "").replace(/"/g, "'")}"
-}
-No markdown, no commentary.`;
-  }
-
-  if (!prompt.trim()) {
-    return { ok: false, error: "Unknown or unsupported lead source." };
-  }
-
-  try {
-    const result = await callOllamaJson(prompt, { model: "qwen3.5:0.8b" });
-    const profile = result.data;
-
-    if (!profile || Object.keys(profile).length === 0) {
-      return { ok: false, error: "Failed to parse LLM response as JSON. Raw response: " + result.raw.substring(0, 200) };
-    }
-
-    await brain.log(repoRoot, `Enriched lead: ${source} -> ${JSON.stringify(profile).substring(0, 50)}...`).catch(() => {});
-
-    const signals = [
-      { type: "ai_enriched", confidence: 0.78, detail: "Profile generated by local LLM (qwen3.5)" }
-    ];
-
-    if (source === "crm") {
-      signals.unshift({
-        type: "crm_connector",
-        confidence: 0.92,
-        detail: `CRM-style seed (#632) — provider ${String(sourceData.crmProvider || "unknown")}`
-      });
-    }
-    if (source === "supabase") {
-      signals.unshift({
-        type: "supabase_connector",
-        confidence: 0.9,
-        detail: `Supabase row (#631) — table ${String(sourceData.table || "unknown")}`
-      });
-    }
-
-    if (enrichmentLevel === "full") {
-      signals.push({ type: "full_enrichment", confidence: 0.85, detail: "Full enrichment with AI" });
-    }
-
-    const companySize = profile.companySize || "";
-    const computedPriority = companySize.includes("1000") || companySize.includes("+") ? "high" : priority;
-
-    return {
-      ok: true,
-      lead: {
-        id: leadId,
-        source: source,
-        sourceData: sourceData,
-        profile: profile,
-        signals: signals,
-        priority: computedPriority,
-        enrichedAt: now
-      },
-      audit: {
-        enrichmentSources:
-          source === "crm"
-            ? [source, "crm-connector#632", "ollama/qwen3.5:0.8b"]
-            : source === "supabase"
-              ? [source, "supabase-connector#631", "ollama/qwen3.5:0.8b"]
-              : [source, "ollama/qwen3.5:0.8b"],
-        confidence: enrichmentLevel === "full" ? 0.85 : 0.78,
-        expiresAt: expiresAt
-      }
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: `LLM enrichment failed: ${error.message}`
-    };
-  }
-}
-
-/** Lead enrichment workflow — mvp-factory-control#650 */
-async function processLeadEnrichmentWorkflow(body = {}, repoRoot) {
-  const action = String(body.action || "");
-  if (action === "workflow_overview") {
-    return {
-      ok: true,
-      issue: 650,
-      title: "Lead enrichment workflow",
-      summary:
-        "Queue leads on disk, run the same enrich pipeline as #649 per item, then hand off to Lead outreach (#653).",
-      stages: [
-        { id: "queued", label: "Queued — waiting for enrich" },
-        { id: "enriched", label: "Enriched — ready for outreach" },
-        { id: "failed", label: "Failed — fix data and Run again" },
-        { id: "skipped", label: "Skipped — intentionally passed" }
-      ],
-      storeFile: "data/lead-enrichment-workflow.v1.json",
-      links: {
-        leadEnrichment: leadEnrichmentRoute,
-        leadOutreach: leadOutreachRoute,
-        issue650: "https://github.com/moldovancsaba/mvp-factory-control/issues/650"
-      }
-    };
-  }
-  if (action === "workflow_list") {
-    return listWorkflowItems(repoRoot);
-  }
-  if (action === "workflow_enqueue") {
-    return enqueueWorkflowItem(repoRoot, {
-      source: body.source,
-      sourceData: body.sourceData,
-      enrichmentLevel: body.enrichmentLevel,
-      priority: body.priority,
-      label: body.label
-    });
-  }
-  if (action === "workflow_remove") {
-    return removeWorkflowItem(repoRoot, body.workflowId || body.id);
-  }
-  if (action === "workflow_skip") {
-    return skipWorkflowItem(repoRoot, body.workflowId || body.id);
-  }
-  if (action === "workflow_run") {
-    return runWorkflowItem(repoRoot, body.workflowId || body.id, enrichLead);
-  }
-  return {
-    ok: false,
-    error:
-      "Unknown workflow action. Use workflow_overview, workflow_list, workflow_enqueue, workflow_run, workflow_skip, or workflow_remove."
-  };
-}
-
-/** AI SDR analytics dashboard — mvp-factory-control#651 */
-async function processAiSdrAnalytics(body = {}, repoRoot) {
-  const action = String(body.action || "overview");
-  if (action === "overview") {
-    return {
-      ok: true,
-      issue: 651,
-      title: "AI SDR analytics",
-      summary:
-        "Unified view of outbound events (#654 JSONL) and lead workflow queue (#650). Local files only; both paths are gitignored.",
-      links: {
-        leadOutreach: leadOutreachRoute,
-        leadEnrichment: leadEnrichmentRoute,
-        issue651: "https://github.com/moldovancsaba/mvp-factory-control/issues/651"
-      }
-    };
-  }
-  if (action === "metrics") {
-    const payload = await buildGtmAnalyticsPayload(repoRoot);
-    return { ok: true, ...payload };
-  }
-  return { ok: false, error: "Unknown action. Use overview or metrics." };
-}
-
-/** Supabase connector — mvp-factory-control#631 */
-async function processSupabaseConnector(body = {}) {
-  const action = String(body.action || "overview");
-  if (action === "overview") {
-    const env = getSupabaseEnv();
-    return {
-      ok: true,
-      issue: 631,
-      title: "Supabase connector",
-      summary:
-        "PostgREST access for Lead Enrichment (source supabase) and operator previews. Set MEIMEI_SUPABASE_URL and MEIMEI_SUPABASE_SERVICE_ROLE or MEIMEI_SUPABASE_ANON_KEY.",
-      configured: env.configured,
-      links: {
-        leadEnrichment: leadEnrichmentRoute,
-        issue631: "https://github.com/moldovancsaba/mvp-factory-control/issues/631"
-      }
-    };
-  }
-  if (action === "health") {
-    const testTable = String(body.testTable || body.table || "").trim();
-    const ping = await supabaseHealthPing(testTable || null);
-    return { ok: true, issue: 631, action: "health", ...ping };
-  }
-  if (action === "preview_fetch") {
-    try {
-      const rows = await supabaseSelectRows({
-        table: body.table,
-        id: body.id,
-        idColumn: body.idColumn,
-        match: body.match,
-        limit: body.limit || 5
-      });
-      return {
-        ok: true,
-        issue: 631,
-        action: "preview_fetch",
-        rowCount: rows.length,
-        rows
-      };
-    } catch (e) {
-      return {
-        ok: false,
-        issue: 631,
-        error: e instanceof Error ? e.message : String(e)
-      };
-    }
-  }
-  return { ok: false, error: "Unknown action. Use overview, health, or preview_fetch." };
-}
-
-/** Agent.Chappie — MeiMei shell + HTTP bridge to local Python worker (SQLite, BI); online Next app + Neon unchanged. */
-async function processChecklist(body = {}) {
-  const action = String(body.action || "overview");
-  const runtime = await getAgentChappieRuntimeSummary(repoRoot, port);
-  const bridgeBase = AGENT_CHAPPIE_BRIDGE_PREFIX;
-  const upstream = checklistUpstreamOrigin();
-  const pathPrefix = checklistUpstreamPathPrefix();
-  if (action === "overview") {
-    return {
-      ok: true,
-      title: "Checklist (Agent.Chappie)",
-      summary:
-        "The checklist **Next.js operator UI** is reverse-proxied from this path to your local dev server (default `http://127.0.0.1:3000` + `/checklist`). Set `MEIMEI_CHECKLIST_LOCAL_UPSTREAM` / `MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX` if needed; set `MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none` to disable proxy and show the runtime shell only.",
-      checklistLocalUpstream: upstream,
-      checklistUpstreamPathPrefix: pathPrefix,
-      checklistBrowserPath: browserPathForNormalized(checklistPublicPath),
-      openPath: checklistPublicPath,
-      repo: "https://github.com/moldovancsaba/checklist",
-      runtime,
-      bridgePath: bridgeBase,
-      nextEnvHint: {
-        AGENT_BRIDGE_MODE: "worker",
-        AGENT_API_BASE_URL: `http://127.0.0.1:${port}${bridgeBase}`,
-        note: "Use https + /dashboard prefix when using the TLS proxy; mirror AGENT_SHARED_SECRET with MEIMEI_AGENT_CHAPPIE_SHARED_SECRET."
-      },
-      queueConsumer: {
-        when: "Hosted app uses AGENT_BRIDGE_MODE=queue + Neon; Node engine on a Mac pulls jobs and posts job_result + workspace back.",
-        command: "npm run agent-chappie:queue-consumer",
-        env: ["APP_QUEUE_BASE_URL", "WORKER_QUEUE_SHARED_SECRET", "MEIMEI_AGENT_CHAPPIE_ENGINE=node (default)"],
-        themeSync: "npm run agent-chappie:sync-checklist-theme with CHECKLIST_WEB_APP set"
-      },
-      weeklyPipeline: {
-        path: `${pathPrefix.replace(/\/$/, "")}/original-checklist`,
-        note: "Mongo + Playwright weekly pipeline in Next. LLM via ORIGINAL_PIPELINE_MEIMEI_GATEWAY_URL → this dashboard /api/llm/gateway/generate. See integrations/agent-chappie-checklist/README.md."
-      }
-    };
-  }
-  if (action === "worker_health") {
-    return { ok: true, action: "worker_health", ...runtime.workerHealth, runtime };
-  }
-  if (action === "ensure_worker") {
-    const cfg = getAgentChappieConfig(repoRoot);
-    const out = await ensureWorkerRunning(cfg, port);
-    return {
-      ok: out.ok,
-      action: "ensure_worker",
-      ...out,
-      runtime: await getAgentChappieRuntimeSummary(repoRoot, port)
-    };
-  }
-  return { ok: false, error: "Unknown action. Use overview, worker_health, or ensure_worker." };
-}
-
-async function processLeadOutreach(body = {}, repoRoot) {
-  const action = String(body.action || "overview");
-  if (action === "overview") {
-    return {
-      ok: true,
-      issue: 653,
-      title: "Lead outreach",
-      summary: "Hyper-personalized cold email campaigns (board #653).",
-      addon: {
-        issue: 654,
-        title: "AI SDR and email engine",
-        note: "Delivered: Mail draft compose + outbound log + analytics (actions sdr_send, sdr_analytics, sdr_track)."
-      },
-      links: {
-        leadEnrichment: "/649/Lead_enrichment",
-        issue653: "https://github.com/moldovancsaba/mvp-factory-control/issues/653",
-        issue654: "https://github.com/moldovancsaba/mvp-factory-control/issues/654"
-      },
-      nextSteps: [
-        "Enrich leads in Lead Enrichment (#649); CRM (#632) or Supabase (#631).",
-        "draft_touch — generate subject + body.",
-        "sdr_send — open Apple Mail draft (macOS) or log-only; events in data/sdr-outbound.jsonl (gitignored).",
-        "Full funnel: AI SDR analytics miniapp (#651). sdr_analytics here — quick counts; sdr_track — outcomes."
-      ]
-    };
-  }
-  if (action === "draft_touch") {
-    const campaignName = String(body.campaignName || "Outbound").slice(0, 120);
-    const leadSummary = String(body.leadSummary || "").slice(0, 2000);
-    const tone = String(body.tone || "concise, respectful B2B").slice(0, 200);
-    const prompt = `You write one cold email touch for an outbound campaign.
-
-Campaign name: ${campaignName}
-Desired tone: ${tone}
-Lead / account context (from enrichment or CRM):
-${leadSummary || "(none supplied)"}
-
-Return ONLY valid JSON with keys subjectLine (string) and body (string, plain text email). No markdown fences.`;
-    const result = await callOllamaJson(prompt, {
-      model: "qwen3.5:0.8b",
-      maxTokens: 600,
-      temperature: 0.4
-    });
-    const draft = result.data && typeof result.data === "object" ? result.data : {};
-    return {
-      ok: true,
-      action: "draft_touch",
-      campaignName,
-      draft: {
-        subjectLine: String(draft.subjectLine || "").trim(),
-        body: String(draft.body || "").trim()
-      },
-      addon: {
-        issue: 654,
-        note: "Use sdr_send to open Mail draft or log; sdr_analytics for metrics."
-      },
-      model: result.meta?.model || null
-    };
-  }
-  if (action === "sdr_send") {
-    const root = repoRoot || process.cwd();
-    const toEmail = String(body.toEmail || body.to || "").trim();
-    const subjectLine = String(body.subjectLine || "").trim();
-    const bodyText = String(body.body || "").trim();
-    const campaignName = String(body.campaignName || "").slice(0, 120);
-    if (!toEmail || !subjectLine) {
-      return { ok: false, error: "sdr_send requires toEmail and subjectLine (body recommended)." };
-    }
-    const eventId = "sdr_" + Math.random().toString(36).slice(2, 12);
-    await appendSdrEvent(root, {
-      type: "send_attempt",
-      eventId,
-      issue: 654,
-      toEmail,
-      subjectLine,
-      campaignName: campaignName || undefined,
-      bodyChars: bodyText.length
-    });
-    let mode = "logged_only";
-    let detail = "Event recorded. Mail not opened.";
-    try {
-      const mailUp = await isMailAvailable();
-      if (mailUp) {
-        await createOutgoingDraft({ to: toEmail, subject: subjectLine, body: bodyText || " " });
-        mode = "apple_mail_draft";
-        detail = "Apple Mail opened with a new outgoing message — review and send manually.";
-        await appendSdrEvent(root, {
-          type: "mail_draft_opened",
-          eventId,
-          issue: 654,
-          toEmail,
-          subjectLine,
-          campaignName: campaignName || undefined
-        });
-      }
-    } catch (e) {
-      await appendSdrEvent(root, {
-        type: "mail_draft_error",
-        eventId,
-        issue: 654,
-        error: e instanceof Error ? e.message : String(e)
-      });
-      detail = `Logged; Mail draft failed: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    await brain.log(root, `SDR #654 ${mode}: ${toEmail} — ${subjectLine.slice(0, 60)}`).catch(() => {});
-    return {
-      ok: true,
-      issue: 654,
-      action: "sdr_send",
-      eventId,
-      mode,
-      message: detail
-    };
-  }
-  if (action === "sdr_analytics") {
-    const root = repoRoot || process.cwd();
-    const events = await loadSdrEvents(root);
-    const summary = summarizeSdr(events);
-    return {
-      ok: true,
-      issue: 654,
-      action: "sdr_analytics",
-      ...summary,
-      recent: events.slice(-30).reverse()
-    };
-  }
-  if (action === "sdr_track") {
-    const root = repoRoot || process.cwd();
-    const trackType = String(body.trackType || "note").slice(0, 64);
-    const note = String(body.note || "").slice(0, 2000);
-    const relatedEventId = String(body.relatedEventId || "").slice(0, 64);
-    const campaignName = String(body.campaignName || "").slice(0, 120);
-    if (!note.trim()) {
-      return { ok: false, error: "sdr_track requires a note (e.g. replied, booked, bounce)." };
-    }
-    await appendSdrEvent(root, {
-      type: "track",
-      issue: 654,
-      trackType,
-      note,
-      relatedEventId: relatedEventId || undefined,
-      campaignName: campaignName || undefined
-    });
-    return { ok: true, issue: 654, action: "sdr_track" };
-  }
-  return {
-    ok: false,
-    error: "Unknown action. Use overview, draft_touch, sdr_send, sdr_analytics, or sdr_track."
-  };
-}
-
 const miniappCfg = miniappRuntimeConfig(loadRegistrySync());
 const miniappIssueRoute = miniappCfg.miniappIssueRoute;
 const dashboardCatalog = miniappCfg.catalog;
@@ -709,6 +148,20 @@ const checklistIssueId = R["checklist"]?.issueId ?? 727;
 const checklistPublicPath = `/${checklistIssueId}${checklistRoute}`;
 const checklistApiRoute = R["checklist"]?.apiPath || "/dashboard/api/functions/checklist";
 const checklistLabel = R["checklist"]?.displayName || "Checklist";
+
+/**
+ * Registry checklist POST — delegates shell actions to `dashboard/lib/checklist-api-shell.mjs` (Phase 0).
+ * Legacy JSON miniapp: `apps/checklist/index.mjs`. One route: `npm run boundary:check`.
+ */
+async function handleChecklistPost(req, body, repoRootArg) {
+  return handleChecklistPostShell(req, body, repoRootArg, {
+    checklistHandler,
+    repoRoot: repoRootArg,
+    port,
+    checklistPublicPath,
+    browserPathForNormalized
+  });
+}
 const whatNextRoute = R["what-next"]?.internalPath || "/724/What_next";
 const whatNextApiRoute = R["what-next"]?.apiPath || "/api/functions/what-next";
 const whatNextLabel = R["what-next"]?.displayName || "What next?";
@@ -790,6 +243,10 @@ const pageLayoutApiRoute = surface.api.pageLayout || "/api/page-layout";
 const healthApiRoute = surface.api.health || "/api/health";
 /** MeiMei inference plane — OpenAI-shaped blocking router; see docs/api/inference-route.v1.md */
 const meimeiInferenceRoute = "/api/meimei/route";
+/** Milestone H — read-only `meimei_jobs` monitor feed (JSON). */
+const meimeiMonitorFeedApiRoute = "/api/meimei/monitor/feed";
+/** Browser path after MEIMEI_PUBLIC_PREFIX strip — System Monitor ("Queue Explorer") UI. */
+const systemMonitorRoute = "/system-monitor";
 const designSystemCssPath = surface.designSystemCssPath;
 const staticPrefixes = surface.staticPrefixes;
 const listenHost = surface.server.bindHost;
@@ -1316,156 +773,6 @@ function browserPathForNormalized(normPath) {
   return `${raw}${normPath.startsWith("/") ? normPath : `/${normPath}`}`;
 }
 
-/**
- * Origin of the local checklist Next.js server (reverse proxy). Default http://127.0.0.1:3000.
- * Set MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none|false|0|off to disable proxy (runtime shell page only).
- */
-function checklistUpstreamOrigin() {
-  const raw = String(process.env.MEIMEI_CHECKLIST_LOCAL_UPSTREAM ?? "").trim();
-  const lower = raw.toLowerCase();
-  if (lower === "none" || lower === "false" || lower === "0" || lower === "off") return null;
-  const u = raw || "http://127.0.0.1:3000";
-  return u.replace(/\/+$/, "");
-}
-
-/** Path prefix on the Next app (must match next.config basePath), default /checklist */
-function checklistUpstreamPathPrefix() {
-  let p = String(process.env.MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX ?? "/checklist").trim();
-  if (!p.startsWith("/")) p = `/${p}`;
-  return p.replace(/\/+$/, "") || "/checklist";
-}
-
-function browserPathForChecklist() {
-  return browserPathForNormalized(checklistPublicPath).replace(/\/+$/, "") || checklistPublicPath;
-}
-
-function rewriteSetCookiePathForChecklist(cookie, meiBrowserBase) {
-  return cookie.replace(/;\s*path=(\/checklist)(\/[^;]*|)(?=[;]|$)/gi, (_m, _base, sub) => {
-    const suffix = sub || "";
-    return `; path=${meiBrowserBase}${suffix}`;
-  });
-}
-
-function rewriteChecklistLocationHeader(loc, req, meiBrowserBase) {
-  const origin = checklistUpstreamOrigin();
-  if (!origin) return loc;
-  try {
-    const abs = new URL(loc, `${origin}/`);
-    const upOrigin = new URL(origin);
-    const upPrefix = checklistUpstreamPathPrefix();
-    if (abs.origin !== upOrigin.origin) return loc;
-    if (!abs.pathname.startsWith(upPrefix)) return loc;
-    const rest = abs.pathname.slice(upPrefix.length) || "";
-    const meiPath = `${meiBrowserBase}${rest}`;
-    const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
-    const host = String(req.headers.host || "127.0.0.1").split(",")[0].trim();
-    return `${proto}://${host}${meiPath}${abs.search}`;
-  } catch {
-    return loc;
-  }
-}
-
-function filterChecklistProxyResponseHeaders(rawHeaders, req, meiBrowserBase) {
-  const out = {};
-  const skip = new Set(["connection", "transfer-encoding", "content-length"]);
-  for (const key of Object.keys(rawHeaders)) {
-    const kl = key.toLowerCase();
-    if (skip.has(kl)) continue;
-    const v = rawHeaders[key];
-    if (v === undefined) continue;
-    if (kl === "set-cookie") {
-      const arr = Array.isArray(v) ? v : [v];
-      out["set-cookie"] = arr.map((c) => rewriteSetCookiePathForChecklist(String(c), meiBrowserBase));
-    } else if (kl === "location") {
-      out[key] = rewriteChecklistLocationHeader(String(v), req, meiBrowserBase);
-    } else {
-      out[key] = v;
-    }
-  }
-  return out;
-}
-
-function copyRequestHeadersForProxy(req, hostHeader) {
-  const out = {};
-  for (const [k, v] of Object.entries(req.headers)) {
-    if (v == null) continue;
-    const kl = k.toLowerCase();
-    if (kl === "host" || kl === "connection") continue;
-    out[k] = Array.isArray(v) ? v.join(", ") : v;
-  }
-  out.host = hostHeader;
-  return out;
-}
-
-/**
- * Reverse-proxy checklist miniapp paths to local Next.js (full app, not an iframe).
- * @returns {Promise<boolean>} true if the request was handled (including errors written to res)
- */
-async function tryProxyChecklistRequest(req, res, incomingUrl, normalizedPath) {
-  const origin = checklistUpstreamOrigin();
-  if (!origin) return false;
-  if (!(normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`))) {
-    return false;
-  }
-  const methods = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
-  if (!methods.includes(req.method)) return false;
-
-  const up = new URL(origin);
-  const pathPrefix = checklistUpstreamPathPrefix();
-  let tail = "";
-  if (normalizedPath === checklistPublicPath || normalizedPath === `${checklistPublicPath}/`) {
-    tail = "";
-  } else {
-    tail = normalizedPath.slice(checklistPublicPath.length);
-    if (!tail.startsWith("/")) tail = `/${tail}`;
-  }
-  const upstreamPath = tail === "" || tail === "/" ? `${pathPrefix}/` : `${pathPrefix}${tail}`;
-  const pathWithQuery = upstreamPath + (incomingUrl.search || "");
-
-  const lib = up.protocol === "https:" ? https : http;
-  const defPort = up.protocol === "https:" ? 443 : 80;
-  const portNum = up.port ? Number(up.port) : defPort;
-  const hostHeader =
-    portNum === defPort ? up.hostname : `${up.hostname}:${portNum}`;
-
-  const meiBrowserBase = browserPathForChecklist();
-  const headers = copyRequestHeadersForProxy(req, hostHeader);
-
-  return new Promise((resolve) => {
-    const opts = {
-      protocol: up.protocol,
-      hostname: up.hostname,
-      port: up.port ? Number(up.port) : undefined,
-      method: req.method,
-      path: pathWithQuery,
-      headers
-    };
-    const preq = lib.request(opts, (pres) => {
-      const rh = filterChecklistProxyResponseHeaders(pres.headers, req, meiBrowserBase);
-      res.writeHead(pres.statusCode ?? 502, rh);
-      pres.pipe(res);
-      pres.on("end", () => resolve(true));
-    });
-    preq.on("error", () => {
-      if (!res.headersSent) {
-        res.writeHead(502, {
-          "content-type": "text/plain; charset=utf-8",
-          "cache-control": "no-store, max-age=0"
-        });
-        res.end(
-          "Checklist upstream unreachable. Start Next.js in consultant-followup-web (e.g. npm run dev on port 3000 with basePath /checklist), or set MEIMEI_CHECKLIST_LOCAL_UPSTREAM. Disable proxy with MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none to see the MeiMei runtime shell instead.\n"
-        );
-      }
-      resolve(true);
-    });
-    if (req.method === "GET" || req.method === "HEAD") {
-      preq.end();
-    } else {
-      req.pipe(preq);
-    }
-  });
-}
-
 function resolveMiniappRoute(pathname) {
   const idMatch = pathname.match(/^\/(\d+)(?:\/[^/]+)?$/);
   if (!idMatch) return null;
@@ -1769,211 +1076,38 @@ function renderPage(state, lastResult, layoutDoc) {
 </html>`;
 }
 
-function renderAppsPage(layoutDoc) {
-  const apps = miniappRuntimeConfig(loadRegistrySync()).catalog.filter((c) => c.category === "apps");
-  const cardsHtml = apps.map((app) => renderFlashcard({
-    kind: `APP #${app.issueId}`,
-    title: app.name,
-    content: toSummary160(app.description),
-    href: app.route,
-    settingsHref: app.id === "checklist" ? "" : `${app.route}/settings`
-  })).join("");
+/** Deps for `dashboard/lib/platform-pages/catalog-pages.mjs` (Apps / Tools / knowmore GET). */
+function catalogPageUiDeps() {
+  return {
+    loadRegistrySync,
+    miniappRuntimeConfig,
+    renderFlashcard,
+    toSummary160,
+    escapeHtml,
+    designSystemCssPath,
+    renderGlobalNav,
+    renderGlobalNavScript,
+    browserPathForNormalized,
+    systemMonitorRoute,
+    knowmoreReleases,
+    knowmoreBoardUrl,
+    surface,
+    buildLayoutFlowHtml,
+    escapeAttr,
+    resolveIssueUrl
+  };
+}
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Apps - agent.meimei</title>
-  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-</head>
-<body data-page="apps" data-theme="green">
-  <div class="shell">
-    <div class="topnav">
-      <h1 class="title">Apps</h1>
-      ${renderGlobalNav("apps")}
-    </div>
-    <section class="card section">
-      <h2>Your tools</h2>
-      <p class="sub">Everyday tasks at your fingertips.</p>
-      <div class="ds-flashcard-grid">${cardsHtml}</div>
-    </section>
-  </div>
-  <script>
-    ${renderGlobalNavScript()}
-  </script>
-</body>
-</html>`;
+function renderAppsPage(layoutDoc) {
+  return renderAppsPageCatalog(layoutDoc, catalogPageUiDeps());
 }
 
 function renderToolsPage(layoutDoc) {
-  const tools = miniappRuntimeConfig(loadRegistrySync()).catalog.filter((c) => c.category === "tools");
-  const cardsHtml = tools.map((app) => renderFlashcard({
-    kind: `TOOL #${app.issueId}`,
-    title: app.name,
-    content: toSummary160(app.description),
-    href: app.route,
-    settingsHref: `${app.route}/settings`
-  })).join("");
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tools - agent.meimei</title>
-  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-</head>
-<body data-page="tools" data-theme="blue">
-  <div class="shell">
-    <div class="topnav">
-      <h1 class="title">Tools</h1>
-      ${renderGlobalNav("tools")}
-    </div>
-    <section class="card section">
-      <h2>System configuration</h2>
-      <p class="sub">Configure and manage the system.</p>
-      <div class="ds-flashcard-grid">${cardsHtml}</div>
-    </section>
-  </div>
-  <script>
-    ${renderGlobalNavScript()}
-  </script>
-</body>
-</html>`;
+  return renderToolsPageCatalog(layoutDoc, catalogPageUiDeps());
 }
 
 function renderKnowmorePage(layoutDoc) {
-  const releases = knowmoreReleases.map((item) => ({
-    ...item,
-    state: item.state === "closed" ? "closed" : "open",
-    summary: toSummary160(item.summary),
-    issueUrl: resolveIssueUrl(surface, item.issue)
-  }));
-  const releaseJson = JSON.stringify(releases).replace(/</g, "\\u003c");
-
-  const knowFlow = buildLayoutFlowHtml(layoutDoc, "knowmore", {
-    flashcards: `<section class="card section">
-      <h2>Issue flashcards</h2>
-      <p class="sub">Foundation spine for <strong>agent.meimei</strong> on the unified repo board — <a href="${escapeHtml(knowmoreBoardUrl)}" target="_blank" rel="noopener noreferrer">MVP Factory Project 1</a> (filter product in GitHub). Issue numbers match <code>mvp-factory-control</code>. <strong>Open</strong> / <strong>Done</strong> on cards reflects the last sync in <code>config/knowmore-releases.v1.json</code>; verify on GitHub before planning sprints.</p>
-      <p class="sub muted">Click a card for details and operator steps.</p>
-      <div class="ds-flashcard-grid" id="cards"></div>
-    </section>`
-  }, escapeAttr);
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>knowmore - release cards</title>
-  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-</head>
-<body data-page="knowmore" data-theme="blue">
-  <div class="shell">
-    <div class="topnav">
-      <h1 class="title">knowmore</h1>
-      ${renderGlobalNav("knowmore")}
-    </div>
-    ${knowFlow}
-  </div>
-
-  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="head">
-        <h2 id="mTitle">Issue</h2>
-        <button class="button secondary" id="mClose" type="button">Close</button>
-      </div>
-      <p id="mSummary"></p>
-      <p id="mState" class="knowmore-issue-state" aria-live="polite"></p>
-      <div class="actions">
-        <a id="mIssue" class="button secondary" href="#" target="_blank" rel="noopener noreferrer">Open related issue</a>
-      </div>
-      <p id="mIssueUrl" class="issue-url"></p>
-      <h3>Details</h3>
-      <p id="mDetails"></p>
-      <h3>User manual</h3>
-      <ul id="mManual"></ul>
-    </div>
-  </div>
-
-  <script>
-    ${renderGlobalNavScript()}
-    const releases = ${releaseJson};
-    const cards = document.getElementById('cards');
-    const backdrop = document.getElementById('modalBackdrop');
-    const closeBtn = document.getElementById('mClose');
-    const mTitle = document.getElementById('mTitle');
-    const mSummary = document.getElementById('mSummary');
-    const mState = document.getElementById('mState');
-    const mIssue = document.getElementById('mIssue');
-    const mIssueUrl = document.getElementById('mIssueUrl');
-    const mDetails = document.getElementById('mDetails');
-    const mManual = document.getElementById('mManual');
-
-    function openModal(item) {
-      mTitle.textContent = '#' + item.issue + ' - ' + item.title;
-      mSummary.textContent = item.summary;
-      if (mState) {
-        mState.textContent = item.state === 'closed'
-          ? 'GitHub state (synced): closed — confirm on issue before treating as done.'
-          : 'GitHub state (synced): open';
-      }
-      mIssue.href = item.issueUrl;
-      mIssue.textContent = 'Related issue #' + item.issue;
-      mIssueUrl.textContent = item.issueUrl;
-      mDetails.textContent = item.details;
-      mManual.innerHTML = '';
-      (item.manual || []).forEach((step) => {
-        const li = document.createElement('li');
-        li.textContent = step;
-        mManual.appendChild(li);
-      });
-      backdrop.classList.add('is-open');
-    }
-
-    function closeModal() {
-      backdrop.classList.remove('is-open');
-    }
-
-    function createIssueCard(item) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'ds-flashcard';
-
-      const kind = document.createElement('span');
-      kind.className = 'ds-flashcard-kind' + (item.state === 'closed' ? ' ds-flashcard-kind--done' : '');
-      kind.textContent = 'ISSUE #' + item.issue + (item.state === 'closed' ? ' · Done' : ' · Open');
-
-      const title = document.createElement('h3');
-      title.className = 'ds-flashcard-title';
-      title.textContent = item.title;
-
-      const content = document.createElement('div');
-      content.className = 'ds-flashcard-content';
-      content.textContent = item.summary;
-
-      button.appendChild(kind);
-      button.appendChild(title);
-      button.appendChild(content);
-      button.addEventListener('click', () => openModal(item));
-      return button;
-    }
-
-    releases.forEach((item) => {
-      cards.appendChild(createIssueCard(item));
-    });
-
-    closeBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', (event) => {
-      if (event.target === backdrop) closeModal();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeModal();
-    });
-  </script>
-</body>
-</html>`;
+  return renderKnowmorePageCatalog(layoutDoc, catalogPageUiDeps());
 }
 
 function renderAdminLayoutEditorSection(layoutDoc) {
@@ -3114,117 +2248,6 @@ function renderWhatNextPage(layoutDoc) {
     runButton?.addEventListener("click", () => {
       window.__meimeiRunBriefing && window.__meimeiRunBriefing();
     });
-  </script>
-</body>
-</html>`;
-}
-
-function renderChecklistLocalShellPage(layoutDoc) {
-  const publicPrefixRaw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
-  const urlDashPrefix = publicPrefixRaw === "/" ? "" : publicPrefixRaw;
-  const meiOriginDisplay = `http://127.0.0.1:${port}${urlDashPrefix}`;
-  const meiChecklistUrlDisplay = `${meiOriginDisplay}${checklistPublicPath.startsWith("/") ? "" : "/"}${checklistPublicPath}`;
-  const upPrefix = checklistUpstreamPathPrefix();
-  const topbar = `<div class="topbar">
-      <a class="button secondary" href="${escapeHtml(appsRoute)}">&larr; Back to Apps</a>
-      <span class="title">${escapeHtml(checklistLabel)}</span>
-    </div>`;
-  const proxyHint = `<section class="route-card u-mb12">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Full checklist UI</h2>
-        <p class="lede u-mb12">You are on the <strong>fallback shell</strong> because <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none</code> (or equivalent). To load the real Next.js checklist <em>at this URL</em>, remove that setting: MeiMei will reverse-proxy to <code class="route-code">http://127.0.0.1:3000${escapeHtml(upPrefix)}</code> by default (set <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM</code> for another origin). The checklist app must use the same path prefix (<code class="route-code">MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX</code>, default <code class="route-code">${escapeHtml(upPrefix)}</code> → Next <code class="route-code">basePath</code>).</p>
-      </section>`;
-  const main = `<main class="hero">
-      <section class="route-card u-mb12">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
-        <p class="muted u-mb12">The <strong>Node engine</strong> uses SQLite in <code class="route-code">data/agent-chappie/</code> and LLM via <code class="route-code">/api/llm/gateway/generate</code>. The bridge <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> is what the checklist Next app calls when it talks to your Mac. Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> for the legacy checklist-repo worker instead.</p>
-        <p class="muted u-mb12"><strong>MeiMei home:</strong> <code class="route-code">${escapeHtml(`${meiOriginDisplay}/`)}</code> · <strong>This route:</strong> <code class="route-code">${escapeHtml(meiChecklistUrlDisplay)}</code></p>
-        <div id="checklist-runtime-panel" class="result-card">
-          <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
-        </div>
-        <div class="route-actions u-mt12">
-          <button type="button" class="button secondary" id="checklist-refresh-runtime">Refresh status</button>
-          <button type="button" class="button secondary" id="checklist-ensure-worker">Ensure worker</button>
-        </div>
-      </section>
-      ${proxyHint}
-    </main>`;
-  const layout = buildLayoutFlowHtml(layoutDoc, miniappPageKey("checklist"), { topbar, main }, escapeAttr);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(checklistLabel)} - agent.meimei</title>
-  <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-</head>
-<body data-theme="green" data-page="checklist">
-  <div class="shell">
-    ${layout}
-  </div>
-  <script>
-    (function () {
-      const checklistApi = ${JSON.stringify(checklistApiRoute)};
-      const bridgePrefix = ${JSON.stringify(AGENT_CHAPPIE_BRIDGE_PREFIX)};
-      function apiDashPrefix() {
-        var p = window.location.pathname || "";
-        return (p === "/dashboard" || p.indexOf("/dashboard/") === 0) ? "/dashboard" : "";
-      }
-      function renderRuntime(data) {
-        var panel = document.getElementById("checklist-runtime-panel");
-        var loadEl = document.getElementById("checklist-runtime-loading");
-        if (!panel) return;
-        if (loadEl) loadEl.remove();
-        var rt = data && data.runtime;
-        if (!rt) {
-          panel.innerHTML = "<p class=\\"muted u-m0\\">No runtime payload.</p>";
-          return;
-        }
-        var bridge = window.location.origin + apiDashPrefix() + bridgePrefix;
-        var lines = [
-          "<p class=\\"u-m0\\"><strong>Engine</strong>: " + (rt.engine === "python" ? "python (external worker)" : "node (in MeiMei)") + "</p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Python repo</strong>: " + (rt.checklistRepoRoot ? "MEIMEI_AGENT_CHAPPIE_ROOT set" : "not used (node default)") + "</p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Worker</strong>: " + (rt.workerReachable ? "reachable" : "down") + " — " + (rt.workerHost || "?") + (rt.workerPort != null ? ":" + rt.workerPort : "") + "</p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Local SQLite</strong>: " + (rt.localDbPath || "—") + "</p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Online DB env</strong>: " + (rt.onlineDatabaseConfigured ? "DATABASE_URL set for worker" : "not set (Neon optional)") + "</p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>MeiMei bridge</strong> (for Next.js <code class=\\"route-code\\">AGENT_API_BASE_URL</code>):<br /><code class=\\"route-code\\">" + bridge + "</code></p>",
-          "<p class=\\"muted u-m0 u-mt8\\"><strong>Auto-start</strong>: " + (rt.engine === "node" ? "n/a (Node engine)" : (rt.autoStart ? "on (<code class=\\"route-code\\">MEIMEI_AGENT_CHAPPIE_AUTO_START=1</code>)" : "off — run worker from checklist repo")) + "</p>"
-        ];
-        panel.innerHTML = "<div class=\\"result-card\\">" + lines.join("") + "</div>";
-      }
-      async function loadOverview() {
-        var panel = document.getElementById("checklist-runtime-panel");
-        if (!panel) return;
-        try {
-          var res = await fetch(apiDashPrefix() + checklistApi, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ action: "overview" })
-          });
-          var data = await res.json();
-          if (!data.ok) throw new Error(data.error || "overview failed");
-          renderRuntime(data);
-        } catch (e) {
-          panel.innerHTML = "<p class=\\"muted u-m0\\\">Could not load status: " + String(e.message || e) + "</p>";
-        }
-      }
-      async function ensureWorker() {
-        try {
-          var res = await fetch(apiDashPrefix() + checklistApi, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ action: "ensure_worker" })
-          });
-          var data = await res.json();
-          await loadOverview();
-          if (!data.ok) alert(data.detail || data.error || "ensure_worker failed");
-        } catch (e) {
-          alert(String(e.message || e));
-        }
-      }
-      document.getElementById("checklist-refresh-runtime")?.addEventListener("click", loadOverview);
-      document.getElementById("checklist-ensure-worker")?.addEventListener("click", ensureWorker);
-      loadOverview();
-    })();
   </script>
 </body>
 </html>`;
@@ -4533,7 +3556,7 @@ function renderReferenceApp1Page(layoutDoc) {
         </div>
         <div id="refMas790" class="result-card u-mb12" style="display:none;">
           <h2 class="u-mt0" style="font-size:1.1rem;">Milestone G — inter-app bus (SQLite only)</h2>
-          <p class="muted u-mb12" style="font-size:13px;">No HTTP between apps. <strong>Ping/pong</strong> proves <code>app_task</code> routing. <strong>Standup digest</strong> enqueues inference with <code>meimei_correlation</code> (§5); large bodies use Claim Check under <code>data/meimei/artifacts/</code>. Peer inbox: <a href="../791/Reference_app_2">Reference app 2</a></p>
+          <p class="muted u-mb12" style="font-size:13px;">No HTTP between apps. <strong>Ping/pong</strong> proves <code>app_task</code> routing. <strong>Standup digest</strong> enqueues inference with <code>meimei_correlation</code> (§5); large bodies use Claim Check under <code>data/meimei/artifacts/</code>. Peer inbox: <a href="../791/Reference_app_2">Reference app 2</a>. Live queue: <a href="${escapeHtml(browserPathForNormalized(systemMonitorRoute))}">System monitor</a>.</p>
           <div class="route-actions u-mb12" style="flex-wrap:wrap;gap:8px;">
             <button type="button" class="good" id="refPing790">Send ping to App 2</button>
           </div>
@@ -4794,6 +3817,22 @@ function renderReferenceApp2Page(layoutDoc) {
   </script>
 </body>
 </html>`;
+}
+
+function systemMonitorPageDeps() {
+  return {
+    toolsRoute,
+    meimeiMonitorFeedApiRoute,
+    designSystemCssPath,
+    escapeHtml,
+    buildLayoutFlowHtml,
+    escapeAttr,
+    miniappPageKey
+  };
+}
+
+function renderSystemMonitorPage(layoutDoc) {
+  return renderSystemMonitorPagePlatform(layoutDoc, systemMonitorPageDeps());
 }
 
 function renderInboxPage(layoutDoc) {
@@ -6303,6 +5342,33 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && normalizedPath === meimeiMonitorFeedApiRoute) {
+      try {
+        const limitRaw = url.searchParams.get("limit");
+        const traceFilter = String(url.searchParams.get("trace_id") || "").trim();
+        const defaultLimit = traceFilter ? 200 : 100;
+        const cap = traceFilter ? 500 : 200;
+        const limit = Math.max(1, Math.min(cap, Number(limitRaw) || defaultLimit));
+        const rows = meimeiJobQueueRead.listMonitorFeed({
+          limit,
+          traceId: traceFilter || null
+        });
+        const items = formatMonitorFeedRows(rows);
+        sendJson(res, 200, {
+          ok: true,
+          trace_filter: traceFilter || null,
+          order: traceFilter ? "chronological" : "newest_first",
+          items
+        });
+      } catch (error) {
+        sendJson(res, 500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
     if (req.method === "POST" && normalizedPath === meimeiInferenceRoute) {
       try {
         const body = (await readJson(req)) || {};
@@ -6333,7 +5399,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`)) {
-      if (await tryProxyChecklistRequest(req, res, url, normalizedPath)) return;
+      if (
+        await tryProxyChecklistRequest(req, res, url, normalizedPath, {
+          checklistPublicPath,
+          getChecklistBrowserBase: () =>
+            browserPathForNormalized(checklistPublicPath).replace(/\/+$/, "") || checklistPublicPath
+        })
+      ) {
+        return;
+      }
     }
 
     if ((req.method === "GET" || req.method === "HEAD")
@@ -6370,108 +5444,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (normalizedPath.startsWith(AGENT_CHAPPIE_BRIDGE_PREFIX)) {
-      if (req.method === "OPTIONS") {
-        res.writeHead(204, {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS,HEAD",
-          "access-control-allow-headers": "content-type,x-agent-shared-secret,authorization",
-          "cache-control": "no-store, max-age=0"
-        });
-        res.end();
-        return;
-      }
-      let method = req.method || "GET";
-      if (method === "HEAD") method = "GET";
-      if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) {
-        sendJson(res, 405, { ok: false, error: "method_not_allowed" });
-        return;
-      }
-      const suffix = normalizedPath.slice(AGENT_CHAPPIE_BRIDGE_PREFIX.length);
-      const workerPathPart =
-        !suffix || suffix === "/" ? "/" : suffix.startsWith("/") ? suffix : `/${suffix}`;
-      const pathWithQuery = workerPathPart + (url.search || "");
-      let body = Buffer.alloc(0);
-      if (method === "POST" || method === "PATCH" || method === "DELETE") {
-        try {
-          body = await readRawBody(req);
-        } catch (error) {
-          sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) });
-          return;
-        }
-      }
-      const rawCt = req.headers["content-type"];
-      const contentType = Array.isArray(rawCt) ? rawCt[0] : rawCt;
-      const bridgeSecret = String(
-        process.env.MEIMEI_AGENT_CHAPPIE_SHARED_SECRET || process.env.AGENT_SHARED_SECRET || ""
-      ).trim();
-      const pathNoQuery = (pathWithQuery.split("?")[0] || "/").replace(/\/+$/, "") || "/";
-      const bridgeNeedsSecret = !(method === "GET" && pathNoQuery === "/health");
-      if (bridgeNeedsSecret && bridgeSecret) {
-        const hdr = req.headers["x-agent-shared-secret"];
-        if (hdr !== bridgeSecret) {
-          sendJson(res, 401, { error: "unauthorized" });
-          return;
-        }
-      }
-      if (isNodeAgentChappieEngine()) {
-        try {
-          const out = await runNodeAgentChappieBridge({
-            repoRoot,
-            method,
-            pathWithQuery,
-            body,
-            contentType
-          });
-          const fh = filterForwardResponseHeaders(out.headers);
-          res.writeHead(out.statusCode, {
-            ...fh,
-            "cache-control": "no-store, max-age=0"
-          });
-          res.end(out.body);
-        } catch (error) {
-          sendJson(res, 502, {
-            ok: false,
-            error: "agent_chappie_node_failed",
-            detail: error instanceof Error ? error.message : String(error)
-          });
-        }
-        return;
-      }
-      const cfg = getAgentChappieConfig(repoRoot);
-      if (cfg.autoStart && cfg.root) {
-        try {
-          await ensureWorkerRunning(cfg, port);
-        } catch (error) {
-          sendJson(res, 503, {
-            ok: false,
-            error: "agent_chappie_worker_start_failed",
-            detail: error instanceof Error ? error.message : String(error)
-          });
-          return;
-        }
-      }
-      try {
-        const out = await forwardToWorker({
-          cfg,
-          method,
-          pathWithQuery,
-          body,
-          contentType
-        });
-        const fh = filterForwardResponseHeaders(out.headers);
-        res.writeHead(out.statusCode, {
-          ...fh,
-          "cache-control": "no-store, max-age=0"
-        });
-        res.end(out.body);
-      } catch (error) {
-        sendJson(res, 502, {
-          ok: false,
-          error: "agent_chappie_upstream_failed",
-          detail: error instanceof Error ? error.message : String(error)
-        });
-      }
+    if (await serveChecklistBridgeHttp({ req, res, url, normalizedPath, repoRoot, port, sendJson })) {
       return;
     }
 
@@ -6625,6 +5598,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && normalizedPath === systemMonitorRoute) {
+      const html = renderSystemMonitorPage(getLayoutDoc());
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, max-age=0"
+      });
+      res.end(html);
+      return;
+    }
+
     if (req.method === "GET" && resolvedMiniappRoute === referenceApp1Route) {
       const html = renderReferenceApp1Page(getLayoutDoc());
       res.writeHead(200, {
@@ -6739,7 +5722,18 @@ const server = http.createServer(async (req, res) => {
       (req.method === "GET" || req.method === "HEAD") &&
       (normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`))
     ) {
-      const html = renderChecklistLocalShellPage(getLayoutDoc());
+      const html = renderChecklistLocalShellPage(getLayoutDoc(), {
+        port,
+        checklistPublicPath,
+        checklistLabel,
+        checklistApiRoute,
+        appsRoute,
+        designSystemCssPath,
+        escapeHtml,
+        escapeAttr,
+        buildLayoutFlowHtml,
+        miniappPageKey
+      });
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-store, max-age=0"
@@ -6972,7 +5966,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && normalizedPath === checklistApiRoute) {
       const body = (await readJson(req)) || {};
       try {
-        const out = await processChecklist(body);
+        const out = await handleChecklistPost(req, body, repoRoot);
         sendJson(res, out.ok ? 200 : 400, out);
       } catch (error) {
         sendJson(res, 500, {
@@ -6992,32 +5986,22 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && normalizedPath === leadEnrichmentApiRoute) {
       const body = (await readJson(req)) || {};
-      const action = String(body.action || "");
-      
-      // Workflow actions stay in server.mjs
-      if (action.startsWith("workflow_")) {
-        try {
-          const out = await processLeadEnrichmentWorkflow(body, repoRoot);
-          sendJson(res, out.ok ? 200 : 400, out);
-        } catch (error) {
-          sendJson(res, 500, {
-            ok: false,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-        return;
+      try {
+        const result = await leadEnrichmentHandler(req, body, repoRoot);
+        sendJson(res, result.ok ? 200 : 400, result);
+      } catch (error) {
+        sendJson(res, 500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
-
-      // Delegate to app handler
-      const result = await leadEnrichmentHandler(req, body, repoRoot);
-      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
 
     if (req.method === "POST" && normalizedPath === leadOutreachApiRoute) {
       const body = (await readJson(req)) || {};
       try {
-        const out = await processLeadOutreach(body, repoRoot);
+        const out = await leadOutreachHandler(req, body, repoRoot);
         sendJson(res, out.ok ? 200 : 400, out);
       } catch (error) {
         sendJson(res, 500, {
@@ -7031,7 +6015,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && normalizedPath === aiSdrAnalyticsApiRoute) {
       const body = (await readJson(req)) || {};
       try {
-        const out = await processAiSdrAnalytics(body, repoRoot);
+        const out = await aiSdrAnalyticsHandler(req, body, repoRoot);
         sendJson(res, out.ok ? 200 : 400, out);
       } catch (error) {
         sendJson(res, 500, {
@@ -7045,7 +6029,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && normalizedPath === supabaseConnectorApiRoute) {
       const body = (await readJson(req)) || {};
       try {
-        const out = await processSupabaseConnector(body);
+        const out = await supabaseConnectorHandler(req, body, repoRoot);
         sendJson(res, out.ok ? 200 : 400, out);
       } catch (error) {
         sendJson(res, 500, {
@@ -7116,13 +6100,6 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req) || {};
       const result = await missionControlHandler(req, body, repoRoot);
       sendJson(res, result.ok ? 200 : 500, result);
-      return;
-    }
-
-    if (req.method === "POST" && normalizedPath === checklistApiRoute) {
-      const body = await readJson(req) || {};
-      const result = await checklistHandler(req, body, repoRoot);
-      sendJson(res, result.ok ? 200 : 400, result);
       return;
     }
 

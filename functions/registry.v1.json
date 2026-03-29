@@ -1,13 +1,13 @@
 {
   "version": "v1",
-  "generatedAt": "2026-03-28",
+  "generatedAt": "2026-03-29",
   "functions": [
     {
       "id": "checklist",
       "version": "v1",
       "category": "apps",
       "displayName": "Checklist",
-      "description": "Agent.Chappie — default MeiMei Node engine (local SQLite + Ollama); optional python engine for legacy checklist worker. HTTP bridge for deployed Next.js + Neon.",
+      "description": "MeiMei Checklist — default Node engine (local SQLite + Ollama); optional python engine for checklist-repo HTTP worker. Bridge for deployed Next.js + Neon.",
       "catalogOrder": 0,
       "route": "/dashboard/727/Checklist",
       "api": {
@@ -33,9 +33,9 @@
         "untrustedInput": false,
         "allowedProtocols": ["https"],
         "notes": [
-          "Default MEIMEI_AGENT_CHAPPIE_ENGINE=node: SQLite data/agent-chappie + in-process jobs; bridge still serves Next.js at /api/agent-chappie/bridge.",
-          "MEIMEI_AGENT_CHAPPIE_ENGINE=python: proxy to worker_bridge.py (MEIMEI_AGENT_CHAPPIE_ROOT); optional auto-start.",
-          "Online Next.js: AGENT_API_BASE_URL → bridge URL; x-agent-shared-secret when MEIMEI_AGENT_CHAPPIE_SHARED_SECRET is set."
+          "Default MEIMEI_CHECKLIST_ENGINE=node: SQLite data/checklist + in-process jobs; bridge path /api/checklist/bridge.",
+          "MEIMEI_CHECKLIST_ENGINE=python: proxy to worker_bridge.py (MEIMEI_CHECKLIST_ROOT); optional auto-start.",
+          "Online Next.js: AGENT_API_BASE_URL → bridge URL; header x-meimei-checklist-secret when MEIMEI_CHECKLIST_SHARED_SECRET is set."
         ]
       },
       "capabilities": {

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-03-30 — Docs: kernel code audit + developer handbook
+
+- **`docs/architecture/meimei-kernel-code-audit.v1.md`** — Kernel inventory vs completion plan, `server.mjs` line/render counts, HTTP / inference / job / registry lifecycles, kernel-focused AI truth table (aligned with `docs/compliance/ai-runtime-audit.md`), gap analysis K1–K4, JSDoc metrics for `dashboard/lib` + `apps` + `server.mjs`, recommended standards for new kernel modules.
+- **`docs/developers/README.md`**, **`docs/developers/meimei-kernel-handbook.v1.md`** — Atomic handbook for boot, config, routing, registry, `POST /api/meimei/route`, job worker, `llm.mjs`, HTTP vs vendoring integration modes, debugging, known limitations.
+- **`docs/README.md`** — Developers section + links to audit and handbook.
+
+## 2026-03-30 — Kernel K1b: Lead enrichment & Lead outreach shells (`0.8.8`)
+
+- **`dashboard/lib/platform-pages/gtm-pages.mjs`** — GET HTML for **Lead enrichment** and **Lead outreach** (main + settings) moved out of `server.mjs` (`gtmPageDeps()` thin wrappers).
+- **Docs:** `meimei-repo-boundaries.v1.md` allowlist; **`miniapp-platform-audit.v1.md`** handler column; **`meimei-kernel-completion-plan.v1.md`** K1b marked delivered; `platform-pages/README.md`, app development guide.
+- **Version:** package **0.8.8**; checklist + platform modules **`@aligned package agent-meimei 0.8.8`**.
+
 ## 2026-03-30 — Kernel K1a: Inbox, Memory, Mission Control shells (`0.8.7`)
 
 - **`dashboard/lib/platform-pages/ops-tool-pages.mjs`** — GET HTML for **Inbox**, **Memory**, **Mission Control** (main + settings) moved out of `server.mjs` (`opsToolPageDeps()` thin wrappers).

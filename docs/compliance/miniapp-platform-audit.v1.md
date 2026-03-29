@@ -39,8 +39,8 @@
 | inbox | apps | `apps/inbox/index.mjs`; GET shell **`platform-pages/ops-tool-pages.mjs`** | — | Y | — | — | G | — | G | Y | P1 | Uses `callOllama` for prioritization; Mail/AppleScript side effects. |
 | what-next | apps | `apps/what-next/index.mjs` | — | Y | — | — | G | — | Y | Y | P1 | `callOllamaJson`; no queue. |
 | explain-it | apps | `apps/explain-it/index.mjs` | — | Y | — | — | G | — | Y | Y | P1 | Fetches URL + `callOllamaJson`; untrusted content path. |
-| lead-enrichment | apps | `apps/lead-enrichment/index.mjs` (single-shot + `workflow_*`) | Y | Y | — | Y | G | — | G | Y | P1 | `enrichLead` + workflow queue consolidated in app; `runWorkflowItem` still sync on handler thread — not `meimei_jobs`. |
-| lead-outreach | apps | `apps/lead-outreach/index.mjs` | — | Y | — | — | G | — | G | Y | P1 | `draft_touch` uses `callOllamaJson` on request thread. |
+| lead-enrichment | apps | `apps/lead-enrichment/index.mjs` (single-shot + `workflow_*`); GET shell **`platform-pages/gtm-pages.mjs`** | Y | Y | — | Y | G | — | G | Y | P1 | `enrichLead` + workflow queue consolidated in app; `runWorkflowItem` still sync on handler thread — not `meimei_jobs`. |
+| lead-outreach | apps | `apps/lead-outreach/index.mjs`; GET shell **`platform-pages/gtm-pages.mjs`** | — | Y | — | — | G | — | G | Y | P1 | `draft_touch` uses `callOllamaJson` on request thread. |
 | checklist | apps | POST shell → **`checklist-api-shell.mjs`**; GET proxy/page → **`checklist-local-integration.mjs`**; **`/api/checklist/bridge`** → **`checklist-bridge-http.mjs`** + `checklist-bridge.mjs` | Y | Y | G | G | Y | Y | G | Y | P0 | Phase B: **R3/R4** — integration HTTP vs bus documented in **`functions/checklist.md`**; bridge secret pattern explicit. R1/R2/R5/R6 remain **Y** (queue/inference/UI/trace improvements tracked separately). |
 
 ### Registry doc filename gaps (R7)

@@ -7,6 +7,7 @@
 | Section | Purpose |
 |---------|---------|
 | [Architecture](#architecture) | System design, contracts, patterns |
+| [Developers](#developers) | Kernel handbook, code audit, integration guides |
 | [Governance](#governance) | Rules, roles, quality standards |
 | [Operations](#operations) | How to run, deploy, maintain |
 | [Agent Identity](#agent-identity) | Who is MeiMei, how it thinks |
@@ -34,6 +35,7 @@ System design, technical contracts, and standards.
 |------|-------------|
 | [system-overview.md](architecture/system-overview.md) | Core architecture with LLM layer, Brain system, design patterns |
 | [meimei-kernel-completion-plan.v1.md](architecture/meimei-kernel-completion-plan.v1.md) | Plan from current state → clean kernel + modular apps/tools (K1–K4) |
+| [meimei-kernel-code-audit.v1.md](architecture/meimei-kernel-code-audit.v1.md) | Kernel code audit: lifecycles, AI truth table, `server.mjs` debt, comment metrics |
 | [meimei-repo-boundaries.v1.md](architecture/meimei-repo-boundaries.v1.md) | Core vs miniapp vs platform UI vs integrations (allowlist, `server.mjs` rules) |
 | [meimei-platform-alignment-roadmap.v1.md](architecture/meimei-platform-alignment-roadmap.v1.md) | Alignment program Phases A–E (audit, Phase 0–B delivered; C–E open) |
 | [miniapp-platform-audit.v1.md](compliance/miniapp-platform-audit.v1.md) | Registry + surfaces R1–R8 scorecard (P0/P1/P2) |
@@ -46,6 +48,15 @@ System design, technical contracts, and standards.
 | [inference-route.v1.md](api/inference-route.v1.md) | `POST /api/meimei/route` — OpenAI-shaped inference contract (v1) |
 | [adapter-contract.v1.md](architecture/adapter-contract.v1.md) | Job spooler + adapter quarantine (ingress/egress, dead letters) |
 | [adapter-obsidian.v1.md](architecture/adapter-obsidian.v1.md) | Vault watcher daemon (`chokidar`), ingress/egress rules |
+
+## Developers
+
+Kernel technical documentation for implementers and external integrators.
+
+| File | Description |
+|------|-------------|
+| [developers/README.md](developers/README.md) | Index: handbook, audit, related architecture links |
+| [developers/meimei-kernel-handbook.v1.md](developers/meimei-kernel-handbook.v1.md) | Atomic handbook: boot, routing, inference, jobs, registry, integration modes |
 
 ## Governance
 
@@ -137,7 +148,7 @@ Changelog, roadmap, and version history.
 | File | Description |
 |------|-------------|
 | [CHANGELOG.md](releases/CHANGELOG.md) | Full changelog with all releases |
-| [DELIVERY-phase-0-2026-03-29.v1.md](releases/DELIVERY-phase-0-2026-03-29.v1.md) | Phase 0 / kernel extractions (`0.8.1`–`0.8.7` — boundaries, Checklist stack, platform pages) |
+| [DELIVERY-phase-0-2026-03-29.v1.md](releases/DELIVERY-phase-0-2026-03-29.v1.md) | Phase 0 / kernel extractions (`0.8.1`–`0.8.8` — boundaries, Checklist stack, platform pages) |
 | [0.9.0.md](releases/0.9.0.md) | Release 0.9.0 notes (AI-Native Platform) |
 | [product_roadmap.md](releases/product_roadmap.md) | Product roadmap |
 | [roadmap.md](releases/roadmap.md) | Technical roadmap |
@@ -199,7 +210,7 @@ Core skills catalog.
 
 ## How to Navigate
 
-1. **New developer?** Start with [system-overview.md](architecture/system-overview.md)
+1. **New developer?** Start with [system-overview.md](architecture/system-overview.md); for the platform kernel and APIs, add [developers/meimei-kernel-handbook.v1.md](developers/meimei-kernel-handbook.v1.md) and [architecture/meimei-kernel-code-audit.v1.md](architecture/meimei-kernel-code-audit.v1.md)
 2. **Need to deploy?** Check [runbook.md](operations/runbook.md) and [mac-mini-go-live-checklist.md](operations/mac-mini-go-live-checklist.md)
 3. **Building a feature?** Read [miniapp-contract-v1.md](architecture/miniapp-contract-v1.md)
 4. **Understanding agents?** Start with [agent.md](agent-identity/agent.md)
@@ -208,4 +219,4 @@ Core skills catalog.
 ---
 
 **Maintained by:** KILO + CURSOR
-**Last updated:** 2026-03-28
+**Last updated:** 2026-03-30

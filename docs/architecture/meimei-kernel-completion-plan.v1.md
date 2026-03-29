@@ -1,6 +1,6 @@
 # MeiMei kernel completion plan — v1
 
-**Status:** active plan (from repo state **2026-03-30**, package **`agent-meimei` ~0.8.7**).  
+**Status:** active plan (from repo state **2026-03-30**, package **`agent-meimei` ~0.8.8**).  
 **Goal:** A **clear kernel** (runtime + contracts + shared libraries) with **all product surfaces** owned as **modules** (apps, tools, platform GET shells, integrations) — not a growing monolith in `dashboard/server.mjs`.  
 **Companion docs:** [`meimei-repo-boundaries.v1.md`](meimei-repo-boundaries.v1.md) (layers + allowlist), [`meimei-platform-alignment-roadmap.v1.md`](meimei-platform-alignment-roadmap.v1.md) (Phases A–E), [`miniapp-platform-audit.v1.md`](../compliance/miniapp-platform-audit.v1.md) (R1–R8 scorecard).
 
@@ -69,7 +69,7 @@ Suggested **file batches** (names indicative):
 | Batch | Suggested module | Render functions to move |
 |-------|------------------|---------------------------|
 | **K1a** ✅ **`0.8.7`** | `platform-pages/ops-tool-pages.mjs` | `renderInboxPage`, `renderInboxSettingsPage`, `renderMemoryPage`, `renderMemorySettingsPage`, `renderMissionControlPage`, `renderMissionControlSettingsPage` — **delivered** (`opsToolPageDeps()` in `server.mjs`) |
-| **K1b** | `platform-pages/gtm-pages.mjs` | `renderLeadEnrichmentPage`, `renderLeadEnrichmentSettingsPage`, `renderLeadOutreachPage`, `renderLeadOutreachSettingsPage` |
+| **K1b** ✅ **`0.8.8`** | `platform-pages/gtm-pages.mjs` | `renderLeadEnrichmentPage`, `renderLeadEnrichmentSettingsPage`, `renderLeadOutreachPage`, `renderLeadOutreachSettingsPage` — **delivered** (`gtmPageDeps()` in `server.mjs`) |
 | **K1c** | `platform-pages/reader-pages.mjs` | `renderWhatNextPage`, `renderWhatNextSettingsPage`, `renderUrlSummaryPage`, `renderDailyBriefingPage`, `renderExplainItSettingsPage` |
 | **K1d** | `platform-pages/routing-settings-pages.mjs` | `renderAIRoutingSettingsPage`, `renderApiAccessSettingsPage` (tool settings only; main routing/adapter pages already in `tool-surface-pages.mjs`) |
 | **K1e** | `platform-pages/home-admin-pages.mjs` | `renderAdminPage`, `renderAdminLayoutEditorSection`, and optionally **`renderPage`** if kept as shell |

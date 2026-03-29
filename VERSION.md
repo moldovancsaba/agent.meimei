@@ -3,12 +3,13 @@
 ## Current
 
 - Line: `foundation`
-- Version: `0.8.7`
+- Version: `0.8.8`
 - Date: `2026-03-30`
-- Codename: `kernel-k1a-ops-tool-pages-0.8.7`
+- Codename: `kernel-k1b-gtm-pages-0.8.8`
 
 ## Included issue deliveries
 
+- **2026-03-30 — Kernel plan K1b (`0.8.8`):** **`dashboard/lib/platform-pages/gtm-pages.mjs`** — Lead enrichment + Lead outreach main + settings GET HTML out of `server.mjs` (`gtmPageDeps()`). See **`meimei-kernel-completion-plan.v1.md`** Phase K1.
 - **2026-03-30 — Kernel plan K1a (`0.8.7`):** **`dashboard/lib/platform-pages/ops-tool-pages.mjs`** — Inbox, Memory, Mission Control main + settings GET HTML out of `server.mjs` (`opsToolPageDeps()`). See **`meimei-kernel-completion-plan.v1.md`** Phase K1.
 - **2026-03-30 — Reference app GET shells (`0.8.6`):** **`dashboard/lib/platform-pages/reference-app-pages.mjs`** — Reference app 1 & 2 HTML moved out of `server.mjs` (`referenceAppPageDeps()`). Audit rows note GET shell location. See `docs/releases/CHANGELOG.md`.
 - **2026-03-30 — Phase 0 + Phase B batch (`0.8.5`):** Further `server.mjs` shrink — **`dashboard/lib/platform-pages/tool-surface-pages.mjs`** (routing preview, API channel adapter, AI SDR analytics, Supabase connector, environment variables GET HTML). System monitor feed shows **unknown `payload_kind`** values. Roadmap Phase 0 wiring/sign-off log + Phase B R3/R4/monitor items closed in docs; audit rows updated (**checklist** R3/R4 **G**, **supabase-connector** R4 **G**). See `docs/releases/CHANGELOG.md`.

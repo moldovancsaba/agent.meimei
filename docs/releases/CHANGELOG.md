@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-03-30 — Phase 0 + Phase B: Tool surface pages + monitor kinds + audit (`0.8.5`)
+
+- **`dashboard/lib/platform-pages/tool-surface-pages.mjs`** — GET HTML for **AI routing**, **API channel adapter**, **AI SDR analytics**, **Supabase connector**, **Environment variables** moved out of `server.mjs` (`toolSurfacePageDeps()` thin wrappers).
+- **`dashboard/lib/meimei-monitor-feed.mjs`** — **`formatMonitorRow`** forwards unknown **`payload_kind`** / JSON **`kind`** values so System monitor stays readable when new job kinds ship.
+- **Docs:** `meimei-repo-boundaries.v1.md` §6.1 sign-off log + allowlist; `meimei-platform-alignment-roadmap.v1.md` Phase 0 wiring + exit log + Phase B R3/R4 + monitor; **`miniapp-platform-audit.v1.md`** — checklist **R3/R4** green, supabase **R4** green; **`functions/checklist.md`** R3/R4 integration section; **`functions/supabase-connector.md`** env-store R4 note.
+- **Version:** package **0.8.5**; checklist + platform page modules **`@aligned package agent-meimei 0.8.5`**.
+
 ## 2026-03-29 — Phase 0: Platform catalog extraction + boundary guards + R8/R4 docs (`0.8.4`)
 
 - **`dashboard/lib/platform-pages/catalog-pages.mjs`** — Apps / Tools / knowmore GET HTML moved out of `server.mjs`; **`system-monitor-page.mjs`** — System monitor (queue explorer) shell; **`dashboard/lib/platform-pages/README.md`** describes the folder.

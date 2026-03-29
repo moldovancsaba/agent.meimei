@@ -44,8 +44,12 @@ function safeParseJson(s) {
 }
 
 function inferIntentAndHint(kind, parsed) {
+  if (kind !== "app_task" && kind !== "inference_v1") {
+    const k = kind != null && String(kind).trim() ? String(kind).trim() : "unknown_kind";
+    return { intent: k, hint: "" };
+  }
   if (!parsed || typeof parsed !== "object") {
-    return { intent: null, hint: "" };
+    return { intent: kind === "app_task" ? "app_task" : "inference_v1", hint: "" };
   }
   if (kind === "app_task") {
     const inner = parsed.payload;
@@ -122,9 +126,12 @@ function buildDisplayLine(row, kind, intent, hint, artifactPath) {
 export function formatMonitorRow(row) {
   const parsed = safeParseJson(row.payload);
   let kind = "inference_v1";
-  if (row.payload_kind === "app_task") kind = "app_task";
-  else if (row.payload_kind === "inference_v1") kind = "inference_v1";
+  const pk = row.payload_kind != null && String(row.payload_kind).trim() !== "" ? String(row.payload_kind).trim() : null;
+  if (pk === "app_task") kind = "app_task";
+  else if (pk === "inference_v1") kind = "inference_v1";
+  else if (pk) kind = pk;
   else if (parsed?.kind === "app_task") kind = "app_task";
+  else if (parsed?.kind != null && String(parsed.kind).trim() !== "") kind = String(parsed.kind).trim();
   const { intent, hint } = inferIntentAndHint(kind, parsed);
   const resultParsed = row.result_json ? safeParseJson(row.result_json) : null;
   const artifactPath = extractArtifactPath(parsed, resultParsed);

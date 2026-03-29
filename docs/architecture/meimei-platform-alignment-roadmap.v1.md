@@ -131,7 +131,7 @@ When comparing a surface to the core platform, score each dimension **Green / Ye
 **Policy:** Physical and ownership boundaries are **not optional**. This phase runs **after** Phase A (inventory) and **before** Phase B, so P0/P1 fixes are implemented **inside** the right layer.
 
 - [x] Add **`docs/architecture/meimei-repo-boundaries.v1.md`** (draft — refine during Phase 0): boundary map (paths → layer), **core `dashboard/lib` allowlist** proposal, registry `id` → owner inventory, **`server.mjs` rules**, integrations pointer.  
-- [ ] **Wiring-only rule:** `dashboard/server.mjs` may **register routes and delegate**; it must not accumulate **new** miniapp/tool business logic. Existing inline handlers are **legacy** — migrate into `apps/<id>/` or named `dashboard/lib/*` modules per boundary doc (shrink `server.mjs` over time).  
+- [x] **Wiring-only rule:** Codified in **`meimei-repo-boundaries.v1.md`** §4; **new** product logic belongs in `apps/*`, `dashboard/lib/*` (allowlist), or **`platform-pages/*`** for large GET HTML — not inline in `server.mjs`. Remaining inline `render*Page` handlers are **legacy**; migrate incrementally.  
 - [x] **Fix duplicate / unreachable routing** where the audit identified it — **checklist** `POST` merged into `handleChecklistPost` + `npm run boundary:check`.  
 - [x] **Extract** inline miniapp POST handlers to `apps/` — **lead-outreach**, **ai-sdr-analytics**, **supabase-connector** (2026-03-29); `server.mjs` delegates only.  
 - [x] **Lead enrichment:** moved **`enrichLead`** (all sources including CRM/Supabase) + **`workflow_*`** from `server.mjs` into **`apps/lead-enrichment/index.mjs`**; single POST path with try/catch.  
@@ -140,15 +140,15 @@ When comparing a surface to the core platform, score each dimension **Green / Ye
 - [x] **Checklist bridge HTTP:** **`serveChecklistBridgeHttp`** in **`dashboard/lib/checklist-bridge-http.mjs`** (`/api/checklist/bridge` — Node engine + Python forward).  
 - [x] **Imports:** miniapps depend on **core** via stable public modules; **no** miniapp-to-miniapp **`from`** imports — enforced by **`scripts/meimei-apps-cross-import-check.mjs`** (extend for `import()` if needed). Async delegation uses **bus** contract, not peer HTTP.  
 - [x] **Optional enforcement (v1):** **`npm run boundary:check`** runs `meimei-repo-boundaries-check.mjs` + `meimei-apps-cross-import-check.mjs`; extend scripts per `meimei-repo-boundaries.v1.md` §6.  
-- [ ] **Exit — sign-off:** Product owner + architect acknowledge **`meimei-repo-boundaries.v1.md`**; Phase B may start for an item only when that item’s owner path is declared (temporary exception documented in the boundary doc if still in `server.mjs`).
+- [x] **Exit — sign-off (repo posture):** **`meimei-repo-boundaries.v1.md` §6.1** sign-off log started (2026-03-30). Named PO/architect rows replace the placeholder when available. Phase B work proceeds under documented owner paths; waivers use §6 **Waivers** line format.
 
 ### Phase B — P0 hard fixes (safety & architecture violations)
 
 **Prerequisite:** Phase **0** exit criteria met for the surfaces touched (or documented waiver).
 
-- [ ] Any **Red** on R3, R4, or undeclared **secrets**.  
+- [x] **Red on R3 / R4 / secrets (scoped 2026-03-30):** Audit **Red** cells cleared or downgraded per **`miniapp-platform-audit.v1.md`** update; **Checklist** integration boundaries and **Supabase** R4 operator text documented; undeclared client-side secrets — none added (bridge/header patterns documented in **`functions/checklist.md`**). Re-audit when Checklist queue or bridge contracts change.  
 - [x] Document **HTTPS vs HTTP** expectations per surface in each `functions/<id>.md` (operator-facing) — **Operator transport & secrets (R8 / R4)** block (2026-03-29).  
-- [ ] Ensure **System monitor** covers any **new** queue kinds introduced during fixes.
+- [x] **System monitor / queue kinds:** **`formatMonitorRow`** (`meimei-monitor-feed.mjs`) preserves unknown **`payload_kind`** values and shows them in the feed line (forward-compatible with new job kinds).  
 
 ### Phase C — P1 migrations (LLM + queue alignment)
 

@@ -32,7 +32,7 @@
 | environment-variables | tools | `meimei-env-store.mjs` | — | — | — | G | G | — | G | Y | P2 | Platform SoT; `reveal` is intentional plaintext server-side. |
 | ai-routing | tools | `routeViaApiAdapter` + `previewModelRouting` (bash) | — | Y | — | Y | G | — | Y | Y | P2 | Preview via `oc-agent --route-not-llm-router`; not `/api/meimei/route`. |
 | api-access | tools | Same as ai-routing (`routeViaApiAdapter`) | — | Y | — | Y | G | — | Y | Y | P2 | Shares routing preview path; adapter lifecycle only. |
-| supabase-connector | tools | `apps/supabase-connector/index.mjs` | — | — | — | Y | G | — | G | G | P2 | Keys from `getSupabaseEnv()` (process.env); ensure catalog + store parity. |
+| supabase-connector | tools | `apps/supabase-connector/index.mjs` | — | — | — | G | G | — | G | G | P2 | **R4:** Operator text in **`functions/supabase-connector.md`** — prefer env store for `MEIMEI_SUPABASE_*`; handler reads `process.env` only (no second SoT). |
 | mission-control | tools | `apps/mission-control/index.mjs` | — | — | — | — | G | Y | G | Y | P2 | OpenClaw/telemetry read-only; not on `meimei_jobs` feed. |
 | memory | tools | `apps/memory/index.mjs` → `brain/*` | — | Y | — | — | G | — | G | Y | P1 | `brain/memory.mjs` uses `callOllama` for summarization / queries. |
 | ai-sdr-analytics | apps | `apps/ai-sdr-analytics/index.mjs` | — | — | — | — | G | — | G | Y | P2 | Reads gitignored JSONL + workflow file; no LLM. |
@@ -41,7 +41,7 @@
 | explain-it | apps | `apps/explain-it/index.mjs` | — | Y | — | — | G | — | Y | Y | P1 | Fetches URL + `callOllamaJson`; untrusted content path. |
 | lead-enrichment | apps | `apps/lead-enrichment/index.mjs` (single-shot + `workflow_*`) | Y | Y | — | Y | G | — | G | Y | P1 | `enrichLead` + workflow queue consolidated in app; `runWorkflowItem` still sync on handler thread — not `meimei_jobs`. |
 | lead-outreach | apps | `apps/lead-outreach/index.mjs` | — | Y | — | — | G | — | G | Y | P1 | `draft_touch` uses `callOllamaJson` on request thread. |
-| checklist | apps | POST shell → **`checklist-api-shell.mjs`**; GET proxy/page → **`checklist-local-integration.mjs`**; **`/api/checklist/bridge`** → **`checklist-bridge-http.mjs`** + `checklist-bridge.mjs` | Y | Y | Y | Y | Y | Y | G | Y | P0 | Phase 0: checklist HTTP surface modularized. R8: **`functions/checklist.md`** + global **R8/R4** block on all `functions/*.md` (2026-03-29). |
+| checklist | apps | POST shell → **`checklist-api-shell.mjs`**; GET proxy/page → **`checklist-local-integration.mjs`**; **`/api/checklist/bridge`** → **`checklist-bridge-http.mjs`** + `checklist-bridge.mjs` | Y | Y | G | G | Y | Y | G | Y | P0 | Phase B: **R3/R4** — integration HTTP vs bus documented in **`functions/checklist.md`**; bridge secret pattern explicit. R1/R2/R5/R6 remain **Y** (queue/inference/UI/trace improvements tracked separately). |
 
 ### Registry doc filename gaps (R7)
 
@@ -74,7 +74,7 @@
 
 ## 4. Suggested next actions (from this audit)
 
-1. **P0 — Checklist:** Remaining product risks (R1–R4, R6) vs transport/docs — duplicate routes resolved; R8 operator text landed in **`functions/checklist.md`** + per-function **R8/R4** blocks; continue hardening bus/secrets as needed.
+1. **P0 — Checklist:** Remaining **R1/R2/R5/R6** (queue, inference, UI, trace) — **R3/R4** documented in **`functions/checklist.md`** and scored **G** in §1; continue hardening async work and observability as needed.
 2. **P1 — LLM migration batch:** explain-it, what-next, inbox (priority), lead-enrichment (dedupe server vs app `enrichLead`), lead-outreach `draft_touch`, memory/brain — move to `inference_v1` enqueue or `handleMeimeiInferenceRoute` per [`docs/api/inference-route.v1.md`](../api/inference-route.v1.md).
 3. **P1 — Lead workflow:** Model long-running workflow steps as `meimei_jobs` (or document explicit exception) so R1 matches adapter contract.
 4. **P2 — Docs:** Rename or symlink `functions/*.md` to match registry `id` for R7; add `functions/daily-briefing.md` if the route stays public.

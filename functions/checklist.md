@@ -32,6 +32,11 @@ Hosted **consultant-followup-web** talks to the Mac via the dashboard HTTP bridg
 | Local SQLite (node) | Default `data/checklist/agent_brain.sqlite3` (override with `MEIMEI_CHECKLIST_DB_PATH`) |
 | Neon queue consumer | `npm run checklist:queue-consumer` — see `integrations/checklist-web/README.md` |
 
+## R3 / R4 — integration HTTP vs inter-app bus (Phase B)
+
+- **Not R3 violation:** HTTP from the hosted Checklist UI to MeiMei’s **`/api/checklist/bridge`** (or local Next proxy) is an **documented integration edge**, not synchronous **miniapp-to-miniapp** delegation on the `meimei_jobs` bus. Async work inside MeiMei still uses **`checklist-node/*`** and the env SoT.
+- **R4:** Shared bridge auth uses **`MEIMEI_CHECKLIST_SHARED_SECRET`** (env store / process env) and **`x-meimei-checklist-secret`** on requests — no second secret SoT in static HTML; values are not rendered into page source.
+
 ## Actions (legacy JSON miniapp)
 
 | Action | Description |

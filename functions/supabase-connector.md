@@ -40,4 +40,4 @@ See `functions/registry.v1.json` → `supabase-connector`.
 | Topic | Guidance |
 |-------|----------|
 | **Local vs TLS** | Operators typically use **HTTP loopback** to the dashboard (listen and bind from `config/dashboard-surface.v1.json`). With an HTTPS reverse proxy (`scripts/meimei-domain.mjs`, LaunchAgents), browser URLs gain **`MEIMEI_PUBLIC_PREFIX`** (often `/dashboard`). Registry **`api.path`** values are logical — prepend the public prefix when calling through TLS. |
-| **Secrets** | Use the MeiMei env store and [`meimei-env-ui-contract.v1.md`](../architecture/meimei-env-ui-contract.v1.md); one source of truth; no secrets embedded in static HTML or client bundles. |
+| **Secrets** | Prefer **`Tools → Environment variables`** (`data/meimei-environment.v1.json`) so `MEIMEI_SUPABASE_*` keys are applied to `process.env` like other MeiMei config; the miniapp also reads **`process.env`** for the same names (no parallel secret file). See [`meimei-env-ui-contract.v1.md`](../architecture/meimei-env-ui-contract.v1.md). |

@@ -63,7 +63,7 @@
 
 - [2026-03-28] Design system in `public/styles/design-system.css`:
   - Components: flashcards, nav chips, panels, modals
-  - Themes: green, blue, orange, red
+  - Themes: primary keys `meimei`, `dashboard`, `admin`, `apps`, `tools`, `knowmore` (+ legacy aliases `green`, `blue`, `orange`, `red` in CSS) — see `docs/architecture/design-system-v1.md`
   - Markdown rendering: `.ds-markdown` class
 
 ## Key Decisions

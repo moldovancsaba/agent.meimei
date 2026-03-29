@@ -2,8 +2,9 @@
 
 **Issue:** #649
 **Category:** Apps
-**Route:** `/649/Lead_enrichment`
-**API:** `POST /api/functions/lead-enrichment`
+**Route (browser / contract):** `/dashboard/649/Lead_enrichment` (see `functions/registry.v1.json`)
+
+**API (contract path):** `POST /dashboard/api/functions/lead-enrichment` — upstream Node matches `/api/functions/lead-enrichment` after `serverApiPath()` (see `docs/architecture/miniapp-contract-v1.md`).
 
 ## Description
 

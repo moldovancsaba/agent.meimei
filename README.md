@@ -22,54 +22,56 @@ The project is intentionally markdown-first so it can grow from a clean foundati
 
 ## What is in the repo
 
-- `agent.md` - identity and behavioral contract.
-- `architecture.md` - system shape and boundaries.
-- `foundation-contradiction-audit.md` - contradiction matrix and remediation order for foundation hardening.
-- `VERSION.md` - current foundation version and issue-delivery mapping.
-- `CHANGELOG.md` - chronological release notes and foundation delivery history.
-- `documentation-audit.md` - markdown corpus audit, staleness notes, and proposed doc structure (`docs/README.md` is the short map).
-- `ai-runtime-audit.md` - where OpenClaw, Ollama, rules, and sample/stub data are used (LLM integration truth table).
-- `miniapp-contract-v1.md` - frozen contract standard for all MeiMei miniapps.
-- `issue-quality-standard.md` - required quality rules for implementation issues.
-- `issue-ready-gate-checklist.md` - checklist used before moving issues to `Ready (NEXT)`.
-- `handoff-artifact-schema-v1.md` - required structured handoff artifact and stage-gate enforcement rules.
-- `release-gates-dod-v1.md` - machine-checkable release gates mapped to Definition of Done and testing rules.
-- `external-channel-policy-engine-v1.md` - risk-tier policy-as-code contract for outbound channel actions.
-- `decision-action-audit-trail-v1.md` - append-only hash-chained audit pipeline for policy/routing/delivery events.
-- `reliability-telemetry-baseline-v1.md` - baseline telemetry event schema and SLO summary metrics.
-- `design-system-v1.md` - centralized UI tokens/components/themes, **global layout system** (`.layout-flow` / `.layout-box`), and integration rules.
+Many governance and architecture files below live under **`docs/`** (same or similar basename). The canonical map is **`docs/README.md`**; a **complete markdown inventory** with per-file audit timestamps is **`full_comprehensive_detailed_documents_audit.md`**.
+
+- `docs/agent-identity/agent.md` — identity and behavioral contract (also summarized at repo root patterns in older notes).
+- `docs/architecture/system-overview.md` — system shape and boundaries (successor to ad-hoc `ARCHITECTURE.md` references in older coordination notes).
+- `docs/compliance/foundation-contradiction-audit.md` — contradiction matrix and remediation order for foundation hardening.
+- `VERSION.md` — current foundation version and issue-delivery mapping.
+- `docs/releases/CHANGELOG.md` — chronological release notes and foundation delivery history.
+- `docs/compliance/documentation-audit.md` — markdown corpus audit (superseded file counts; see **`full_comprehensive_detailed_documents_audit.md`** for the full list).
+- `docs/compliance/ai-runtime-audit.md` — where OpenClaw, Ollama, rules, and sample/stub data are used (LLM integration truth table).
+- `docs/architecture/miniapp-contract-v1.md` — frozen contract standard for all MeiMei miniapps.
+- `docs/governance/issue-quality-standard.md` — required quality rules for implementation issues.
+- `docs/governance/issue-ready-gate-checklist.md` — checklist used before moving issues to `Ready (NEXT)`.
+- `docs/contracts/handoff-artifact-schema-v1.md` — required structured handoff artifact and stage-gate enforcement rules.
+- `docs/contracts/release-gates-dod-v1.md` — machine-checkable release gates mapped to Definition of Done and testing rules.
+- `docs/governance/external-channel-policy-engine-v1.md` — risk-tier policy-as-code contract for outbound channel actions.
+- `docs/contracts/decision-action-audit-trail-v1.md` — append-only hash-chained audit pipeline for policy/routing/delivery events.
+- `docs/adapters/reliability-telemetry-baseline-v1.md` — baseline telemetry event schema and SLO summary metrics.
+- `docs/architecture/design-system-v1.md` — centralized UI tokens/components/themes, **global layout system** (`.layout-flow` / `.layout-box`), and integration rules.
 - `config/page-layout.v1.json` - persisted per-page block order, spans, and desktop column count (edited from **Admin → Page layout**).
 - `macos/MeiMei/` - optional macOS menu bar control app **MeiMei Control** (`npm run menubar:build`; `npm run menubar:install` copies **MeiMei Control.app** to `~/Applications` for Spotlight — see `macos/MeiMei/README.md`).
-- `project-vocabulary-v1.md` - canonical product vocabulary and documentation wording rules.
-- `channel-adapter-contract-v1.md` - canonical interface for all channel adapters.
-- `channel-adapter-lifecycle-v1.md` - required ingress-to-delivery adapter lifecycle.
-- `sovereign-agent-role-taxonomy-v1.md` - role boundaries and authority matrix for sovereign multi-agent delivery.
-- `imessage-adapter-architecture-v1.md` - phased architecture and implementation plan for iMessage adapter.
-- `imessage-live-bridge-v1.md` - live inbound/outbound iMessage bridge endpoint and test protocol.
-- `email-adapter-architecture-v1.md` - phased architecture and provider strategy for Email adapter.
-- `discord-adapter-architecture-v1.md` - phased architecture and provider strategy for Discord adapter.
-- `whatsapp-adapter-parity-v1.md` - enforced parity requirements for WhatsApp config and policy.
+- `docs/architecture/project-vocabulary-v1.md` — canonical product vocabulary and documentation wording rules.
+- `docs/contracts/channel-adapter-contract-v1.md` — canonical interface for all channel adapters.
+- `docs/contracts/channel-adapter-lifecycle-v1.md` — required ingress-to-delivery adapter lifecycle.
+- `docs/governance/sovereign-agent-role-taxonomy-v1.md` — role boundaries and authority matrix for sovereign multi-agent delivery.
+- `docs/adapters/imessage-adapter-architecture-v1.md` — phased architecture and implementation plan for iMessage adapter.
+- `docs/adapters/imessage-live-bridge-v1.md` — live inbound/outbound iMessage bridge endpoint and test protocol.
+- `docs/adapters/email-adapter-architecture-v1.md` — phased architecture and provider strategy for Email adapter.
+- `docs/adapters/discord-adapter-architecture-v1.md` — phased architecture and provider strategy for Discord adapter.
+- `docs/adapters/whatsapp-adapter-parity-v1.md` — enforced parity requirements for WhatsApp config and policy.
 - `functions/registry.v1.json` - machine-readable registry of active miniapp contracts.
-- `function-lifecycle.md` - standard delivery method for new MeiMei functions.
-- `model-routing-spec.md` - deterministic routing policy for channel, task type, and cost.
-- `mac-mini-migration-audit.md` - dependency and portability audit for moving the product to another Mac mini.
-- `mac-mini-go-live-checklist.md` - strict pass/fail gates for cutover.
-- `vercel-env-inventory.md` - secret inventory and Vercel sync notes.
-- `second-mac-mini-handoff.md` - copy-paste task for the migration agent.
-- `workflow.md` - intake to delivery flow.
-- `product_roadmap.md` - executive view of shipped miniapps and FR/CR themes (plain English).
-- `issue-merge-walkthrough.md` - how to walk issues, add FR/CR traceability, and link backlog to miniapps.
-- `runbook.md` - day-to-day operating steps.
-- `security.md` - safety and access rules.
-- `testing.md` - verification expectations.
-- `definition-of-done.md` - shipping bar.
+- `docs/architecture/function-lifecycle.md` — standard delivery method for new MeiMei functions.
+- `docs/architecture/model-routing-spec.md` — deterministic routing policy for channel, task type, and cost.
+- `docs/operations/mac-mini-migration-audit.md` — dependency and portability audit for moving the product to another Mac mini.
+- `docs/operations/mac-mini-go-live-checklist.md` — strict pass/fail gates for cutover.
+- `docs/operations/vercel-env-inventory.md` — secret inventory and Vercel sync notes.
+- `docs/operations/second-mac-mini-handoff.md` — copy-paste task for the migration agent.
+- `docs/operations/workflow.md` — intake to delivery flow.
+- `docs/releases/product_roadmap.md` — executive view of shipped miniapps and FR/CR themes (plain English).
+- `docs/governance/issue-merge-walkthrough.md` — how to walk issues, add FR/CR traceability, and link backlog to miniapps.
+- `docs/operations/runbook.md` — day-to-day operating steps.
+- `docs/compliance/security.md` — safety and access rules.
+- `docs/operations/testing.md` — verification expectations.
+- `docs/governance/definition-of-done.md` — shipping bar.
 - `skills/` - skill packs and catalog scaffolding.
 - `functions/` - product function pages and API contracts.
 - `functions/daily-briefing.md` - Apple Notes-first daily briefing miniapp.
 - `functions/any-url-summarization-in-seconds.md` - URL summarization miniapp.
 - `functions/per-channel-model-routing-by-task-type-and-cost.md` - routing preview miniapp.
 - `functions/api-channel-adapter.md` - API reference channel adapter miniapp (`#700`).
-- `channel-api-adapter-reference-v1.md` - delivery artifact and verification for the API adapter basement.
+- `docs/contracts/channel-api-adapter-reference-v1.md` — delivery artifact and verification for the API adapter basement.
 - `openclaw.config.json` - portable OpenClaw seed template for new machines.
 - `~/.openclaw/openclaw.json` - live OpenClaw config rendered from the seed template and used by the dashboard and wrapper scripts.
 - `scripts/oc` - wrapper that pins `openclaw` to the live OpenClaw config.
@@ -104,7 +106,7 @@ Current baseline includes:
 
 Current version line:
 
-- `foundation 0.8.11` (`kernel-k1e-home-admin-pages-0.8.11`, `2026-03-30`) — prior: `0.8.10` (K1d routing-settings), `0.8.9`, `0.8.0` (`gtm-env-operator-726`, `2026-03-28`)
+- `foundation 0.8.15` (`docs-recursive-audit-ledger-0.8.15`, `2026-03-29`) — see `docs/releases/CHANGELOG.md` for full history; prior baseline examples: `0.8.11` (K1e), `0.8.10` (K1d), `0.8.9`, `0.8.0` (`gtm-env-operator-726`, `2026-03-28`)
 
 Release metadata source of truth:
 
@@ -112,7 +114,7 @@ Release metadata source of truth:
 
 ## Next step
 
-Start by reading `agent.md`, `architecture.md`, and `skills/catalog.md`.
+Start by reading `docs/agent-identity/agent.md`, `docs/architecture/system-overview.md`, and `skills/catalog.md`.
 
 ## First launch (Product Owner / consumer path)
 

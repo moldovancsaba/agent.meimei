@@ -2,7 +2,7 @@
 
 ## Daily start
 
-1. Read `agent.md`.
+1. Read [`docs/agent-identity/agent.md`](../agent-identity/agent.md) (identity contract).
 2. Read `skills/catalog.md`.
 3. Check `tasks.md` for active work.
 4. Confirm whether any OC approval is required before execution.

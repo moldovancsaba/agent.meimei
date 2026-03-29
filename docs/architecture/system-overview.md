@@ -397,7 +397,7 @@ Return JSON + markdown to user
 1. **Coordination:** `cursor-kilo.md` for KILO + CURSOR task assignment
 2. **Implementation:** Edit → Test → Log activity
 3. **Testing:** `curl` commands for API verification
-4. **Documentation:** Brain files + ARCHITECTURE.md
+4. **Documentation:** Brain files + **`docs/architecture/system-overview.md`** (this document; older notes may say `ARCHITECTURE.md`)
 
 ---
 

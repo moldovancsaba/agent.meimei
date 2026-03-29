@@ -1,7 +1,8 @@
 # Documentation audit — agent.meimei markdown corpus
 
-**Date:** 2026-03-28  
-**Scope:** All `*.md` files under the repository (84 files at audit time), excluding transient editor noise.  
+**Date:** 2026-03-28 (original pass); **superseded inventory:** 2026-03-29  
+**Scope (original):** All `*.md` files under the repository (**84** files at that time).  
+**Scope (current):** **145** repo-owned markdown files (excluding `node_modules/**`) — canonical table with **per-file audit timestamps** in **[`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md)** at repo root.  
 **Goal:** Surface overlap, staleness risk, and a **practical** path to a unified doc system without breaking OC/repo conventions.
 
 ---

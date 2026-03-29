@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-03-29 — Docs: recursive full markdown audit ledger (145 files)
+
+- **[`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md)** — master table: every repo \`.md\` (excl. \`node_modules\`), **UTC audit timestamp** per row, **action** column; \`scripts/generate-full-documents-audit.mjs\` to regenerate.
+- **Root \`README.md\`** — \`docs/\` path corrections; **0.8.15** current line; links to ledger + \`docs/README.md\`.
+- **\`VERSION.md\`** — \`Current\` **0.8.15** / **2026-03-29**; delivery bullet for this pass.
+- **\`docs/README.md\`**, **\`docs/compliance/documentation-audit.md\`** — pointer to ledger; superseded “84 files” inventory.
+- **\`apps/lead-enrichment/README.md\`** — \`/dashboard\` route + API contract vs \`registry.v1.json\`.
+- **\`brain/durable.md\`**, **\`cursor-kilo.md\`**, **\`docs/architecture/system-overview.md\`**, **\`releases/0.9.0.md\`** — remove stale \`ARCHITECTURE.md\` / theme drift.
+- **\`docs/operations/runbook.md\`** — daily start points to \`docs/agent-identity/agent.md\`.
+
 ## 2026-03-29 — Docs: P1 sync (kernel audit anchors, miniapp `serverApiPath`, surface API CI)
 
 - **`meimei-kernel-code-audit.v1.md`** — **v1.9:** refreshed **`server.mjs` line anchors** (2168 lines), §5 dispatch includes **operator-chrome.css** before static; §3.2 **operator-chrome** modules; §11 metrics for **66** `dashboard/lib` files.

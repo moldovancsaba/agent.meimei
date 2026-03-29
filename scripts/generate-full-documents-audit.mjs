@@ -46,6 +46,12 @@ const SPECIFIC = {
     "**Completed:** Superseded file count; pointer to ledger (**145** paths).",
   "docs/operations/runbook.md":
     "**Completed:** Daily start → link `docs/agent-identity/agent.md` (repo layout).",
+  "docs/planning/kernel-app-separation-and-https-program.v1.md":
+    "**Completed (2nd pass):** ADR-003 **accepted** in dependency graph + changelog (regenerate ledger preserves hand rows or patch after `generate`).",
+  "docs/planning/meimei-docs-code-sync-audit.v1.md":
+    "**Completed (2nd pass):** Link to full markdown ledger in revision history.",
+  "docs/planning/meimei-https-full-integration-program.v1.md":
+    "**Completed (2nd pass):** Status, ADR-003, current-state table, TLS-001/TLS-003, target §3.6, §9 row.",
   "docs/releases/CHANGELOG.md":
     "**Completed:** Entry **2026-03-29** — recursive doc audit + README/VERSION/ledger.",
   "releases/0.9.0.md":

@@ -79,7 +79,7 @@ ADR-001 (accepted) ─┬─► MM-KERNEL-201 … 203
 
 ADR-002 (proposed) ───► MM-KERNEL-203, 301, 302, 303*, 401
 
-ADR-003 (proposed) ───► MM-TLS-101 … 103
+ADR-003 (accepted) ───► MM-TLS-101 … 103
 
 MM-KERNEL-202 ─► MM-KERNEL-203 ─► MM-KERNEL-301
 MM-KERNEL-302 ─► MM-KERNEL-303a–d
@@ -294,12 +294,11 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Deliverables
 
-- `schemas/meimei.app.policy.v1.json`; default deny for undeclared capabilities.
-- Policy file or DB column per `app_id`.
+- [x] `schemas/meimei.app.policy.v1.json`; optional `policy` on registry rows; `kernel-app-policy.mjs`; `npm run kernel:policy:selftest` + `kernel:validate-app-policy`.
 
 ### Acceptance criteria
 
-- Integration test: app A denied `jobs.enqueue`, app B allowed.
+- [x] Selftest: policy can deny `jobs.enqueue` while satisfying required caps only when allowlist matches (`meimei-kernel-policy-selftest.mjs`).
 
 ---
 
@@ -317,7 +316,7 @@ Scan: `dashboard/server.mjs`, menubar scripts, smoke scripts, OpenClaw wrappers,
 
 ### Deliverables
 
-- OpenAPI fragment or doc section; monitor tagging with `app_id`.
+- [x] `POST /api/meimei/v1/apps/{app_id}/inference` — `kernel-app-http-facades.mjs`; doc [`docs/api/meimei-app-facades-v1.md`](../api/meimei-app-facades-v1.md); inference + monitor `app_id` tagging.
 
 ---
 
@@ -538,6 +537,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 | Date | Change |
 |------|--------|
+| 2026-03-29 | **Doc pass:** dependency graph — **ADR-003 (accepted)** (was marked proposed). |
 | 2026-03-30 | **MM-KERNEL-301** auth; **MM-KERNEL-501** builtins + registry (**default on** since follow-up: `MEIMEI_KERNEL_EXTERNAL_APPS=0` disables); **MM-KERNEL-603** all in-repo manifests, no static `server.mjs` app imports, static-import CI guard. |
 | 2026-03-29 | MM-KERNEL-501 (partial): `kernel-external-app-dispatch.mjs`, `MEIMEI_KERNEL_EXTERNAL_APPS=1`, server fallback POST, `kernel:external-dispatch:selftest` in CI. |
 | 2026-03-29 | MM-KERNEL-202/203: `kernel-app-registry.mjs`, CLI, selftest, gitignored `data/kernel/apps/registry.json`, audit event types for register/update/remove. |

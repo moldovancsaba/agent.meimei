@@ -91,3 +91,4 @@ Exact order drifts with edits; verify with `grep -n normalizedPath dashboard/ser
 |------|--------|
 | 2026-03-29 | P1 closed: kernel audit anchors + dispatch §5; miniapp-contract `serverApiPath`; `surface:validate-api` + CI |
 | 2026-03-31 | v1 initial matrix + P0 fixes linked to design-system, runbook, handbook, platform README, CI Node 22, CHANGELOG |
+| 2026-03-29 | Full markdown inventory: [`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md) — use for completeness; this file remains **normative** for code↔doc matrix. |

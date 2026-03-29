@@ -2,8 +2,8 @@
 
 **Version:** v1  
 **Date:** 2026-03-30  
-**Status:** Planning (execution not started)  
-**Related:** [ADR-003 — TLS termination](../architecture/adr/ADR-003-tls-termination-v1.md) (Proposed), [kernel separation program](./kernel-app-separation-and-https-program.v1.md) (MM-TLS track), `scripts/meimei-domain.mjs`, `scripts/meimei-cert`
+**Status:** **In progress** — phase-0 / phase-1 / **TLS-060** delivered (see §9); remaining **TLS-*** items are backlog until closed.  
+**Related:** [ADR-003 — TLS termination](../architecture/adr/ADR-003-tls-termination-v1.md) (**Accepted**), [kernel separation program](./kernel-app-separation-and-https-program.v1.md) (MM-TLS track), `scripts/meimei-domain.mjs`, `scripts/meimei-cert`
 
 ---
 
@@ -38,7 +38,7 @@
 | Node dashboard | **`http.createServer`** — plain HTTP on configured port |
 | TLS edge | **`meimei-domain`** can expose **`https://meimei.localhost:8443`** → proxy to **HTTP** upstream (`scripts/meimei-domain.mjs`) |
 | Certs | **`meimei-cert`** / `~/.openclaw/certs/meimei.localhost.{crt,key}` |
-| ADR-003 | **Proposed** — default termination model not formally accepted |
+| ADR-003 | **Accepted** — reverse proxy default (`meimei-domain`); see ADR-003 file |
 | Smoke / probe | Default **`http://127.0.0.1:<port>`** (`meimei-dashboard-miniapps-smoke.mjs`, `meimei-dashboard-probe.mjs`) |
 | Config defaults | e.g. `defaults.openclawChatUrl` uses **`http://127.0.0.1:…`** in `dashboard-surface.v1.json` |
 | Registry | **`allowedProtocols`** mixed (`[]` vs `["https"]`) — not a single ingress policy |
@@ -54,7 +54,7 @@
 3. **Plain HTTP** on the public listener either **absent** or **301 → HTTPS** only (no silent dual-use without explicit dev waiver env).
 4. **All first-party scripts and smoke defaults** that “hit the product” use **HTTPS** + documented **trust** (`NODE_EXTRA_CA_CERTS` or OS keychain after `cert:install`).
 5. **CI** includes at least one job or documented reproducible step: **TLS smoke** (or subprocess proxy + `fetch` with CA) — not only plain HTTP.
-6. **ADR-003** → **Accepted**; mac-mini / runbook / go-live checklist aligned.
+6. **ADR-003** → **Accepted** (done); mac-mini / runbook / go-live checklist aligned (ongoing).
 7. **Outbound URL policy** (miniapps fetching arbitrary URLs) **explicitly documented**: ingress is HTTPS-only; outbound may still allow `http` where contract says so, or tighten per **`allowedProtocols`**.
 
 ---
@@ -78,9 +78,9 @@ Each item: **ID**, **theme**, **deliverable**, **acceptance**, **deps**.
 
 | ID | Theme | Deliverable | Acceptance | Deps |
 |----|--------|-------------|------------|------|
-| **TLS-001** | ADR | **Accept ADR-003** with chosen default (**A proxy** recommended; cite `meimei-domain` as reference impl). | ADR status **Accepted**; Open points cleared or deferred with issue IDs. | — |
+| **TLS-001** | ADR | **Accept ADR-003** — **delivered:** default **A** (`meimei-domain`); see [ADR-003](../architecture/adr/ADR-003-tls-termination-v1.md). | ADR status **Accepted**; remaining open points tracked via later **TLS-*** rows / issues. | — |
 | **TLS-002** | Docs | **Canonical URL spec** in `docs/operations/runbook.md` + link from README: scheme, host, port, prefix, trust steps. | New operator can open dashboard **only** via documented HTTPS URL after `cert:install` + `meimei-domain` (or chosen path). | TLS-001 |
-| **TLS-003** | Docs | **`docs/architecture/meimei-https-topology.v1.md`** (new): diagram ASCII/Mermaid — client → TLS listener → upstream Node/socket. | Architecture review checkbox; linked from `docs/README.md`. | TLS-001 |
+| **TLS-003** | Docs | **`docs/architecture/meimei-https-topology.v1.md`**: diagram + canonical URL vs upstream (delivered; extend as TLS program continues). | Architecture review checkbox; linked from `docs/README.md`. | TLS-001 |
 
 ### Phase P1 — Edge hardening (proxy + bind)
 
@@ -188,3 +188,4 @@ TLS-020 blocks TLS-033
 | 2026-03-30 | **Delivered (phase 1):** **`validate-https-doc-contract.mjs`** + **`npm run https:validate-docs`** in **`npm run ci`** (TLS-061 baseline); topology **TLS-042/043** (forwarded proto + cookies); handbook HTTPS pointer; kernel plan **TLS-052** waiver for **`openclawChatUrl`**; health **`public_https.termination`**. |
 | 2026-03-30 | **Delivered (phase 0):** ADR-003 **Accepted** (proxy default); **`meimei-https-topology.v1.md`**; runbook/README/miniapp-contract/checklist; server boot hint + **`GET /api/health`** `public_https` + bind envs; **`MEIMEI_DOMAIN_HTTP_REDIRECT`**; smoke **`MEIMEI_SMOKE_HTTPS`**, probe **`MEIMEI_PROBE_TLS`**; **`npm run dashboard:smoke:https`**, **`dashboard:probe:tls`**. |
 | 2026-03-30 | Initial program: rationale, target state, micro-deliverables TLS-001–TLS-071. |
+| 2026-03-29 | **Doc pass:** status + ADR-003 / “current state” table aligned with **Accepted** ADR-003 and delivered topology; **TLS-003** wording (no longer “new”). |

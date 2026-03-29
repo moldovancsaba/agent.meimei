@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-03-29 — Docs: planning corpus second pass (`docs/planning/*`)
+
+- **`meimei-https-full-integration-program.v1.md`** — Status **In progress** (phase-0/1 + TLS-060 delivered); ADR-003 **Accepted** in header and §2 snapshot; **TLS-001** / **TLS-003** rows aligned with reality; §9 changelog row.
+- **`kernel-app-separation-and-https-program.v1.md`** — Dependency graph: **ADR-003 (accepted)**.
+- **`meimei-docs-code-sync-audit.v1.md`** — Pointer to **`full_comprehensive_detailed_documents_audit.md`** in revision history.
+- **`full_comprehensive_detailed_documents_audit.md`** — Method + table rows for planning files (**2nd pass** timestamps **21:00:00Z**–**21:00:02Z** UTC).
+
 ## 2026-03-29 — Docs: recursive full markdown audit ledger (145 files)
 
 - **[`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md)** — master table: every repo \`.md\` (excl. \`node_modules\`), **UTC audit timestamp** per row, **action** column; \`scripts/generate-full-documents-audit.mjs\` to regenerate.

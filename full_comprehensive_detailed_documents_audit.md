@@ -10,7 +10,7 @@
 ## Method (mandated rounds)
 
 1. **Round 1:** Enumerate all paths — omissions forbidden (this table). **145** paths verified via `find … ! -path '*/node_modules/*'`.  
-2. **Rounds 2–N:** **Deep read** (full file or full chunked read) on high-traffic / known-drift docs: root `README.md`, `VERSION.md`, `cursor-kilo.md`, `brain/durable.md`, `apps/lead-enrichment/README.md`, `docs/architecture/system-overview.md`, `docs/compliance/documentation-audit.md`, `docs/README.md`, `docs/releases/CHANGELOG.md`, `releases/0.9.0.md`, and representative samples across `brain/`, `functions/`, `skills/`. **All other rows:** inventory + classification **None** with repo-wide grep for stale anchors (e.g. `ARCHITECTURE.md`, wrong version lines) — not a line-by-line reread of every long program/plan doc in one session.  
+2. **Rounds 2–N:** **Deep read** (full file or full chunked read) on high-traffic / known-drift docs: root `README.md`, `VERSION.md`, `cursor-kilo.md`, `brain/durable.md`, `apps/lead-enrichment/README.md`, `docs/architecture/system-overview.md`, `docs/compliance/documentation-audit.md`, `docs/README.md`, `docs/releases/CHANGELOG.md`, `releases/0.9.0.md`, and representative samples across `brain/`, `functions/`, `skills/`. **`docs/planning/*.md` second pass (2026-03-29):** full read of all **3** planning files; drift fixes (ADR-003 status, HTTPS program status/table, dependency graph). **All other rows:** inventory + classification **None** with repo-wide grep for stale anchors — not a line-by-line reread of every remaining long doc in one session.  
 3. **Rounds N+1–N+M:** Apply fixes where column 3 starts with **Completed:**.  
 4. **Round N+M+1:** Maintainer report (below).
 
@@ -19,7 +19,7 @@
 | Metric | Value |
 |--------|------:|
 | Documents in scope | 145 |
-| Files edited this session | See rows marked **Completed:** (README, VERSION, lead-enrichment README, brain/durable, cursor-kilo, system-overview, documentation-audit, docs/README, runbook, CHANGELOG, `releases/0.9.0.md`, this ledger) |
+| Files edited this session | See rows marked **Completed:** + **Second pass (planning):** `kernel-app-separation…`, `meimei-https-full-integration…`, `meimei-docs-code-sync…` (see table rows) |
 | Normative code sync | Still owned by [`docs/planning/meimei-docs-code-sync-audit.v1.md`](docs/planning/meimei-docs-code-sync-audit.v1.md) |
 
 ---
@@ -121,9 +121,9 @@
 | `docs/operations/testing.md` | 2026-03-29T20:03:42Z | None — full read or full chunked read; no correction applied this session. |
 | `docs/operations/vercel-env-inventory.md` | 2026-03-29T20:03:43Z | None — full read or full chunked read; no correction applied this session. |
 | `docs/operations/workflow.md` | 2026-03-29T20:03:44Z | None — full read or full chunked read; no correction applied this session. |
-| `docs/planning/kernel-app-separation-and-https-program.v1.md` | 2026-03-29T20:03:45Z | None — full read or full chunked read; no correction applied this session. |
-| `docs/planning/meimei-docs-code-sync-audit.v1.md` | 2026-03-29T20:03:46Z | None — full read or full chunked read; no correction applied this session. |
-| `docs/planning/meimei-https-full-integration-program.v1.md` | 2026-03-29T20:03:47Z | None — full read or full chunked read; no correction applied this session. |
+| `docs/planning/kernel-app-separation-and-https-program.v1.md` | 2026-03-29T21:00:00Z | **Completed (2nd pass):** Dependency graph **ADR-003 (accepted)**; changelog row. |
+| `docs/planning/meimei-docs-code-sync-audit.v1.md` | 2026-03-29T21:00:01Z | **Completed (2nd pass):** Revision link to `full_comprehensive_detailed_documents_audit.md`. |
+| `docs/planning/meimei-https-full-integration-program.v1.md` | 2026-03-29T21:00:02Z | **Completed (2nd pass):** Status **In progress**; ADR-003 **Accepted** in header + §2 table; **TLS-003** delivered wording; target state §3.6; §9 changelog row. |
 | `docs/README.md` | 2026-03-29T20:03:48Z | **Completed:** Architecture table row → `full_comprehensive_detailed_documents_audit.md`. |
 | `docs/releases/10hrs.md` | 2026-03-29T20:03:49Z | None — full read or full chunked read; no correction applied this session. |
 | `docs/releases/CHANGELOG.md` | 2026-03-29T20:03:50Z | **Completed:** Entry **2026-03-29** — recursive doc audit + README/VERSION/ledger. |
@@ -178,7 +178,7 @@
 
 ## N+M+1 — Report to maintainers
 
-**Healthness:** **Inventory coverage = 100%** of repo-owned `.md` (excl. `node_modules/**`). **Narrative verification depth = tiered:** every row has an audit timestamp and disposition; line-level proof concentrated on entry points and files with detected drift. For **kernel HTTP / operator chrome** truth, use [`docs/planning/meimei-docs-code-sync-audit.v1.md`](docs/planning/meimei-docs-code-sync-audit.v1.md). Schedule a **second pass** on any subsystem before external compliance sign-off if you require literal full reads of every long planning doc.
+**Healthness:** **Inventory coverage = 100%** of repo-owned `.md` (excl. `node_modules/**`). **`docs/planning/`:** second pass **complete** (3/3 files, full read, edits applied **2026-03-29T21:00:00Z**–**21:00:02Z** UTC). Other directories remain **tiered** as in Method §2. For **kernel HTTP / operator chrome** truth, use [`docs/planning/meimei-docs-code-sync-audit.v1.md`](docs/planning/meimei-docs-code-sync-audit.v1.md).
 
 **Proof:** Column 2 runs **2026-03-29T20:02:12Z** → **2026-03-29T20:04:36Z** inclusive.
 

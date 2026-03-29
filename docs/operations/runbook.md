@@ -105,3 +105,10 @@ MeiMei is an **operator-local** stack (Node upstream + optional TLS proxy + Laun
 - **Page layout** (grid columns, block order, row breaks): **Admin → Page layout**; spec and CSS classes in [`docs/architecture/design-system-v1.md`](../architecture/design-system-v1.md) (**Global layout system**); data in `config/page-layout.v1.json`.
 - Optional **menu bar control** app **MeiMei Control**: `npm run menubar:build` → `macos/MeiMei/build/MeiMei Control.app`. For **Spotlight**, run `npm run menubar:install` (installs `~/Applications/MeiMei Control.app`; removes legacy `MeiMei.app` / `MeiMeiMenuBar.app` if present). Add **MeiMei Control** under **Login Items** if you want it at login (see `macos/MeiMei/README.md`).
 - Use `npm run setup` for the one-step local domain start/open flow.
+
+## Paperclip + MeiMei bridge
+
+1. **Forked Paperclip** (HTTP adapter enabled in UI): `/Users/chappie/Projects/paperclip` — run `npx pnpm@9.15.4 dev` or `… build` + your usual start so the **rebuilt UI** is served.
+2. **MeiMei env:** set **`MEIMEI_PAPERCLIP_BRIDGE_SECRET`** (required for the webhook). Optional: **`PAPERCLIP_API_URL`** (e.g. `http://127.0.0.1:3100`) and **`PAPERCLIP_API_KEY`** (agent API key) so the bridge can post issue comments.
+3. **Paperclip agent:** Adapter **HTTP** → URL **`http://127.0.0.1:<mei-mei-port>/api/integrations/paperclip/webhook`** (or your HTTPS public URL + path). Header **`X-MeiMei-Paperclip-Secret`** = same secret. See Paperclip **`doc/integrations/meimei-kernel.md`**.
+4. **Smoke:** with dashboard running, **`npm run paperclip:bridge-probe`** (add **`MEIMEI_PAPERCLIP_BRIDGE_SECRET`** in the environment for the full inference path; needs Ollama for **200**).

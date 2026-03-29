@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-03-29 — Paperclip bridge: probe script + runbook
+
+- **`scripts/meimei-paperclip-bridge-probe.mjs`** + **`npm run paperclip:bridge-probe`** — POST smoke for **`/api/integrations/paperclip/webhook`** (optional secret for full path).
+- **`docs/operations/runbook.md`** — **Paperclip + MeiMei bridge** operator steps (fork path, env, HTTP adapter URL).
+
 ## 2026-03-29 — MM-KERNEL-604: generated `functions/registry.v1.json`
 
 - **`npm run kernel:registry:generate`** — writes **`functions/registry.v1.json`** from **`functions/registry.shell.v1.json`**, **`functions/registry.fragments.v1.json`**, **`config/registry-functions-order.v1.json`**, and **`meimei.app.json`** ( **`apps/*`**, **`packages/*`** ). **`npm run kernel:registry:generate-check`** in **`npm run ci`**.

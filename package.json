@@ -13,6 +13,7 @@
     "dashboard": "node dashboard/server.mjs",
     "dashboard:probe": "node scripts/meimei-dashboard-probe.mjs",
     "dashboard:probe:tls": "MEIMEI_PROBE_TLS=1 node scripts/meimei-dashboard-probe.mjs",
+    "paperclip:bridge-probe": "node scripts/meimei-paperclip-bridge-probe.mjs",
     "dashboard:smoke:miniapps": "node scripts/meimei-dashboard-miniapps-smoke.mjs",
     "dashboard:smoke:https": "MEIMEI_SMOKE_HTTPS=1 node scripts/meimei-dashboard-miniapps-smoke.mjs",
     "boundary:check": "node scripts/meimei-repo-boundaries-check.mjs && node scripts/meimei-apps-cross-import-check.mjs && node scripts/meimei-dashboard-static-apps-import-check.mjs",

@@ -52,7 +52,7 @@ This handbook explains **how the kernel behaves** and **which contracts are stab
 | Term | Definition |
 |------|------------|
 | **Kernel** | HTTP entry (`server.mjs`), allowlisted `dashboard/lib/*` modules, registry projection, env store, job spooler + inference worker, static design system delivery — as delimited in [meimei-repo-boundaries.v1.md](../architecture/meimei-repo-boundaries.v1.md). |
-| **Miniapp / tool** | Registry row in `functions/registry.v1.json` with POST handler typically in `apps/<id>/index.mjs`. |
+| **Miniapp / tool** | Registry row (generated into `functions/registry.v1.json`) with POST handler typically in `apps/<id>/index.mjs` or `packages/<id>/index.mjs`. |
 | **Platform UI** | Operator-facing HTML: home, admin, catalogs — implemented via `render*` chains and `platform-pages/*`. |
 | **Integration** | External products bridged via `integrations/*` and checklist modules. |
 
@@ -63,7 +63,7 @@ This handbook explains **how the kernel behaves** and **which contracts are stab
 1. **Layering:** `dashboard/lib` (allowlisted core) does not import one `apps/*` module from another; cross-app work uses queue/bus contracts.  
 2. **Inference contract:** Versioned HTTP+JSON at `/api/meimei/route`; behavior matches [inference-route.v1.md](../api/inference-route.v1.md).  
 3. **Job isolation:** The default in-process worker claims **`inference_v1`** jobs only; **`app_task`** rows are processed by designated adapters.  
-4. **Registry SSOT:** Catalog strings and API paths derive from `functions/registry.v1.json` through `miniapp-registry.mjs`. **Apps/Tools HTML catalog** also merges kernel-only apps (builtins + `data/kernel/apps/registry.json`) via [`kernel-catalog-merge.mjs`](../../dashboard/lib/kernel-catalog-merge.mjs).  
+4. **Registry SSOT:** Authoritative inputs are **`registry.shell.v1.json`**, **`registry.fragments.v1.json`**, **`config/registry-functions-order.v1.json`**, and disk **`meimei.app.json`**; **`npm run kernel:registry:generate`** emits **`functions/registry.v1.json`**, which [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) loads at runtime. **Apps/Tools HTML catalog** also merges kernel-only apps (builtins + `data/kernel/apps/registry.json`) via [`kernel-catalog-merge.mjs`](../../dashboard/lib/kernel-catalog-merge.mjs).  
 5. **Platform pages:** Modules under `platform-pages/` do not import `apps/*`.
 
 ---
@@ -74,7 +74,7 @@ This handbook explains **how the kernel behaves** and **which contracts are stab
 |------|-----------|
 | Process start | `npm start` / `npm run dashboard` → `node dashboard/server.mjs` |
 | Repository root | Resolved via `import.meta.url` and [`runtime.mjs`](../../dashboard/lib/runtime.mjs) helpers |
-| Registry load | Synchronous read of [`functions/registry.v1.json`](../../functions/registry.v1.json) via [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) |
+| Registry load | Synchronous read of generated [`functions/registry.v1.json`](../../functions/registry.v1.json) via [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) |
 | Job worker | [`startMeimeiJobWorker`](../../dashboard/lib/meimei-job-worker.mjs) runs in the **same Node process** as HTTP unless `MEIMEI_JOB_WORKER=0` |
 
 There is no separate mandatory worker binary for inference in v1; horizontal scaling is an **external** deployment concern.
@@ -110,7 +110,7 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 6. **`GET`/`HEAD` `/styles/operator-chrome.css`** — dynamic merged operator theme CSS ([`operator-chrome.mjs`](../../dashboard/lib/operator-chrome.mjs))  
 7. Static assets under `public/` for `surface.staticPrefixes` (`/images/`, `/styles/` …)  
 8. JSON APIs (e.g. **`GET`/`POST /api/operator/chrome`**, page layout, config, …) and `apps/*` POST branches where still inlined in `server.mjs`  
-9. Fallback **`POST /api/functions/<suffix>`** — [`kernel-external-app-dispatch.mjs`](../../dashboard/lib/kernel-external-app-dispatch.mjs): **builtins** from `apps/<pkg>/meimei.app.json` (always), plus **`data/kernel/apps/registry.json`** (on by default; **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable). After auth, **`assertManifestCapabilitiesSatisfiedForDispatch`** rejects invalid policy vs manifest **required** caps. **Auth:** optional **`MEIMEI_KERNEL_APP_AUTH=1`** + headers **`X-MeiMei-App-Id`** / **`X-MeiMei-App-Secret`**; see [`kernel-app-auth.mjs`](../../dashboard/lib/kernel-app-auth.mjs) and program doc MM-KERNEL-301.  
+9. Fallback **`POST /api/functions/<suffix>`** — [`kernel-external-app-dispatch.mjs`](../../dashboard/lib/kernel-external-app-dispatch.mjs): **builtins** from **`apps/<pkg>/meimei.app.json`** and **`packages/<pkg>/meimei.app.json`** (always), plus **`data/kernel/apps/registry.json`** (on by default; **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable). After auth, **`assertManifestCapabilitiesSatisfiedForDispatch`** rejects invalid policy vs manifest **required** caps. **Auth:** optional **`MEIMEI_KERNEL_APP_AUTH=1`** + headers **`X-MeiMei-App-Id`** / **`X-MeiMei-App-Secret`**; see [`kernel-app-auth.mjs`](../../dashboard/lib/kernel-app-auth.mjs) and program doc MM-KERNEL-301.  
 10. HTML `render*` responses  
 
 **Adding behavior:** prefer `meimei.app.json` + dynamic dispatch for new POST APIs; legacy path is a **short** branch in `server.mjs` — per boundaries §4 and **`meimei-dashboard-static-apps-import-check.mjs`** allowlist.
@@ -119,7 +119,7 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 
 ## 7. Registry
 
-- **Legacy function registry (SSOT for shipped miniapps):** [`functions/registry.v1.json`](../../functions/registry.v1.json)  
+- **Shipped function registry (generated file):** [`functions/registry.v1.json`](../../functions/registry.v1.json) — built by **`npm run kernel:registry:generate`** from [`registry.shell.v1.json`](../../functions/registry.shell.v1.json), [`registry.fragments.v1.json`](../../functions/registry.fragments.v1.json), [`config/registry-functions-order.v1.json`](../../config/registry-functions-order.v1.json), and **`meimei.app.json`** on disk. CI: **`npm run kernel:registry:generate-check`**.  
 - **Validation:** `npm run registry:validate`  
 - **Projection:** [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) — `parseContractRoute`, `serverApiPath`, catalog builders  
 - **Kernel app registry (external / path-registered):** [`data/kernel/apps/registry.json`](../../data/kernel/apps/README.md) — [`kernel-app-registry.mjs`](../../dashboard/lib/kernel-app-registry.mjs); optional per-row **`policy`** (validated: `npm run kernel:validate-app-policy`)  

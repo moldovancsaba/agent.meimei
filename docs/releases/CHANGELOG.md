@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-03-29 — Docs: registry generation workflow (dev guide, handbook, miniapp contract)
+
+- **`meimei-app-development-guide.v1.md`**, **`meimei-kernel-handbook.v1.md`**, **`miniapp-contract-v1.md`**, **`kernel-apps.v1.md`**, **`documentation-audit.md`**, **`kernel-app-separation-and-https-program.v1.md`** — document generated **`registry.v1.json`**, **`kernel:registry:generate`** / **`generate-check`**, and **`packages/*`** handler paths.
+
+## 2026-03-30 — Docs: VERSION + sync audit (MM-KERNEL-602/604)
+
+- **`VERSION.md`** — delivery bullet for **602** (`packages/daily-briefing`) + **604** (registry generate / drift-check).
+- **`meimei-docs-code-sync-audit.v1.md`** — revision row; **[`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md)** regen base **`2026-03-30T00:00:00Z`**.
+
 ## 2026-03-29 — Paperclip bridge: probe script + runbook
 
 - **`scripts/meimei-paperclip-bridge-probe.mjs`** + **`npm run paperclip:bridge-probe`** — POST smoke for **`/api/integrations/paperclip/webhook`** (optional secret for full path).

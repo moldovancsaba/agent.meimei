@@ -92,7 +92,7 @@ Every miniapp must define a contract object with this schema:
 
 ### Registry `api.path` vs Node routing
 
-- **`functions/registry.v1.json`** stores **browser-canonical** paths: both `route` and `api.path` use the **`/dashboard`** prefix (e.g. `/dashboard/api/functions/daily-briefing`).
+- **`functions/registry.v1.json`** stores **browser-canonical** paths: both `route` and `api.path` use the **`/dashboard`** prefix (e.g. `/dashboard/api/functions/daily-briefing`). That file is **generated** (`npm run kernel:registry:generate`); edit **`registry.fragments.v1.json`**, **`registry.shell.v1.json`**, **`config/registry-functions-order.v1.json`**, and **`meimei.app.json`** instead.
 - **`serverApiPath()`** in [`dashboard/lib/miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) strips a leading **`/dashboard`** so the upstream HTTP listener matches **`/api/functions/<id>`** without double-mounting the prefix.
 - **`miniappRuntimeConfig()`** exposes the stripped value as `apiPath` for server-side dispatch; browser `fetch` from pages under **`https://…/dashboard/…`** should still target the **contract** path (with `/dashboard`) or an equivalent same-origin relative URL.
 
@@ -158,10 +158,9 @@ These three become reference implementations for all future miniapps.
 
 ## Registry Binding
 
-The machine-readable source of active contract instances is:
+The machine-readable **runtime** file is **`functions/registry.v1.json`** (generated). Authoritative **inputs** are **`functions/registry.shell.v1.json`**, **`functions/registry.fragments.v1.json`**, **`config/registry-functions-order.v1.json`**, and disk **`meimei.app.json`** — see [`kernel-apps.v1.md`](../operations/kernel-apps.v1.md).
 
-- `functions/registry.v1.json`
+Validation commands:
 
-Validation command:
-
+- `npm run kernel:registry:generate-check` (CI — assembled registry matches sources)
 - `npm run registry:validate`

@@ -21,7 +21,7 @@ const raw = execSync(
 if (!raw.includes(LEDGER)) raw.push(LEDGER);
 raw.sort((a, b) => a.localeCompare(b, "en"));
 
-const baseSec = Math.floor(Date.parse("2026-03-29T22:00:00Z") / 1000);
+const baseSec = Math.floor(Date.parse("2026-03-30T00:00:00Z") / 1000);
 const ledgerGeneratedIso = new Date(baseSec * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 const ts = (i) => new Date((baseSec + i) * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
@@ -32,7 +32,7 @@ const SPECIFIC = {
   "README.md":
     "**Completed (wave 3):** Ledger count **150** in repo overview; `docs/` path corrections; **0.8.15**.",
   "VERSION.md":
-    "**Completed:** `Current` **0.8.15**; ledger count **150**; delivery bullets for recursive audit + `packages/README.md` inventory.",
+    "**Completed:** `Current` **0.8.15**; ledger **150**; deliveries — recursive audit, inventory 150, **MM-KERNEL-602/604** (registry generate, `packages/daily-briefing`).",
   "apps/lead-enrichment/README.md":
     "**Completed:** Route/API aligned to `functions/registry.v1.json` + `miniapp-contract` (`/dashboard` + `serverApiPath` note).",
   "brain/durable.md":
@@ -74,9 +74,9 @@ const SPECIFIC = {
   "docs/developers/README.md":
     "**Completed (wave 3):** Table rows for facades, kernel-apps, threat model, external shells.",
   "docs/planning/meimei-docs-code-sync-audit.v1.md":
-    "**Completed (2nd pass + wave 3–4):** Ledger link; matrix rows; Wave 4 + **inventory 150** revision rows.",
+    "**Completed (2nd pass + wave 3–4):** Ledger link; matrix rows; Wave 4 + inventory 150 + **602/604** revision rows.",
   "docs/releases/CHANGELOG.md":
-    "**Completed (wave 3–4):** Full-corpus hygiene; Wave 4 historical footnotes; **2026-03-29** §Documentation `ARCHITECTURE.md` footnote; ledger regen **20:00Z**; inventory **150** (**22:00Z**).",
+    "**Completed (wave 3–4):** Full-corpus hygiene; Wave 4 historical footnotes; **2026-03-29** §Documentation `ARCHITECTURE.md` footnote; ledger regens **2026-03-29 20:00Z** → **2026-03-30 00:00Z**; inventory **150**; **2026-03-30** VERSION + **602/604** sync.",
   "releases/0.9.0.md":
     "**Completed:** `ARCHITECTURE.md` bullet → `docs/architecture/system-overview.md`.",
   "packages/README.md":

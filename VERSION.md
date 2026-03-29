@@ -9,6 +9,7 @@
 
 ## Included issue deliveries
 
+- **2026-03-29 — MM-KERNEL-602 / MM-KERNEL-604:** Pilot miniapp [`packages/daily-briefing/`](packages/daily-briefing/meimei.app.json); **`npm run kernel:registry:generate`** / **`kernel:registry:generate-check`** (generated **`functions/registry.v1.json`** from shell + fragments + manifests); **`kernel:registry:drift-check`** includes **`packages/*`**. See [`docs/releases/CHANGELOG.md`](docs/releases/CHANGELOG.md), [`docs/operations/kernel-apps.v1.md`](docs/operations/kernel-apps.v1.md), [`packages/README.md`](packages/README.md).
 - **2026-03-29 — Markdown inventory 150:** [`packages/README.md`](packages/README.md) added to corpus; [`full_comprehensive_detailed_documents_audit.md`](full_comprehensive_detailed_documents_audit.md) regen **`2026-03-29T22:00:00Z`**; `README.md`, [`docs/README.md`](docs/README.md), [`docs/compliance/documentation-audit.md`](docs/compliance/documentation-audit.md), and this file — scope count **150**.
 - **2026-03-29 — Recursive documentation ledger:** [`full_comprehensive_detailed_documents_audit.md`](full_comprehensive_detailed_documents_audit.md) — repo `.md` files (excl. `node_modules`), per-file UTC audit table; root `README` path hygiene; `ARCHITECTURE.md` → [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md); `apps/lead-enrichment/README` vs `registry.v1.json`; `brain/durable` theme note vs design-system.
 

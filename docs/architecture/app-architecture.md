@@ -143,7 +143,7 @@ export const meta = {
 
 ### App Registry
 
-`functions/registry.v1.json` defines all apps:
+`functions/registry.v1.json` defines all apps for the dashboard catalog and validation; it is **generated** — edit **`registry.fragments.v1.json`**, **`registry.shell.v1.json`**, **`config/registry-functions-order.v1.json`**, and **`meimei.app.json`**, then run **`npm run kernel:registry:generate`** (see [`kernel-apps.v1.md`](../operations/kernel-apps.v1.md)).
 
 ```json
 {
@@ -211,7 +211,7 @@ EOF
 
 ### Step 4: Register in Registry
 
-Add to `functions/registry.v1.json`:
+Update registry **sources** (fragments + order + manifest), then run **`npm run kernel:registry:generate`**. The emitted row shape matches:
 
 ```json
 {

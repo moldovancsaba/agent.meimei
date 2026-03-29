@@ -112,8 +112,8 @@ Miniapps that are **only** API backends still follow registry + contract docs fo
 
 ## 7. Registry, routes, and APIs
 
-1. Add or update **`functions/registry.v1.json`** (`id`, `route`, `api.path`, safety, capabilities).
-2. Wire **`dashboard/server.mjs`** (thin router) and put product logic in **`apps/<registry-id>/index.mjs`** or an allowed **`dashboard/lib/*`** module per **`meimei-repo-boundaries.v1.md`**. Large catalog / tool GET HTML belongs in **`dashboard/lib/platform-pages/*`** (e.g. **`catalog-pages.mjs`**, **`tool-surface-pages.mjs`**, **`system-monitor-page.mjs`**, **`reference-app-pages.mjs`**, **`ops-tool-pages.mjs`**, **`gtm-pages.mjs`**, **`reader-pages.mjs`**, **`routing-settings-pages.mjs`**, **`home-admin-pages.mjs`**), not inline in `server.mjs`. **No** `apps/foo` importing **`apps/bar`** (CI: `meimei-apps-cross-import-check.mjs`).
+1. **Shipped catalog row:** `functions/registry.v1.json` is **generated** — do not edit it by hand. Sources: **`functions/registry.shell.v1.json`** (metadata), **`functions/registry.fragments.v1.json`** (contract fields; use **`"__static": true`** for rows without a disk manifest), **`config/registry-functions-order.v1.json`** (emit order), and **`meimei.app.json`** under **`apps/<id>/`** or **`packages/<id>/`** ( **`id`**, **`displayName`**, **`description`**, **`routes`**, **`api.pathSuffix`** ). After changes, run **`npm run kernel:registry:generate`** and commit the updated **`registry.v1.json`**. CI runs **`npm run kernel:registry:generate-check`**. See [`kernel-apps.v1.md`](../operations/kernel-apps.v1.md).
+2. Wire **`dashboard/server.mjs`** (thin router) and put product logic in **`apps/<registry-id>/index.mjs`**, **`packages/<registry-id>/index.mjs`**, or an allowed **`dashboard/lib/*`** module per **`meimei-repo-boundaries.v1.md`**. Large catalog / tool GET HTML belongs in **`dashboard/lib/platform-pages/*`** (e.g. **`catalog-pages.mjs`**, **`tool-surface-pages.mjs`**, **`system-monitor-page.mjs`**, **`reference-app-pages.mjs`**, **`ops-tool-pages.mjs`**, **`gtm-pages.mjs`**, **`reader-pages.mjs`**, **`routing-settings-pages.mjs`**, **`home-admin-pages.mjs`**), not inline in `server.mjs`. **No** `apps/foo` importing **`apps/bar`** (CI: `meimei-apps-cross-import-check.mjs`).
 3. Document the function in **`functions/<id>.md`** with API actions, env vars, and **operator transport / secrets (R8 / R4)** (loopback vs TLS prefix, env SoT).
 
 ---
@@ -146,7 +146,7 @@ Miniapps that are **only** API backends still follow registry + contract docs fo
 
 ## 12. Checklist for a new capability
 
-- [ ] Registry entry + contract doc updated (including **R8 / R4** transport + secrets section)  
+- [ ] Registry sources updated (fragments / order / manifest) + **`npm run kernel:registry:generate`**; contract doc updated (including **R8 / R4** transport + secrets section)  
 - [ ] Owning path declared in **`meimei-repo-boundaries.v1.md`** (or propose allowlist change)  
 - [ ] Secrets named per **`meimei-env-ui-contract.v1.md`**; catalog hints updated if common  
 - [ ] LLM work goes through **queue** and/or **`POST /api/meimei/route`**  

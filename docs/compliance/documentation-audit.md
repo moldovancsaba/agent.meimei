@@ -119,7 +119,7 @@ Frozen-style specs: channel adapters, handoff, release gates, policy, audit, tel
 
 ### Tier I — `functions/*.md` & `skills/**`
 
-Product function specs and skills: **correct location**; avoid duplicating registry fields in prose (point to `functions/registry.v1.json`).
+Product function specs and skills: **correct location**; avoid duplicating registry fields in prose (point to generated `functions/registry.v1.json` and edit **`registry.fragments.v1.json`** / manifests per [`kernel-apps.v1.md`](../operations/kernel-apps.v1.md)).
 
 ### Tier J — `macos/MeiMei/README.md`
 

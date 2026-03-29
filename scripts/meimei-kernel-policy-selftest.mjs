@@ -56,4 +56,10 @@ if (eff.has("inference")) fail("deny should remove inference");
 const emptyManifestInf = assertCapabilityAllowed({ manifest: {}, policy: undefined }, "inference");
 if (!emptyManifestInf.ok) fail("empty manifest should allow façade caps until policy restricts");
 
+// Acceptance (MM-KERNEL-302): two apps — A denied jobs.enqueue, B allowed
+const appA = matchTight;
+const appB = matchOk;
+if (assertCapabilityAllowed(appA, "jobs.enqueue").ok) fail("app A: jobs.enqueue must be denied");
+if (!assertCapabilityAllowed(appB, "jobs.enqueue").ok) fail("app B: jobs.enqueue must be allowed");
+
 ok("kernel-app-policy selftest");

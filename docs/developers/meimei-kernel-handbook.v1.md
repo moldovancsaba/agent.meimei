@@ -1,6 +1,6 @@
 # MeiMei kernel — technical handbook
 
-**Document revision:** v1.2  
+**Document revision:** v1.3  
 **Audience:** Software architects and senior engineers integrating, extending, or reviewing the MeiMei platform core.  
 **Runtime:** Node.js **ESM** (`.mjs`), engines **≥22.5** per [`package.json`](../../package.json).  
 **Normative audit:** [meimei-kernel-code-audit.v1.md](../architecture/meimei-kernel-code-audit.v1.md) (inventory, contracts, governance, line anchors).  
@@ -37,6 +37,7 @@ This handbook explains **how the kernel behaves** and **which contracts are stab
 **Stable integration seams (recommended)**
 
 - `POST /api/meimei/route` — OpenAI Chat Completions–shaped request/response; see §8.  
+- **App-scoped façades** — `POST/GET /api/meimei/v1/apps/{app_id}/…` (inference, jobs, env); same auth headers as `POST /api/functions/…` when enabled — [meimei-app-facades-v1.md](../api/meimei-app-facades-v1.md); Node client **`@meimei/sdk`** (`packages/meimei-sdk`).  
 - Job spooler patterns — enqueue and observe via SQLite-backed APIs documented in [adapter-contract.v1.md](../architecture/adapter-contract.v1.md) and the audit §4.2–4.3.
 
 **Unstable or product-coupled**
@@ -62,7 +63,7 @@ This handbook explains **how the kernel behaves** and **which contracts are stab
 1. **Layering:** `dashboard/lib` (allowlisted core) does not import one `apps/*` module from another; cross-app work uses queue/bus contracts.  
 2. **Inference contract:** Versioned HTTP+JSON at `/api/meimei/route`; behavior matches [inference-route.v1.md](../api/inference-route.v1.md).  
 3. **Job isolation:** The default in-process worker claims **`inference_v1`** jobs only; **`app_task`** rows are processed by designated adapters.  
-4. **Registry SSOT:** Catalog strings and API paths derive from `registry.v1.json` through `miniapp-registry.mjs`.  
+4. **Registry SSOT:** Catalog strings and API paths derive from `functions/registry.v1.json` through `miniapp-registry.mjs`. **Apps/Tools HTML catalog** also merges kernel-only apps (builtins + `data/kernel/apps/registry.json`) via [`kernel-catalog-merge.mjs`](../../dashboard/lib/kernel-catalog-merge.mjs).  
 5. **Platform pages:** Modules under `platform-pages/` do not import `apps/*`.
 
 ---
@@ -102,14 +103,15 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 **Dispatch order (summary)** — see [sync audit §5](../planning/meimei-docs-code-sync-audit.v1.md) for rationale; exact order: `grep -n normalizedPath dashboard/server.mjs`.
 
 1. Health  
-2. `GET /api/meimei/monitor/feed`  
-3. `POST /api/meimei/route`  
-4. Checklist public path — reverse-proxy attempt when configured  
-5. **`GET`/`HEAD` `/styles/operator-chrome.css`** — dynamic merged operator theme CSS ([`operator-chrome.mjs`](../../dashboard/lib/operator-chrome.mjs))  
-6. Static assets under `public/` for `surface.staticPrefixes` (`/images/`, `/styles/` …)  
-7. JSON APIs (e.g. **`GET`/`POST /api/operator/chrome`**, page layout, config, …) and `apps/*` POST branches where still inlined in `server.mjs`  
-8. Fallback **`POST /api/functions/<suffix>`** — [`kernel-external-app-dispatch.mjs`](../../dashboard/lib/kernel-external-app-dispatch.mjs): **builtins** from `apps/<pkg>/meimei.app.json` (always), plus **`data/kernel/apps/registry.json`** (on by default; **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable). **Auth:** optional **`MEIMEI_KERNEL_APP_AUTH=1`** + headers **`X-MeiMei-App-Id`** / **`X-MeiMei-App-Secret`**; see [`kernel-app-auth.mjs`](../../dashboard/lib/kernel-app-auth.mjs) and program doc MM-KERNEL-301.  
-9. HTML `render*` responses  
+2. `GET /api/meimei/monitor/feed` — optional `trace_id`, **`app_id`** (filters rows with `kernel_app_id` in payload JSON)  
+3. **App-scoped façades** — `POST /api/meimei/v1/apps/{app_id}/inference`, `POST …/jobs/enqueue`, `GET …/env`, `GET …/fs/roots` (**501** until implemented) — [`kernel-app-http-facades.mjs`](../../dashboard/lib/kernel-app-http-facades.mjs); policy via manifest + optional registry row **`policy`** ([`schemas/meimei.app.policy.v1.json`](../../schemas/meimei.app.policy.v1.json), [`kernel-app-policy.mjs`](../../dashboard/lib/kernel-app-policy.mjs))  
+4. `POST /api/meimei/route`  
+5. Checklist public path — reverse-proxy attempt when configured  
+6. **`GET`/`HEAD` `/styles/operator-chrome.css`** — dynamic merged operator theme CSS ([`operator-chrome.mjs`](../../dashboard/lib/operator-chrome.mjs))  
+7. Static assets under `public/` for `surface.staticPrefixes` (`/images/`, `/styles/` …)  
+8. JSON APIs (e.g. **`GET`/`POST /api/operator/chrome`**, page layout, config, …) and `apps/*` POST branches where still inlined in `server.mjs`  
+9. Fallback **`POST /api/functions/<suffix>`** — [`kernel-external-app-dispatch.mjs`](../../dashboard/lib/kernel-external-app-dispatch.mjs): **builtins** from `apps/<pkg>/meimei.app.json` (always), plus **`data/kernel/apps/registry.json`** (on by default; **`MEIMEI_KERNEL_EXTERNAL_APPS=0`** to disable). After auth, **`assertManifestCapabilitiesSatisfiedForDispatch`** rejects invalid policy vs manifest **required** caps. **Auth:** optional **`MEIMEI_KERNEL_APP_AUTH=1`** + headers **`X-MeiMei-App-Id`** / **`X-MeiMei-App-Secret`**; see [`kernel-app-auth.mjs`](../../dashboard/lib/kernel-app-auth.mjs) and program doc MM-KERNEL-301.  
+10. HTML `render*` responses  
 
 **Adding behavior:** prefer `meimei.app.json` + dynamic dispatch for new POST APIs; legacy path is a **short** branch in `server.mjs` — per boundaries §4 and **`meimei-dashboard-static-apps-import-check.mjs`** allowlist.
 
@@ -117,9 +119,11 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 
 ## 7. Registry
 
-- **Machine-readable:** [`functions/registry.v1.json`](../../functions/registry.v1.json)  
+- **Legacy function registry (SSOT for shipped miniapps):** [`functions/registry.v1.json`](../../functions/registry.v1.json)  
 - **Validation:** `npm run registry:validate`  
 - **Projection:** [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) — `parseContractRoute`, `serverApiPath`, catalog builders  
+- **Kernel app registry (external / path-registered):** [`data/kernel/apps/registry.json`](../../data/kernel/apps/README.md) — [`kernel-app-registry.mjs`](../../dashboard/lib/kernel-app-registry.mjs); optional per-row **`policy`** (validated: `npm run kernel:validate-app-policy`)  
+- **Catalog merge (platform Apps/Tools pages):** [`kernel-catalog-merge.mjs`](../../dashboard/lib/kernel-catalog-merge.mjs)  
 - **Human contracts:** [`functions/<id>.md`](../../functions)
 
 ---
@@ -130,7 +134,7 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 
 | Aspect | Detail |
 |--------|--------|
-| Endpoint | `POST /api/meimei/route` |
+| Endpoint | `POST /api/meimei/route` — unscoped; **`POST /api/meimei/v1/apps/{app_id}/inference`** — same body, adds **`meimei_meta.app_id`** when scoped ([facades doc](../api/meimei-app-facades-v1.md)) |
 | Runner | Ollama OpenAI-compatible chat completions |
 | Trace | Prefer header `x-meimei-trace-id`; else `body.meimei.traceId`; else UUID |
 | Model | Concrete Ollama tag or `router-auto` + `meimei.taskCategory` (deterministic map in `inference-route.mjs`) |
@@ -172,7 +176,7 @@ Protect these paths with host-level permissions and backup policy.
 
 | Use case | Recommendation |
 |----------|------------------|
-| External system on another stack calling MeiMei | **`POST /api/meimei/route`** only |
+| External system on another stack calling MeiMei | **`POST /api/meimei/route`** or, with a registered **`app_id`**, **`POST /api/meimei/v1/apps/{app_id}/inference`** / **`@meimei/sdk`** |
 | New in-repo adapter code | Prefer inference route; align with kernel completion plan K3 |
 | Legacy miniapp paths | May still call `llm.mjs` until migrated |
 
@@ -187,7 +191,7 @@ Protect these paths with host-level permissions and backup policy.
 ### Mode A — HTTP client (preferred)
 
 1. Co-locate or securely network to the host running MeiMei and Ollama.  
-2. Call `POST /api/meimei/route` with the v1 JSON shape.  
+2. Call `POST /api/meimei/route` or register an app and call the **app inference façade** (HTTPS base URL + `app_id` headers per [facades doc](../api/meimei-app-facades-v1.md)).  
 3. Forward `x-meimei-trace-id` for cross-system correlation.  
 4. Apply **your** TLS, authentication, and rate limits at the edge; the v1 kernel contract does not define multi-tenant auth.
 
@@ -205,7 +209,7 @@ Protect these paths with host-level permissions and backup policy.
 | Mechanism | Use |
 |-----------|-----|
 | Structured log lines | `[meimei/route][<traceId>]`, `[meimei/jobs][<traceId>]` |
-| `GET /api/meimei/monitor/feed` | Operator timeline; `trace_id` query for chronological trace |
+| `GET /api/meimei/monitor/feed` | Operator timeline; `trace_id` query for chronological trace; **`app_id`** query filters jobs whose payload JSON contains **`kernel_app_id`**; rows include **`app_id`** when known |
 | [`meimei-monitor-feed.mjs`](../../dashboard/lib/meimei-monitor-feed.mjs) | Row formatting for UI and API consumers |
 | `./scripts/oc-readiness` | OpenClaw / gateway readiness (adjacent to agent features) |
 | `npm run dashboard:probe` | Local dashboard reachability |
@@ -220,6 +224,7 @@ Protect these paths with host-level permissions and backup policy.
 | Non-local LLM backends via inference route | Not implemented (`localOnly: false` → **501**) |
 | Product-wide uniform LLM backend | Not claimed — multiple backends coexist ([ai-runtime-audit.md](../compliance/ai-runtime-audit.md)) |
 | Packaged `@meimei/kernel` npm module | Future option per kernel completion plan §4 |
+| **`@meimei/sdk`** | Shipped as workspace package (`packages/meimei-sdk`) for façade HTTP only — not a full kernel extract |
 
 The kernel’s strength is **explicit contracts** (inference + jobs) and **enforced modularity** (boundaries CI), not the absence of further refactoring in `server.mjs`.
 
@@ -231,3 +236,5 @@ The kernel’s strength is **explicit contracts** (inference + jobs) and **enfor
 |----------|------|---------|
 | v1.0 | 2026-03-30 | Initial handbook sections. |
 | v1.1 | 2026-03-30 | Aligned with audit v1.1: invariants, persistence, corrected HTTP anchors, professional scope section, integration modes clarified. |
+| v1.2 | 2026-03-29 | Operator chrome row in dispatch summary. |
+| v1.3 | 2026-03-29 | App-scoped façades, policy + dispatch gate, merged catalog, monitor `app_id`, `@meimei/sdk`; dispatch order renumbered. |

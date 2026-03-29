@@ -3,7 +3,7 @@
 **Version:** v1  
 **Date:** 2026-03-29  
 **Owner:** Platform / architecture  
-**Status:** Planning — **MM-KERNEL-201**–**203**, **301**, **501** (builtins + registry dispatch default-on), **603** (all in-repo miniapps on **`meimei.app.json`**, no static **`server.mjs`** app imports) delivered; catalog/GET shells (**MM-KERNEL-502**), policy (**MM-KERNEL-302+**), external pilot/SDK (**MM-KERNEL-602** / **401**) remain open
+**Status:** **In progress (v1 kernel API track)** — **T2** registry (**201**–**203**, **301**) and **T4** dispatch (**501**, **603**) delivered; **T3** policy + app façades (**302**, **303a**–**d**), **T4** **@meimei/sdk** (**401**–**402**) + pilot package (**602** partial), **T5** merged catalog (**601**) + registry snapshot (**604** incremental), **T6** threat model + runbook + monitor **`app_id`** (**701**–**703**) delivered. **Remaining:** full **604** (generated `registry.v1.json`), optional **303d** file roots implementation, migrating a production miniapp into **`packages/*`** beyond the SDK-only pilot.
 
 ## Executive summary
 

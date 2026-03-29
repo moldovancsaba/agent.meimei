@@ -1,8 +1,8 @@
 # MeiMei kernel — architectural and code audit
 
-**Document revision:** v1.4  
+**Document revision:** v1.9  
 **Status:** Controlled baseline — update when the kernel allowlist, inference contract, or job schema changes materially.  
-**Repository:** `agent-meimei` **0.8.11** (measurements taken **2026-03-30** against the then-current `main` tree).  
+**Repository:** `agent-meimei` **0.8.15** (measurements taken **2026-03-29** against the then-current `main` tree).  
 **Companion architecture:** [meimei-kernel-completion-plan.v1.md](meimei-kernel-completion-plan.v1.md), [meimei-repo-boundaries.v1.md](meimei-repo-boundaries.v1.md).  
 **Integration handbook:** [../developers/meimei-kernel-handbook.v1.md](../developers/meimei-kernel-handbook.v1.md).  
 **Vision, theory, application-layer opportunity (v3 audit):** [meimei-system-vision-and-platform-audit.v3.md](meimei-system-vision-and-platform-audit.v3.md).  
@@ -109,18 +109,21 @@ Solid lines: kernel inference and job data path. Dotted: product features that i
 
 ### 3.1 HTTP entry — verified anchors (snapshot)
 
-Measurements: **`wc -l dashboard/server.mjs` → 2181 lines** (post-**K2** **`0.8.12`** snapshot).
+Measurements: **`wc -l dashboard/server.mjs` → 2168 lines**; anchors re-verified **2026-03-29**. After large edits, refresh with:
+
+`grep -n 'meimeiInferenceRoute\|meimeiMonitorFeedApiRoute\|http.createServer\|server.listen' dashboard/server.mjs`
 
 | Symbol / constant | Approx. line | Role |
 |-------------------|-------------|------|
-| `meimeiInferenceRoute` | 292 | Path constant `/api/meimei/route` |
-| `meimeiMonitorFeedApiRoute` | 294 | Path constant `/api/meimei/monitor/feed` |
-| `http.createServer` | 1170 | Request dispatcher start |
-| `GET` monitor feed branch | 1188 | Delegates to `meimeiJobQueueRead.listMonitorFeed` |
-| `POST` inference branch | 1215 | Trace id resolution, `handleMeimeiInferenceRoute` |
-| `server.listen` | 2177 | Bind after surface normalization |
+| `meimeiInferenceRoute` | 307 | Path constant `/api/meimei/route` |
+| `meimeiMonitorFeedApiRoute` | 309 | Path constant `/api/meimei/monitor/feed` |
+| `http.createServer` | 1211 | Request dispatcher start |
+| `GET` monitor feed branch | 1238 | Delegates to `meimeiJobQueueRead.listMonitorFeed` |
+| `POST` inference branch | 1265 | Trace id resolution, `handleMeimeiInferenceRoute` |
+| `operator chrome CSS` | 1306 | `GET`/`HEAD` `/styles/operator-chrome.css` → `operator-chrome.mjs` |
+| `server.listen` | 2159 | Bind after surface normalization |
 
-**`render*` functions:** 33 declarations (`grep '^function render' dashboard/server.mjs`). Product GET HTML delegates to `platform-pages/*` for **K1a–K1e**; shared nav / flashcard / list live in **`platform-pages/chrome.mjs`** (**K2**); `server.mjs` keeps thin **`renderList` / `renderFlashcard` / `renderGlobalNav`** wrappers plus **`renderGlobalNavScript`** import.
+**`render*` functions:** 33 declarations (`grep -c '^function render' dashboard/server.mjs`). Product GET HTML delegates to `platform-pages/*` for **K1a–K1e**; shared nav / flashcard / list live in **`platform-pages/chrome.mjs`** (**K2**); `server.mjs` keeps thin **`renderList` / `renderFlashcard` / `renderGlobalNav`** wrappers plus **`renderGlobalNavScript`** import.
 
 ### 3.2 Allowlisted `dashboard/lib/*` modules (boundaries §3)
 
@@ -128,7 +131,7 @@ The following table maps **each allowlisted area** to its primary responsibility
 
 | Group | Module(s) | Responsibility |
 |-------|-----------|----------------|
-| Surface & config | `dashboard-surface.mjs`, `miniapp-registry.mjs`, `page-layout.mjs`, `runtime.mjs` | Listen/surface config load, registry projection, layout merge, shared path/helpers for server |
+| Surface & config | `dashboard-surface.mjs`, `miniapp-registry.mjs`, `page-layout.mjs`, `runtime.mjs`, **`operator-chrome.mjs`**, **`chrome-theme-defaults.mjs`** | Listen/surface config load, registry projection, layout merge, operator chrome merge + dynamic CSS, shared path/helpers for server |
 | Env SoT | `meimei-env-store.mjs` | Operator key/value store + catalog integration |
 | Jobs & inference | `meimei-job-queue.mjs`, `meimei-job-worker.mjs`, `meimei-monitor-feed.mjs`, `inference-route.mjs`, **`meimei-inference-client.mjs`** | Spooler, worker loop, monitor formatting, OpenAI-shaped router, in-process client for miniapps (K3) |
 | Policy / channels | `api-channel-adapter.mjs`, `external-channel-policy-engine.mjs`, `imessage-adapter.mjs`, `reliability-telemetry.mjs`, `audit-trail.mjs`, **`openclaw-routing-preview.mjs`** | API channel routing shell, policy, iMessage bridge hooks, telemetry, audit, deterministic OpenClaw route preview |
@@ -205,11 +208,12 @@ The server uses **sequential conditional dispatch** (not a framework router). Or
 2. **Monitor feed** — read-only JSON for operations.  
 3. **`POST /api/meimei/route`** — bounded, audited inference contract.  
 4. **Checklist proxy / public path** — integration boundary before generic static.  
-5. **Static files** under `public/` — with path traversal checks.  
-6. **JSON APIs** — including miniapp `POST` delegation.  
-7. **HTML** — `render*` + layout merge.
+5. **Dynamic `GET`/`HEAD` `/styles/operator-chrome.css`** — merged operator theme CSS (**before** static `/styles/*` so it is not shadowed).  
+6. **Static files** under `public/` (`surface.staticPrefixes`, e.g. `/images/`, `/styles/`) — with path traversal checks.  
+7. **JSON APIs** — e.g. `surface.api` routes (`/api/operator/chrome`, `/api/page-layout`, …), miniapp `POST` delegation.  
+8. **HTML** — `render*` + layout merge.
 
-This ordering prevents accidental shadowing of operational and contract endpoints by later generic handlers.
+This ordering prevents accidental shadowing of operational and contract endpoints by later generic handlers. **Living crosswalk:** [meimei-docs-code-sync-audit.v1.md](../planning/meimei-docs-code-sync-audit.v1.md) §4.
 
 ---
 
@@ -282,16 +286,16 @@ This separation is not a weakness of the kernel; it is **accurate system documen
 
 ### 11.1 Measurement method
 
-- **Population:** all `dashboard/lib/**/*.mjs` files (**55** files on 2026-03-30 post-**K3** + routing preview).  
+- **Population:** all `dashboard/lib/**/*.mjs` files (**66** on 2026-03-29; `find dashboard/lib -name '*.mjs' | wc -l`).  
 - **File-top module banner:** first non-whitespace character begins `/**`.  
 - **`@param` prevalence:** file contains at least one `@param`.  
 - **Limitation:** These metrics do not measure prose quality or architectural accuracy—only structural JSDoc presence.
 
 ### 11.2 Results
 
-| Scope | Files | File-top `/**` | Files with `@param` |
-|-------|------:|---------------:|--------------------:|
-| `dashboard/lib/**/*.mjs` | 55 | 37 (**67.3%**) | 28 (**50.9%**) |
+| Scope | Files | `/**` in first ~20 lines | Files with `@param` |
+|-------|------:|-------------------------:|--------------------:|
+| `dashboard/lib/**/*.mjs` | 66 | 52 (**78.8%**) | 39 (**59.1%**) |
 | `apps/**/*.mjs` | 12 | 12 (**100%**) | 1 (**8.3%**) |
 | `dashboard/server.mjs` | 1 | 0 | 0 |
 
@@ -335,4 +339,5 @@ This audit is **complete** relative to its **Document control** scope: kernel bo
 | v1.5 | 2026-03-30 | K2 chrome: `server.mjs` **~2181** lines; **33** `render*`; **`platform-pages/chrome.mjs`**; HTTP anchor refresh; allowlist + platform table; §10 K2 **delivered**; commentary population **53** `dashboard/lib` `.mjs`; repository baseline **0.8.12**. |
 | v1.6 | 2026-03-30 | K3/K4: **`meimei-inference-client.mjs`**; allowlist + §3.2 jobs/inference row; §10 K3/K4 **delivered** baseline; §11 population **54** `dashboard/lib` `.mjs`; repository **0.8.13**. |
 | v1.8 | 2026-03-30 | Checklist **`checklist_trace_v1`** monitor ledger (**R6**); **`checklist-meimei-trace.mjs`**, bridge **`x-meimei-trace-id`**; **`meimei-job-queue`** / **`meimei-monitor-feed`**; contracts + audit; repository **0.8.15**. |
+| v1.9 | 2026-03-29 | **`server.mjs` line anchors** refresh (2168 lines); §5 dispatch adds **operator-chrome.css** before static; §3.1 + §3.2 operator chrome modules; §11 file count **66** (JSDoc % deferred to re-measure); **`npm run surface:validate-api`** companion; crosswalk to [meimei-docs-code-sync-audit.v1.md](../planning/meimei-docs-code-sync-audit.v1.md). |
 | v1.7 | 2026-03-30 | **`openclaw-routing-preview.mjs`** + default in **`server.mjs`**; allowlist + §3.2 policy row; audit/ai-runtime docs; **`functions/what-next.md`**; §11 **55** `dashboard/lib` `.mjs`; repository **0.8.14**. |

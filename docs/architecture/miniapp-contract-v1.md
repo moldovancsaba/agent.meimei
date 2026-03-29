@@ -90,6 +90,12 @@ Every miniapp must define a contract object with this schema:
 - API path must remain under `/dashboard/api/functions/` in the contract registry (that path is the stable HTTP entry for adapters and docs parity checks).
 - Route and API must be stable after release; breaking changes require a new versioned miniapp contract or an explicit migration note.
 
+### Registry `api.path` vs Node routing
+
+- **`functions/registry.v1.json`** stores **browser-canonical** paths: both `route` and `api.path` use the **`/dashboard`** prefix (e.g. `/dashboard/api/functions/daily-briefing`).
+- **`serverApiPath()`** in [`dashboard/lib/miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) strips a leading **`/dashboard`** so the upstream HTTP listener matches **`/api/functions/<id>`** without double-mounting the prefix.
+- **`miniappRuntimeConfig()`** exposes the stripped value as `apiPath` for server-side dispatch; browser `fetch` from pages under **`https://…/dashboard/…`** should still target the **contract** path (with `/dashboard`) or an equivalent same-origin relative URL.
+
 ## Input Rules
 
 - Input must be explicit and typed in docs (even when empty).

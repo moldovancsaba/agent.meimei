@@ -31,7 +31,8 @@ Code comments should **point to docs** for specs; avoid duplicating long prose i
 | **Global nav** | `platform-pages/chrome.mjs`; `dashboardChromeDeps()` + `getEffectiveChrome` | design-system-v1 §Navigation | — | Items: Apps, Tools, Dashboard, knowmore, Admin — **no** OpenClaw menu row |
 | **Page layout API** | `GET`/`POST` `/api/page-layout` | design-system-v1 §Global layout system | — | Matches `surface.api.pageLayout` |
 | **UI inline-style lint** | `scripts/lint-dashboard-inline-styles.mjs`; `npm run ui:lint-inline-styles` in `npm run ci` | `platform-pages/README.md` | — | Allowlisted `page-layout.mjs` `.layout-flow` inline vars only |
-| **Kernel external registry** | `data/kernel/apps/registry.json` (gitignored); `kernel-app-registry.mjs` | `data/kernel/apps/README.md`; handbook §6–7; CHANGELOG | — | Opt-in `MEIMEI_KERNEL_EXTERNAL_APPS=1` |
+| **`surface.api` wiring** | `scripts/validate-dashboard-surface-api.mjs`; `npm run surface:validate-api` in `npm run ci` | This file §6 | — | Each `config/dashboard-surface.v1.json` `api` key must appear as `surface.api.<key>` in `server.mjs` |
+| **Kernel external registry** | `data/kernel/apps/registry.json` (gitignored); `kernel-app-registry.mjs` | `data/kernel/apps/README.md`; handbook §6–7; CHANGELOG | — | **Default on**; `MEIMEI_KERNEL_EXTERNAL_APPS=0` / `false` / `off` / `""` disables |
 | **Kernel external dispatch** | `kernel-external-app-dispatch.mjs`; `tryKernelExternalAppPost` | Handbook §6; planning kernel program docs | — | Order relative to static checklist branches — see audit §4 |
 | **Manifest validation** | `meimei-app-manifest-validate.mjs`; `schemas/meimei.app.manifest.v1.json` | `kernel:validate-app-manifest`; example manifest in `docs/planning/examples/` | — | CI validates example + `apps/*/meimei.app.json` |
 
@@ -76,9 +77,11 @@ Exact order drifts with edits; verify with `grep -n normalizedPath dashboard/ser
 
 ## 6. P1 backlog (next passes)
 
-- [ ] Refresh **line-number anchors** in `meimei-kernel-code-audit.v1.md` / handbook §6 using automated grep or remove stale numbers.  
-- [ ] **Miniapp-contract** / per-miniapp docs: confirm `serverApiPath` and `/dashboard` prefix wording matches `miniapp-registry.mjs`.  
-- [ ] Optional script: diff `surface.api` keys vs `grep` handlers in `server.mjs`.
+- [x] Refresh **line-number anchors** in `meimei-kernel-code-audit.v1.md` / handbook §6 — **done** 2026-03-29 (audit §3.1/§5; handbook already grep-based).  
+- [x] **Miniapp-contract:** **`serverApiPath`** + `/dashboard` wording — **done** in [miniapp-contract-v1.md](../architecture/miniapp-contract-v1.md) §Registry `api.path` vs Node routing.  
+- [x] **`surface.api` wiring check** — **`npm run surface:validate-api`** (`scripts/validate-dashboard-surface-api.mjs`), runs in **`npm run ci`**.
+
+**Still optional:** re-measure §11 JSDoc percentages; per-miniapp audit table rows vs registry paths.
 
 ---
 
@@ -86,4 +89,5 @@ Exact order drifts with edits; verify with `grep -n normalizedPath dashboard/ser
 
 | Date | Change |
 |------|--------|
+| 2026-03-29 | P1 closed: kernel audit anchors + dispatch §5; miniapp-contract `serverApiPath`; `surface:validate-api` + CI |
 | 2026-03-31 | v1 initial matrix + P0 fixes linked to design-system, runbook, handbook, platform README, CI Node 22, CHANGELOG |

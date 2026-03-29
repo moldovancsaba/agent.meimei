@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-03-29 — Docs: P1 sync (kernel audit anchors, miniapp `serverApiPath`, surface API CI)
+
+- **`meimei-kernel-code-audit.v1.md`** — **v1.9:** refreshed **`server.mjs` line anchors** (2168 lines), §5 dispatch includes **operator-chrome.css** before static; §3.2 **operator-chrome** modules; §11 metrics for **66** `dashboard/lib` files.
+- **`miniapp-contract-v1.md`** — **Registry `api.path` vs Node routing:** documents **`serverApiPath()`** and browser **`/dashboard`** contract paths.
+- **`meimei-docs-code-sync-audit.v1.md`** — P1 items **closed**; matrix row for **`surface:validate-api`**.
+- **`scripts/validate-dashboard-surface-api.mjs`** + **`npm run surface:validate-api`** — CI ensures each **`config/dashboard-surface.v1.json`** `api` key is wired as **`surface.api.<key>`** in **`dashboard/server.mjs`**.
+
 ## 2026-03-31 — Docs: code sync audit + design-system / handbook alignment
 
 - **`docs/planning/meimei-docs-code-sync-audit.v1.md`** — Living **matrix** (operator chrome, surface config, kernel registry, lint); HTTP early-chain notes; PR rule for routes/env/persisted files.
@@ -20,7 +27,7 @@
 ## 2026-03-30 — Kernel: MM-KERNEL-301 app auth + MM-KERNEL-603 builtins / explain-it
 
 - **`dashboard/lib/kernel-app-auth.mjs`** — optional **`MEIMEI_KERNEL_APP_AUTH=1`** with **`X-MeiMei-App-Id`**; optional per-app **`X-MeiMei-App-Secret`** vs registry **`auth_secret_sha256`**; manifest **`kernel.authExempt`** for same-origin-style builtins.
-- **`dashboard/lib/kernel-builtin-apps.mjs`** — dynamic **`POST /api/functions/<suffix>`** for in-repo **`apps/<pkg>/meimei.app.json`** without **`MEIMEI_KERNEL_EXTERNAL_APPS`**; registry file entries still require **`MEIMEI_KERNEL_EXTERNAL_APPS=1`** (disabled entries return **403**).
+- **`dashboard/lib/kernel-builtin-apps.mjs`** — dynamic **`POST /api/functions/<suffix>`** for in-repo **`apps/<pkg>/meimei.app.json`**. Registry file: **default on** since **2026-03-31** (**`MEIMEI_KERNEL_EXTERNAL_APPS=0`** disables; disabled entries still return **403**).
 - **Pilot:** **`apps/explain-it/meimei.app.json`**; removed static **`explain-it`** import and dedicated POST branch from **`dashboard/server.mjs`**.
 - **`scripts/meimei-dashboard-static-apps-import-check.mjs`** — legacy allowlist for remaining static **`../apps/*`** imports (**`npm run boundary:check`**).
 - **`register … --secret`** on **`scripts/meimei-kernel-app-registry.mjs`**; **`kernel:validate-app-manifest`** validates example + all **`apps/*/meimei.app.json`**; extended **`kernel:external-dispatch:selftest`**.

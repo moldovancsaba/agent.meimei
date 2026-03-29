@@ -1,5 +1,8 @@
 .DS_Store
 
+# Local Vercel CLI link metadata (MeiMei runs locally; do not commit)
+.vercel/
+
 audit/decision-action-trail.v1.jsonl
 telemetry/events.v1.jsonl
 data/checklist/

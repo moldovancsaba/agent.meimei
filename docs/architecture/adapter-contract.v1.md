@@ -34,7 +34,7 @@ Database file (v1): **`data/meimei/meimei-jobs.sqlite`** (under repo root; gitig
 | `error_message` | TEXT NULL | Short human-readable reason when `failed` or last error when retrying. |
 | `created_at` | INTEGER NOT NULL | Unix ms |
 | `updated_at` | INTEGER NOT NULL | Unix ms |
-| `payload_kind` | TEXT NULL | `inference_v1` \| `app_task` (v2 schema); NULL legacy rows treated as `inference_v1`. |
+| `payload_kind` | TEXT NULL | `inference_v1` \| `app_task` \| `checklist_trace_v1` (v2+); NULL legacy rows treated as `inference_v1`. |
 | `target_adapter` | TEXT NULL | For `app_task`: inbox key (denormalized for indexing). |
 | `source_adapter` | TEXT NULL | For `app_task`: sender id (denormalized). |
 
@@ -61,6 +61,8 @@ Future kinds (`obsidian_note_v1`, `discord_message_v1`, …) must be documented 
 ### Inter-app tasks (`app_task`) — Milestone G (implemented)
 
 **`kind: "app_task"`** — asynchronous messages between MeiMei apps via the same `meimei_jobs` table. Rows carry denormalized **`payload_kind`**, **`target_adapter`**, **`source_adapter`** for inbox queries. The global inference worker **only** claims **`inference_v1`**; sovereign inbox loops claim **`app_task`** by **`target_adapter`**.
+
+**`kind: "checklist_trace_v1"`** — **completed-only** ledger rows appended by the Checklist Node engine after an in-process LLM call (`checklist-meimei-trace.mjs` → `appendCompletedLedgerRow`). **Not** claimed by any worker; visible on **`GET /api/meimei/monitor/feed`** for operator **R6** traceability. Optional client correlation: bridge requests may send **`x-meimei-trace-id`**.
 
 **Inference follow-up:** Optional **`meimei_correlation`** on an **`inference_v1`** envelope (sibling to **`request`**) triggers a reply **`app_task`** after successful router completion — see `dashboard/lib/meimei-job-worker.mjs`.
 

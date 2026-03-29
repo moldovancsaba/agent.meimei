@@ -3,7 +3,7 @@
  * Injected dependencies keep `dashboard/server.mjs` thin for these routes (Phase 0).
  *
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 /**
@@ -31,8 +31,9 @@ export function renderAppsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Apps - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-page="apps" data-theme="green">
+<body data-page="apps" data-theme="apps">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">Apps</h1>
@@ -83,8 +84,9 @@ export function renderToolsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tools - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-page="tools" data-theme="blue">
+<body data-page="tools" data-theme="tools">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">Tools</h1>
@@ -132,8 +134,9 @@ export function renderKnowmorePage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>knowmore - release cards</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-page="knowmore" data-theme="blue">
+<body data-page="knowmore" data-theme="knowmore">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">knowmore</h1>

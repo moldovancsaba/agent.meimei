@@ -3,6 +3,7 @@
  */
 import { getChecklistDb } from "./db.mjs";
 import { inferenceCallOllamaJson } from "../meimei-inference-client.mjs";
+import { recordChecklistInferenceTrace } from "../checklist-meimei-trace.mjs";
 import {
   normalizeRecommendedTasks,
   persistChecklistAndCards,
@@ -18,6 +19,7 @@ import {
  * @param {string} [options.appId]
  * @param {number} [options.confidence]
  * @param {object[]|null} [options.retainedTasks]
+ * @param {string} [options.repoRoot] MeiMei repo root for System Monitor trace rows
  */
 export async function regenerateProjectChecklist(dbPath, options) {
   const projectId = String(options.projectId || "");
@@ -171,6 +173,15 @@ ${sourceExcerpt.slice(0, 12000)}`;
   });
   job_result.app_id = appId;
   job_result.decision_summary = { route: "proceed", confidence };
+
+  recordChecklistInferenceTrace(options.repoRoot, {
+    traceId: llm.meta?.trace_id,
+    jobKind: "feedback_regenerate",
+    projectId,
+    jobId,
+    model: llm.meta?.modelUsed ?? null,
+    observationCount: allObs.length
+  });
 
   return job_result;
 }

@@ -32,7 +32,7 @@ For the **Python** worker, keep using `checklist/scripts/worker_queue_consumer.p
 
 ## MeiMei-themed checklist UI
 
-`meimei-checklist-theme.css` overrides consultant-followup-web tokens toward the MeiMei green/dark shell. Sync into your checklist clone:
+`meimei-checklist-theme.css` overrides consultant-followup-web tokens toward the MeiMei **apps** accent (magenta / dark shell, aligned with `data-theme="apps"`). Sync into your checklist clone:
 
 ```bash
 export CHECKLIST_WEB_APP="/path/to/checklist/apps/consultant-followup-web"

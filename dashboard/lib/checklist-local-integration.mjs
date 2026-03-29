@@ -3,7 +3,7 @@
  * Registry POST shell: `checklist-api-shell.mjs`; HTTP bridge: `checklist-bridge.mjs`.
  *
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 import http from "node:http";
 import https from "node:https";
@@ -152,6 +152,7 @@ export async function tryProxyChecklistRequest(req, res, incomingUrl, normalized
  *   checklistApiRoute: string;
  *   appsRoute: string;
  *   designSystemCssPath: string;
+ *   operatorChromeCssPath: string;
  *   escapeHtml: (v: unknown) => string;
  *   escapeAttr: (v: unknown) => string;
  *   buildLayoutFlowHtml: (layoutDoc: unknown, pageKey: string, parts: { topbar: string; main: string }, esc: (v: unknown) => string) => string;
@@ -170,6 +171,7 @@ export function renderChecklistLocalShellPage(layoutDoc, ctx) {
     checklistApiRoute,
     appsRoute,
     designSystemCssPath,
+    operatorChromeCssPath,
     escapeHtml,
     escapeAttr,
     buildLayoutFlowHtml,
@@ -186,12 +188,12 @@ export function renderChecklistLocalShellPage(layoutDoc, ctx) {
       <span class="title">${escapeHtml(checklistLabel)}</span>
     </div>`;
   const proxyHint = `<section class="route-card u-mb12">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Full checklist UI</h2>
+        <h2 class="u-mt0 ds-section-title-lg">Full checklist UI</h2>
         <p class="lede u-mb12">You are on the <strong>fallback shell</strong> because <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none</code> (or equivalent). To load the real Next.js checklist <em>at this URL</em>, remove that setting: MeiMei will reverse-proxy to <code class="route-code">http://127.0.0.1:3000${escapeHtml(upPrefix)}</code> by default (set <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM</code> for another origin). The checklist app must use the same path prefix (<code class="route-code">MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX</code>, default <code class="route-code">${escapeHtml(upPrefix)}</code> → Next <code class="route-code">basePath</code>).</p>
       </section>`;
   const main = `<main class="hero">
       <section class="route-card u-mb12">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
+        <h2 class="u-mt0 ds-section-title-lg">Local runtime (MeiMei)</h2>
         <p class="muted u-mb12">The <strong>Node engine</strong> uses SQLite in <code class="route-code">data/checklist/</code> and LLM via <code class="route-code">/api/llm/gateway/generate</code>. The bridge <code class="route-code">${escapeHtml(CHECKLIST_BRIDGE_PREFIX)}</code> is what the checklist Next app calls when it talks to your Mac. Set <code class="route-code">MEIMEI_CHECKLIST_ENGINE=python</code> for the checklist-repo HTTP worker instead.</p>
         <p class="muted u-mb12"><strong>MeiMei home:</strong> <code class="route-code">${escapeHtml(`${meiOriginDisplay}/`)}</code> · <strong>This route:</strong> <code class="route-code">${escapeHtml(meiChecklistUrlDisplay)}</code></p>
         <div id="checklist-runtime-panel" class="result-card">
@@ -212,8 +214,9 @@ export function renderChecklistLocalShellPage(layoutDoc, ctx) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(checklistLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
+  <link rel="stylesheet" href="${escapeHtml(operatorChromeCssPath)}" />
 </head>
-<body data-theme="green" data-page="checklist">
+<body data-theme="apps" data-page="checklist">
   <div class="shell">
     ${layout}
   </div>

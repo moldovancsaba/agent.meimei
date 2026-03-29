@@ -46,6 +46,7 @@ export function pageBoxMeta(registry) {
       boxes: {
         metadata: "Runtime metadata",
         settings: "Settings",
+        operatorChrome: "Operator chrome",
         operations: "Operations",
         output: "Latest output",
         agent: "Quick agent turn",
@@ -80,6 +81,7 @@ export function defaultItemsForPage(pageKey) {
     return [
       { id: "metadata", spanMax: 2 },
       { id: "settings", spanMax: 2 },
+      { id: "operatorChrome", spanMax: 2 },
       { id: "operations", spanMax: 1 },
       { id: "output", spanMax: 2 },
       { id: "agent", spanMax: 1 },

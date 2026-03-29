@@ -3,7 +3,7 @@
  * Wired from `dashboard/server.mjs`; core logic remains in `checklist-bridge.mjs`.
  *
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 import {
   CHECKLIST_BRIDGE_PREFIX,
@@ -87,12 +87,15 @@ export async function serveChecklistBridgeHttp(ctx) {
 
   if (isNodeChecklistEngine()) {
     try {
+      const rawTrace = req.headers["x-meimei-trace-id"];
+      const clientTraceId = String(Array.isArray(rawTrace) ? rawTrace[0] : rawTrace || "").trim() || null;
       const out = await runNodeChecklistBridge({
         repoRoot,
         method,
         pathWithQuery,
         body,
-        contentType
+        contentType,
+        clientTraceId
       });
       const fh = filterForwardResponseHeaders(out.headers);
       res.writeHead(out.statusCode, {

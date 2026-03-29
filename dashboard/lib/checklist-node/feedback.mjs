@@ -200,7 +200,7 @@ function saveHeldTask(db, projectId, heldTaskId, title, rank) {
  * @param {string} projectId
  * @param {object} payload { job_id?, current_tasks, task_feedback_items }
  */
-export async function processTaskFeedback(dbPath, projectId, payload) {
+export async function processTaskFeedback(dbPath, projectId, payload, ctx = {}) {
   const db = getChecklistDb(dbPath);
   let jobId = String(payload.job_id || "");
   const feedbackItems = payload.task_feedback_items;
@@ -275,7 +275,8 @@ export async function processTaskFeedback(dbPath, projectId, payload) {
     jobId,
     appId: "consultant_followup_web",
     confidence: 0.74,
-    retainedTasks
+    retainedTasks,
+    repoRoot: ctx.repoRoot
   });
 
   const declinedTypes = new Set([
@@ -309,7 +310,7 @@ export async function processTaskFeedback(dbPath, projectId, payload) {
 /**
  * feedback_v2: { project_id, task_id, action_type, comment?, edited_title? }
  */
-export async function applyTaskFeedbackV2(dbPath, body) {
+export async function applyTaskFeedbackV2(dbPath, body, ctx = {}) {
   const projectId = String(body.project_id || "").trim();
   const taskId = String(body.task_id || "").trim();
   const actionType = String(body.action_type || "").trim();
@@ -334,7 +335,8 @@ export async function applyTaskFeedbackV2(dbPath, body) {
       projectId,
       jobId: jobIdBoot,
       appId: "consultant_followup_web",
-      retainedTasks: []
+      retainedTasks: [],
+      repoRoot: ctx.repoRoot
     });
     saveProjectActiveChecklist(db, projectId, jobIdBoot, resultDocument.result_payload.recommended_tasks);
     currentTasks = resultDocument.result_payload.recommended_tasks;
@@ -366,11 +368,16 @@ export async function applyTaskFeedbackV2(dbPath, body) {
     action_type: actionType
   };
 
-  const result = await processTaskFeedback(dbPath, projectId, {
-    job_id: jobId,
-    current_tasks: [...currentTasks],
-    task_feedback_items: [feedbackItem]
-  });
+  const result = await processTaskFeedback(
+    dbPath,
+    projectId,
+    {
+      job_id: jobId,
+      current_tasks: [...currentTasks],
+      task_feedback_items: [feedbackItem]
+    },
+    ctx
+  );
 
   return {
     tasks: result.job_result.result_payload.recommended_tasks,

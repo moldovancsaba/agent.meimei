@@ -6,6 +6,7 @@ data/checklist/
 data/sdr-outbound.jsonl
 data/lead-enrichment-workflow.v1.json
 data/meimei-environment.v1.json
+data/operator-chrome.v1.json
 data/meimei/meimei-jobs.sqlite
 data/meimei/*.sqlite
 data/meimei/*.sqlite-shm
@@ -13,5 +14,7 @@ data/meimei/*.sqlite-wal
 data/meimei/artifacts/
 # Runtime / local state (not source of truth in git)
 data/agent-chappie/
+# Kernel external-app registry (operator-local install paths; MM-KERNEL-202)
+data/kernel/apps/registry.json
 macos/MeiMei/.build/
 macos/MeiMei/build/

@@ -41,7 +41,7 @@
 | explain-it | apps | `apps/explain-it/index.mjs`; GET URL summary + settings **`platform-pages/reader-pages.mjs`** | — | G | — | — | G | — | Y | Y | P2 | **`meimei-inference-client`**; untrusted URL content path unchanged. |
 | lead-enrichment | apps | `apps/lead-enrichment/index.mjs` (single-shot + `workflow_*`); GET shell **`platform-pages/gtm-pages.mjs`** | Y | G | — | Y | G | — | G | Y | P1 | **R2:** inference client. **R1:** `workflow_run` sync on handler — **documented exception** in **`functions/lead-enrichment.md`** (sunset 2027-06-30). |
 | lead-outreach | apps | `apps/lead-outreach/index.mjs`; GET shell **`platform-pages/gtm-pages.mjs`** | — | G | — | — | G | — | G | Y | P2 | **`meimei-inference-client`** for `draft_touch`. |
-| checklist | apps | POST shell → **`checklist-api-shell.mjs`**; GET proxy/page → **`checklist-local-integration.mjs`**; **`/api/checklist/bridge`** → **`checklist-bridge-http.mjs`** + `checklist-bridge.mjs` | Y | G | G | G | Y | Y | G | Y | P0 | **R2:** Node engine + legacy JSON paths use **`meimei-inference-client`** (K3). **R1/R5/R6** still **Y** (jobs/UI/trace). **R3/R4** documented in **`functions/checklist.md`**. |
+| checklist | apps | POST shell → **`checklist-api-shell.mjs`**; GET proxy/page → **`checklist-local-integration.mjs`**; **`/api/checklist/bridge`** → **`checklist-bridge-http.mjs`** + `checklist-bridge.mjs` | Y | G | G | G | Y | G | G | Y | P0 | **R2:** inference client (K3). **R6:** **`checklist_trace_v1`** monitor rows + optional **`x-meimei-trace-id`**. **R1/R5** still **Y**. **R3/R4** in **`functions/checklist.md`**. |
 
 ### Registry doc filename gaps (R7)
 

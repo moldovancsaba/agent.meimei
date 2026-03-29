@@ -1,7 +1,7 @@
 /**
  * Platform UI — Reference app 1 & 2 GET shells (queue + inter-app bus demo).
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderReferenceApp1Page(layoutDoc, d) {
@@ -15,43 +15,43 @@ export function renderReferenceApp1Page(layoutDoc, d) {
         <h1>${d.escapeHtml(d.referenceApp1Label)}</h1>
         <p class="lede u-mb12">Issue <strong>#${issue790}</strong> — Phase 4 reference app: configuration from the env store, inference only via the <code>meimei_jobs</code> queue (no direct LLM calls from this page’s API).</p>
         <p class="muted u-mb12">Enable with <code>REFAPP_FEATURE_TOGGLE=1</code> in <a href="${d.escapeHtml(d.toolsRoute)}">Tools</a> → Environment variables. Optional: <code>REFAPP_MAX_PROMPT_CHARS</code> (default 8000).</p>
-        <div id="refAppDisabled790" class="result-card u-mb12" style="display:none;">
+        <div id="refAppDisabled790" class="result-card u-mb12" hidden>
           <p class="u-m0"><strong>Disabled.</strong> Set <code>REFAPP_FEATURE_TOGGLE</code> to <code>1</code>, <code>true</code>, <code>yes</code>, or <code>on</code>, then refresh.</p>
         </div>
-        <div id="refAppForm790" class="result-card u-mb12" style="display:none;">
-          <p class="muted u-mb12" style="font-size:13px;">Ask a question — the dashboard enqueues an <code>inference_v1</code> job; the in-process worker calls <code>POST /api/meimei/route</code> (Ollama). This UI polls job status until complete.</p>
+        <div id="refAppForm790" class="result-card u-mb12" hidden>
+          <p class="muted u-mb12 ds-text-md">Ask a question — the dashboard enqueues an <code>inference_v1</code> job; the in-process worker calls <code>POST /api/meimei/route</code> (Ollama). This UI polls job status until complete.</p>
           <div class="field">
             <label for="refPrompt790">Prompt</label>
-            <textarea id="refPrompt790" rows="5" placeholder="e.g. Summarize the MeiMei queue contract in one sentence." style="width:100%;max-width:40rem;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:13px;"></textarea>
+            <textarea id="refPrompt790" class="ds-code-input" rows="5" placeholder="e.g. Summarize the MeiMei queue contract in one sentence."></textarea>
           </div>
           <div class="route-actions u-mt12">
             <button type="button" class="good" id="refSubmit790">Enqueue &amp; run</button>
           </div>
-          <p id="refStatus790" class="muted u-mt12 u-mb0" style="font-size:13px;min-height:1.25em;"></p>
-          <div id="refResult790" class="result-card u-mt12" style="display:none;background:rgba(4,10,20,0.55);">
-            <p class="muted u-mt0" style="font-size:12px;">Assistant</p>
-            <pre id="refResultPre790" class="u-m0" style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:13px;line-height:1.45;"></pre>
+          <p id="refStatus790" class="muted u-mt12 u-mb0 ds-text-md ds-min-hit"></p>
+          <div id="refResult790" class="result-card u-mt12 ds-panel-embed" hidden>
+            <p class="muted u-mt0 ds-text-sm">Assistant</p>
+            <pre id="refResultPre790" class="u-m0 ds-pre-output"></pre>
           </div>
         </div>
-        <div id="refMas790" class="result-card u-mb12" style="display:none;">
-          <h2 class="u-mt0" style="font-size:1.1rem;">Milestone G — inter-app bus (SQLite only)</h2>
-          <p class="muted u-mb12" style="font-size:13px;">No HTTP between apps. <strong>Ping/pong</strong> proves <code>app_task</code> routing. <strong>Standup digest</strong> enqueues inference with <code>meimei_correlation</code> (§5); large bodies use Claim Check under <code>data/meimei/artifacts/</code>. Peer inbox: <a href="../791/Reference_app_2">Reference app 2</a>. Live queue: <a href="${d.escapeHtml(d.browserPathForNormalized(d.systemMonitorRoute))}">System monitor</a>.</p>
-          <div class="route-actions u-mb12" style="flex-wrap:wrap;gap:8px;">
+        <div id="refMas790" class="result-card u-mb12" hidden>
+          <h2 class="u-mt0 ds-section-title">Milestone G — inter-app bus (SQLite only)</h2>
+          <p class="muted u-mb12 ds-text-md">No HTTP between apps. <strong>Ping/pong</strong> proves <code>app_task</code> routing. <strong>Standup digest</strong> enqueues inference with <code>meimei_correlation</code> (§5); large bodies use Claim Check under <code>data/meimei/artifacts/</code>. Peer inbox: <a href="../791/Reference_app_2">Reference app 2</a>. Live queue: <a href="${d.escapeHtml(d.browserPathForNormalized(d.systemMonitorRoute))}">System monitor</a>.</p>
+          <div class="route-actions u-mb12 ds-toolbar ds-toolbar--gap-sm">
             <button type="button" class="good" id="refPing790">Send ping to App 2</button>
           </div>
-          <p id="refMasStatus790" class="muted u-mb8" style="font-size:13px;min-height:1.25em;"></p>
+          <p id="refMasStatus790" class="muted u-mb8 ds-text-md ds-min-hit"></p>
           <div class="field u-mb8">
             <label for="refStandupDate790">Standup date (YYYY-MM-DD)</label>
-            <input type="text" id="refStandupDate790" placeholder="2026-04-12" style="max-width:14rem;width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;" />
+            <input type="text" id="refStandupDate790" class="ds-input-narrow ds-input-mono" placeholder="2026-04-12" />
           </div>
           <div class="field u-mb12">
             <label for="refStandupScope790">Scope</label>
-            <input type="text" id="refStandupScope790" value="open_checklist_items" style="max-width:28rem;width:100%;box-sizing:border-box;" />
+            <input type="text" id="refStandupScope790" class="ds-input-medium" value="open_checklist_items" />
           </div>
           <div class="route-actions u-mb12">
             <button type="button" class="button secondary" id="refStandup790">Request standup digest</button>
           </div>
-          <pre id="refMasOut790" class="u-m0" style="display:none;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;background:rgba(4,10,20,0.45);padding:12px;border-radius:12px;border:1px solid var(--line);max-height:280px;overflow:auto;"></pre>
+          <pre id="refMasOut790" class="u-m0 ds-pre-block" hidden></pre>
         </div>
       </section>
     </main>`;
@@ -68,8 +68,9 @@ export function renderReferenceApp1Page(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.referenceApp1Label)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">${layout}</div>
   <script>
     var apiRef790 = "${d.escapeHtml(d.referenceApp1ApiRoute)}";
@@ -87,9 +88,9 @@ export function renderReferenceApp1Page(layoutDoc, d) {
     async function refreshConfig790() {
       var res = await postRef790({ action: "config" });
       var on = res.d && res.d.ok && res.d.enabled;
-      document.getElementById("refAppDisabled790").style.display = on ? "none" : "block";
-      document.getElementById("refAppForm790").style.display = on ? "block" : "none";
-      document.getElementById("refMas790").style.display = on ? "block" : "none";
+      document.getElementById("refAppDisabled790").hidden = !!on;
+      document.getElementById("refAppForm790").hidden = !on;
+      document.getElementById("refMas790").hidden = !on;
       var dEl = document.getElementById("refStandupDate790");
       if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
     }
@@ -145,13 +146,13 @@ export function renderReferenceApp1Page(layoutDoc, d) {
         }
         if (st === "failed") {
           setStatus790("Job #" + jobId + " failed.");
-          document.getElementById("refResult790").style.display = "block";
+          document.getElementById("refResult790").hidden = false;
           document.getElementById("refResultPre790").textContent = res.d.errorMessage || "(no message)";
           return;
         }
         if (st === "completed") {
           setStatus790("Job #" + jobId + " completed.");
-          document.getElementById("refResult790").style.display = "block";
+          document.getElementById("refResult790").hidden = false;
           document.getElementById("refResultPre790").textContent = res.d.assistantText || "(empty response)";
           return;
         }
@@ -167,7 +168,7 @@ export function renderReferenceApp1Page(layoutDoc, d) {
         alert("Enter a prompt.");
         return;
       }
-      document.getElementById("refResult790").style.display = "none";
+      document.getElementById("refResult790").hidden = true;
       setStatus790("Enqueueing…");
       var res = await postRef790({ action: "enqueue", prompt: prompt });
       if (!res.d || !res.d.ok) {
@@ -182,7 +183,7 @@ export function renderReferenceApp1Page(layoutDoc, d) {
     document.getElementById("refPing790").addEventListener("click", async function () {
       var st = document.getElementById("refMasStatus790");
       var out = document.getElementById("refMasOut790");
-      out.style.display = "none";
+      out.hidden = true;
       st.textContent = "Sending ping…";
       var res = await postRef790({ action: "ping" });
       if (!res.d || !res.d.ok) {
@@ -198,14 +199,14 @@ export function renderReferenceApp1Page(layoutDoc, d) {
         return;
       }
       st.textContent = "Pong received (inbox job #" + pr.entry.id + ").";
-      out.style.display = "block";
+      out.hidden = false;
       out.textContent = JSON.stringify(pr.entry, null, 2);
     });
 
     document.getElementById("refStandup790").addEventListener("click", async function () {
       var st = document.getElementById("refMasStatus790");
       var out = document.getElementById("refMasOut790");
-      out.style.display = "none";
+      out.hidden = true;
       var date = document.getElementById("refStandupDate790").value.trim();
       var scope = document.getElementById("refStandupScope790").value.trim();
       st.textContent = "Enqueueing standup request…";
@@ -226,7 +227,7 @@ export function renderReferenceApp1Page(layoutDoc, d) {
       if (pay && pay.summary_text) text = String(pay.summary_text);
       if (pay && pay.artifact_path) text += (text ? "\\n\\n" : "") + "artifact: " + pay.artifact_path;
       st.textContent = "Digest delivered to inbox.";
-      out.style.display = "block";
+      out.hidden = false;
       out.textContent = text || JSON.stringify(pr.entry, null, 2);
     });
 
@@ -249,13 +250,13 @@ export function renderReferenceApp2Page(layoutDoc, d) {
         <h1>${d.escapeHtml(d.referenceApp2Label)}</h1>
         <p class="lede u-mb12">Issue <strong>#${issue791}</strong> — Milestone G <strong>sovereign inbox</strong>. Consumes <code>app_task</code> rows targeted at <code>reference-app-2</code> inside the dashboard process. No HTTP calls to Reference App 1.</p>
         <p class="muted u-mb12">Uses <code>REFAPP_FEATURE_TOGGLE</code>. Pair with <a href="../790/Reference_app_1">Reference app 1</a> for ping/pong and standup digest.</p>
-        <div id="ref2Disabled" class="result-card u-mb12" style="display:none;">
+        <div id="ref2Disabled" class="result-card u-mb12" hidden>
           <p class="u-m0"><strong>Disabled.</strong> Set <code>REFAPP_FEATURE_TOGGLE=1</code> and refresh.</p>
         </div>
-        <div id="ref2Main" class="result-card" style="display:none;">
-          <p class="muted u-mb12" style="font-size:13px;">Latest <code>app_task</code> rows for this inbox (newest first).</p>
+        <div id="ref2Main" class="result-card" hidden>
+          <p class="muted u-mb12 ds-text-md">Latest <code>app_task</code> rows for this inbox (newest first).</p>
           <button type="button" class="button secondary u-mb12" id="ref2Refresh">Refresh</button>
-          <pre id="ref2Out" class="u-m0" style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;max-height:360px;overflow:auto;"></pre>
+          <pre id="ref2Out" class="u-m0 ds-pre-scroll ds-pre-scroll--tall"></pre>
         </div>
       </section>
     </main>`;
@@ -272,8 +273,9 @@ export function renderReferenceApp2Page(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.referenceApp2Label)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">${layout}</div>
   <script>
     var apiRef2 = "${d.escapeHtml(d.referenceApp2ApiRoute)}";
@@ -285,8 +287,8 @@ export function renderReferenceApp2Page(layoutDoc, d) {
     async function loadRef2() {
       var res = await postRef2({ action: "config" });
       var on = res.d && res.d.ok && res.d.enabled;
-      document.getElementById("ref2Disabled").style.display = on ? "none" : "block";
-      document.getElementById("ref2Main").style.display = on ? "block" : "none";
+      document.getElementById("ref2Disabled").hidden = !!on;
+      document.getElementById("ref2Main").hidden = !on;
       if (!on) return;
       var inbox = await postRef2({ action: "inbox" });
       document.getElementById("ref2Out").textContent = inbox.d && inbox.d.ok

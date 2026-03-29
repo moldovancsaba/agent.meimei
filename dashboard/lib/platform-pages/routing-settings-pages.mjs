@@ -2,7 +2,7 @@
  * Platform UI — AI routing & API access tool **settings** GET shells (main tool pages stay in tool-surface-pages.mjs).
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K1d
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderAIRoutingSettingsPage(layoutDoc, d) {
@@ -21,7 +21,7 @@ export function renderAIRoutingSettingsPage(layoutDoc, d) {
           <div class="field-group">
             <div class="field-row">
               <label for="default-cost">Default cost:</label>
-              <select id="default-cost" style="padding:0.5rem;border:1px solid var(--color-border,#e5e7eb);border-radius:0.25rem">
+              <select id="default-cost" class="ds-select-inline">
                 <option value="low">Low — cheaper models, faster responses</option>
                 <option value="medium" selected>Medium — balanced cost/quality</option>
                 <option value="high">High — best quality, higher cost</option>
@@ -35,7 +35,7 @@ export function renderAIRoutingSettingsPage(layoutDoc, d) {
           <div class="field-group">
             <div class="field-row">
               <label for="channel-dashboard">Dashboard:</label>
-              <select id="channel-dashboard" style="padding:0.5rem;border:1px solid var(--color-border,#e5e7eb);border-radius:0.25rem">
+              <select id="channel-dashboard" class="ds-select-inline">
                 <option value="low">Low</option>
                 <option value="medium" selected>Medium</option>
                 <option value="high">High</option>
@@ -43,7 +43,7 @@ export function renderAIRoutingSettingsPage(layoutDoc, d) {
             </div>
             <div class="field-row">
               <label for="channel-api">API:</label>
-              <select id="channel-api" style="padding:0.5rem;border:1px solid var(--color-border,#e5e7eb);border-radius:0.25rem">
+              <select id="channel-api" class="ds-select-inline">
                 <option value="low">Low</option>
                 <option value="medium" selected>Medium</option>
                 <option value="high">High</option>
@@ -85,8 +85,9 @@ export function renderAIRoutingSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.aiRoutingLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>
@@ -214,8 +215,9 @@ export function renderApiAccessSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.apiAccessLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>

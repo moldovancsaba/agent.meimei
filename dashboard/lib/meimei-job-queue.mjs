@@ -29,6 +29,13 @@ export function deriveRoutingMeta(payload) {
   if (payload.kind === "inference_v1") {
     return { payload_kind: "inference_v1", target_adapter: null, source_adapter: null };
   }
+  if (payload.kind === "checklist_trace_v1") {
+    return {
+      payload_kind: "checklist_trace_v1",
+      target_adapter: "checklist",
+      source_adapter: "checklist"
+    };
+  }
   return { payload_kind: "inference_v1", target_adapter: null, source_adapter: null };
 }
 
@@ -125,6 +132,14 @@ export function createMeimeiJobQueue(repoRoot) {
     ) VALUES (?, ?, ?, ?, 'pending', 0, NULL, NULL, ?, ?, ?, ?, ?)
   `);
 
+  const insertCompletedLedger = db.prepare(`
+    INSERT INTO meimei_jobs (
+      trace_id, adapter_name, direction, payload, status, retry_count,
+      result_json, error_message, created_at, updated_at,
+      payload_kind, target_adapter, source_adapter
+    ) VALUES (?, ?, 'ingress', ?, 'completed', 0, ?, NULL, ?, ?, ?, ?, ?)
+  `);
+
   const claimInference = db.prepare(`
     UPDATE meimei_jobs
     SET status = 'processing', updated_at = ?
@@ -211,7 +226,7 @@ export function createMeimeiJobQueue(repoRoot) {
     SELECT id, trace_id, adapter_name, direction, status, payload, result_json, error_message,
            created_at, updated_at, payload_kind, target_adapter, source_adapter
     FROM meimei_jobs
-    WHERE COALESCE(payload_kind, 'inference_v1') IN ('inference_v1', 'app_task')
+    WHERE COALESCE(payload_kind, 'inference_v1') IN ('inference_v1', 'app_task', 'checklist_trace_v1')
     ORDER BY created_at DESC, id DESC
     LIMIT ?
   `);
@@ -251,6 +266,36 @@ export function createMeimeiJobQueue(repoRoot) {
         adapterName,
         direction,
         payloadJson,
+        now,
+        now,
+        meta.payload_kind,
+        meta.target_adapter,
+        meta.source_adapter
+      );
+      const row = db.prepare("SELECT last_insert_rowid() AS id").get();
+      return Number(row?.id);
+    },
+
+    /**
+     * Append a **completed** row for System Monitor only (no worker claim). Used for Checklist Node LLM echoes (R6).
+     * @param {{ traceId?: string, adapterName?: string, payload: object, resultJson?: object }} opts
+     * @returns {number} job id
+     */
+    appendCompletedLedgerRow(opts) {
+      const meta = deriveRoutingMeta(opts.payload);
+      const traceId = (opts.traceId && String(opts.traceId).trim()) || crypto.randomUUID();
+      const now = Date.now();
+      const payloadJson = JSON.stringify(opts.payload);
+      const resultJson =
+        typeof opts.resultJson === "string"
+          ? opts.resultJson
+          : JSON.stringify(opts.resultJson ?? {});
+      const adapterName = String(opts.adapterName || meta.target_adapter || "checklist");
+      insertCompletedLedger.run(
+        traceId,
+        adapterName,
+        payloadJson,
+        resultJson,
         now,
         now,
         meta.payload_kind,

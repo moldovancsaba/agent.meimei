@@ -2,8 +2,90 @@
  * Platform UI — Home (dashboard) shell + admin page + admin layout editor section.
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K1e
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
+
+const OC_NAV_KEYS = ["apps", "tools", "dashboard", "knowmore", "admin"];
+const OC_NAV_LABELS = {
+  apps: "Apps",
+  tools: "Tools",
+  dashboard: "Dashboard",
+  knowmore: "knowmore",
+  admin: "Admin"
+};
+const OC_THEME_KEYS = ["meimei", "dashboard", "admin", "apps", "tools", "knowmore"];
+const OC_THEME_LABELS = {
+  meimei: "MeiMei",
+  dashboard: "Dashboard",
+  admin: "Admin",
+  apps: "Apps",
+  tools: "Tools",
+  knowmore: "knowmore"
+};
+
+/**
+ * Admin-only: operator chrome editor (nav icons + theme tokens).
+ * @param {{ escapeHtml: (s: string) => string, operatorChromeEffective?: object }} d
+ */
+function renderOperatorChromeSection(d) {
+  const oc = d.operatorChromeEffective;
+  if (!oc) return "";
+  const navRows = OC_NAV_KEYS.map((key) => {
+    const n = oc.nav[key];
+    const label = OC_NAV_LABELS[key];
+    return `<div class="field">
+        <label for="oc-nav-${key}-icon">${d.escapeHtml(label)} — icon URL</label>
+        <input id="oc-nav-${key}-icon" type="text" value="${d.escapeHtml(n.icon)}" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="oc-nav-${key}-chip">${d.escapeHtml(label)} — menu chip colour</label>
+        <input id="oc-nav-${key}-chip" type="color" value="${d.escapeHtml(n.chipAccent)}" />
+      </div>`;
+  }).join("");
+  const themeBlocks = OC_THEME_KEYS.map((key) => {
+    const t = oc.themes[key];
+    const label = OC_THEME_LABELS[key];
+    return `<details class="ds-details">
+        <summary>${d.escapeHtml(label)} <span class="muted ds-text-md">(data-theme="${key}")</span></summary>
+        <div class="settings-form u-mt12">
+          <div class="row">
+            <div class="field">
+              <label for="oc-theme-${key}-accent">Primary accent</label>
+              <input id="oc-theme-${key}-accent" type="color" value="${d.escapeHtml(t.accent)}" />
+            </div>
+            <div class="field">
+              <label for="oc-theme-${key}-accent2">Secondary accent</label>
+              <input id="oc-theme-${key}-accent2" type="color" value="${d.escapeHtml(t.accent2)}" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="oc-theme-${key}-cardBorder">Card border <span class="muted">(CSS)</span></label>
+            <input id="oc-theme-${key}-cardBorder" type="text" value="${d.escapeHtml(t.cardBorder)}" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="oc-theme-${key}-bgGlow">Background glow <span class="muted">(CSS rgba)</span></label>
+            <input id="oc-theme-${key}-bgGlow" type="text" value="${d.escapeHtml(t.bgGlow)}" autocomplete="off" />
+          </div>
+        </div>
+      </details>`;
+  }).join("");
+  return `<section class="card section" id="operator-chrome-section">
+    <h2>Operator chrome</h2>
+    <p class="sub">Nav icons and section colours use the same tokens as <code>design-system.css</code>. Overrides persist to <code>data/operator-chrome.v1.json</code> (gitignored). The dynamic stylesheet loads after the base design system.</p>
+    <div class="settings-form">
+      <h3>Navigation</h3>
+      <p class="muted ds-text-md u-mb12">Icon paths must be under <code>/images/</code> (png, jpg, svg, webp).</p>
+      ${navRows}
+      <h3 class="u-mt12">Page themes</h3>
+      ${themeBlocks}
+      <div class="actions u-mt12">
+        <button type="button" class="good" id="operator-chrome-save">Save operator chrome</button>
+        <button type="button" class="button secondary" id="operator-chrome-reset">Reset to defaults</button>
+      </div>
+      <p class="muted u-mt8" id="operator-chrome-status" aria-live="polite"></p>
+    </div>
+  </section>`;
+}
 
 export function renderPage(state, lastResult, layoutDoc, d) {
   const fragments = {
@@ -44,8 +126,9 @@ export function renderPage(state, lastResult, layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei dashboard</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-page="dashboard" data-theme="green">
+<body data-page="dashboard" data-theme="meimei">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">MeiMei Operator Dashboard</h1>
@@ -238,11 +321,11 @@ export function renderAdminLayoutEditorSection(layoutDoc, d) {
     <div class="row layout-editor-tools">
       <div class="field">
         <label for="meimei-layout-desktop-cols">Desktop columns</label>
-        <select id="meimei-layout-desktop-cols">${colOpts}</select>
+        <select id="meimei-layout-desktop-cols" class="ds-select-inline">${colOpts}</select>
       </div>
       <div class="field">
         <label for="meimei-layout-page">Page</label>
-        <select id="meimei-layout-page">${pageOpts}</select>
+        <select id="meimei-layout-page" class="ds-select-inline">${pageOpts}</select>
       </div>
     </div>
     <ul class="layout-editor-list" id="meimei-layout-rows" aria-label="Layout block order"></ul>
@@ -281,8 +364,9 @@ export function renderAdminPage(state, lastResult, layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>agent.meimei admin/settings</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-page="admin" data-theme="orange">
+<body data-page="admin" data-theme="admin">
   <div class="shell">
     <div class="topnav">
       <h1 class="title">Admin / Settings</h1>
@@ -383,6 +467,7 @@ export function renderAdminPage(state, lastResult, layoutDoc, d) {
           </div>
         </form>
       </section>`,
+      operatorChrome: renderOperatorChromeSection(d),
       operations: `<section class="card section">
         <h2>Operations</h2>
         <p class="sub">Use the built-in CLI wrappers without leaving the browser.</p>
@@ -451,6 +536,66 @@ export function renderAdminPage(state, lastResult, layoutDoc, d) {
   <script>
     ${d.renderGlobalNavScript()}
     ${d.buildAdminLayoutEditorScript(layoutDoc, d.pageLayoutApiRoute, d.miniappCfg.registry)}
+    (function () {
+      const api = ${JSON.stringify(d.operatorChromeApiRoute)};
+      const statusEl = document.getElementById("operator-chrome-status");
+      const navKeys = ${JSON.stringify(OC_NAV_KEYS)};
+      const themeKeys = ${JSON.stringify(OC_THEME_KEYS)};
+      function collect() {
+        const nav = {};
+        navKeys.forEach((key) => {
+          nav[key] = {
+            icon: document.getElementById("oc-nav-" + key + "-icon").value.trim(),
+            chipAccent: document.getElementById("oc-nav-" + key + "-chip").value.trim()
+          };
+        });
+        const themes = {};
+        themeKeys.forEach((key) => {
+          themes[key] = {
+            accent: document.getElementById("oc-theme-" + key + "-accent").value.trim(),
+            accent2: document.getElementById("oc-theme-" + key + "-accent2").value.trim(),
+            cardBorder: document.getElementById("oc-theme-" + key + "-cardBorder").value.trim(),
+            bgGlow: document.getElementById("oc-theme-" + key + "-bgGlow").value.trim()
+          };
+        });
+        return { nav, themes };
+      }
+      document.getElementById("operator-chrome-save")?.addEventListener("click", async () => {
+        if (!statusEl) return;
+        statusEl.textContent = "Saving…";
+        try {
+          const r = await fetch(api, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(collect())
+          });
+          const data = await r.json();
+          if (!data.ok) throw new Error(data.error || "Save failed");
+          statusEl.textContent = data.message || "Saved.";
+          window.location.reload();
+        } catch (e) {
+          statusEl.textContent = e instanceof Error ? e.message : String(e);
+        }
+      });
+      document.getElementById("operator-chrome-reset")?.addEventListener("click", async () => {
+        if (!statusEl) return;
+        if (!confirm("Reset operator chrome to design-system defaults?")) return;
+        statusEl.textContent = "Resetting…";
+        try {
+          const r = await fetch(api, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ reset: true })
+          });
+          const data = await r.json();
+          if (!data.ok) throw new Error(data.error || "Reset failed");
+          statusEl.textContent = data.message || "Reset.";
+          window.location.reload();
+        } catch (e) {
+          statusEl.textContent = e instanceof Error ? e.message : String(e);
+        }
+      });
+    })();
     const output = document.querySelector('pre');
     async function postForm(form) {
       const response = await fetch(form.action, {

@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent.meimei/schema/meimei.app.manifest.v1.json",
+  "title": "MeiMei kernel — external app manifest (v1)",
+  "description": "Contract for an app package installed outside static kernel imports. See docs/planning/kernel-app-separation-and-https-program.v1.md (MM-KERNEL-201).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "version", "entry", "api", "capabilities"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump only when breaking the manifest shape."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Stable package id (kebab-case), not the kernel app_id UUID."
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 480,
+      "description": "Catalog copy when merged into dashboard (parity with registry.v1.json description cap)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?$"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "pattern": "^\\./[^\\s]+$",
+          "description": "ESM path relative to app package root (e.g. ./index.mjs)."
+        },
+        "export": {
+          "type": "string",
+          "minLength": 1,
+          "default": "handleApi",
+          "description": "Named export invoked by the kernel loader (default handleApi)."
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "pathSuffix"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "const": "POST"
+        },
+        "pathSuffix": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Suffix after /dashboard/api/functions/ — kernel maps to full path at registration."
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "inference",
+              "jobs.enqueue",
+              "jobs.claim",
+              "env.read",
+              "filesystem.scoped",
+              "monitor.read"
+            ]
+          }
+        },
+        "optional": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "inference",
+              "jobs.enqueue",
+              "jobs.claim",
+              "env.read",
+              "filesystem.scoped",
+              "monitor.read"
+            ]
+          }
+        }
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional GET page hints for catalog (exact routing TBD in MM-KERNEL-502).",
+      "properties": {
+        "dashboardIssueId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "GitHub issue id for human-readable /dashboard/<id>/… URLs when merged."
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9_]+$"
+        }
+      }
+    }
+  }
+}

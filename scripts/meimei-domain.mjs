@@ -197,6 +197,23 @@ async function main() {
   server.listen(8443, "127.0.0.1", () => {
     console.log(`meimei.localhost proxy listening on https://${publicHost}:8443${publicPrefix}`);
   });
+
+  if (String(process.env.MEIMEI_DOMAIN_HTTP_REDIRECT || "").trim() === "1") {
+    const redirectPort = Number(process.env.MEIMEI_DOMAIN_HTTP_REDIRECT_PORT || 8080) || 8080;
+    const targetBase = `https://${publicHost}:8443`;
+    http
+      .createServer((req, res) => {
+        const u = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
+        const loc = `${targetBase}${u.pathname}${u.search}`;
+        res.writeHead(301, { location: loc, "cache-control": "no-store" });
+        res.end(`Moved Permanently to ${loc}\n`);
+      })
+      .listen(redirectPort, "127.0.0.1", () => {
+        console.log(
+          `meimei-domain: HTTP→HTTPS redirect on http://127.0.0.1:${redirectPort} → ${targetBase}`
+        );
+      });
+  }
 }
 
 main().catch((error) => {

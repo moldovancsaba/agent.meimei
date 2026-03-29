@@ -76,6 +76,10 @@ Every miniapp must define a contract object with this schema:
 - `capabilities`: channels, side effects, approval requirement
 - `failureModel`: explicit failure behavior
 
+## Ingress (operator / browser)
+
+- **Canonical access** to the dashboard and miniapps is **HTTPS** through the local TLS proxy (**`https://meimei.localhost:8443/dashboard/…`** by default). The Node process may listen on **loopback HTTP** upstream only; contracts and operator docs must not treat raw **`http://127.0.0.1:<port>`** as the product surface. See [ADR-003](./adr/ADR-003-tls-termination-v1.md) and [meimei-https-topology.v1.md](./meimei-https-topology.v1.md).
+
 ## Route Rules
 
 - **Canonical miniapp URL:** `/dashboard/<githubIssueId>/<slug>`

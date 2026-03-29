@@ -4,7 +4,9 @@
  * Run with dashboard already listening (e.g. node dashboard/server.mjs).
  *
  * Usage: node scripts/meimei-dashboard-miniapps-smoke.mjs [baseUrl]
- *   baseUrl default http://127.0.0.1:<defaults.port from config>
+ *   baseUrl default: http://127.0.0.1:<defaults.port> (upstream Node).
+ *   Set MEIMEI_SMOKE_HTTPS=1 for https://<MEIMEI_PUBLIC_HOST||meimei.localhost>:8443 (TLS proxy path).
+ *   Trust local CA: NODE_EXTRA_CA_CERTS=$HOME/.openclaw/certs/meimei.localhost.crt
  *
  * Exit 1 if any GET is non-200 or any POST returns non-JSON / throws.
  * "API ok" means HTTP 200 and body parses; body.ok may be false (deps missing).
@@ -29,10 +31,14 @@ const port = await (async () => {
   }
 })();
 
-const base =
-  process.argv[2] ||
-  process.env.MEIMEI_SMOKE_BASE ||
-  `http://127.0.0.1:${port}`;
+const publicHost = String(process.env.MEIMEI_PUBLIC_HOST || "meimei.localhost").trim() || "meimei.localhost";
+const tlsPort = String(process.env.MEIMEI_PUBLIC_TLS_PORT || "8443").trim() || "8443";
+const useHttpsSmoke = String(process.env.MEIMEI_SMOKE_HTTPS || "").trim() === "1";
+const defaultBase = useHttpsSmoke
+  ? `https://${publicHost}:${tlsPort}`
+  : `http://127.0.0.1:${port}`;
+
+const base = process.argv[2] || process.env.MEIMEI_SMOKE_BASE || defaultBase;
 
 const headers = { Accept: "text/html,application/json", "User-Agent": "meimei-dashboard-miniapps-smoke/1" };
 

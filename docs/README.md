@@ -43,6 +43,12 @@ System design, technical contracts, and standards.
 | [design-system-v1.md](architecture/design-system-v1.md) | UI components, tokens, layout system |
 | [miniapp-contract-v1.md](architecture/miniapp-contract-v1.md) | Miniapp/app/tool contract specification |
 | [function-lifecycle.md](architecture/function-lifecycle.md) | How functions are created, registered, served |
+| [adr/README.md](architecture/adr/README.md) | Architecture Decision Records (runtime, identity, TLS) |
+| [meimei-https-topology.v1.md](architecture/meimei-https-topology.v1.md) | HTTPS: canonical URL vs upstream Node, env vars, diagram |
+| [kernel-app-separation-and-https-program.v1.md](planning/kernel-app-separation-and-https-program.v1.md) | **Program:** kernel/app separation + HTTPS — issues, deps, GitHub bodies |
+| [meimei-https-full-integration-program.v1.md](planning/meimei-https-full-integration-program.v1.md) | **Program:** full HTTPS integration — rationale, show-stopper framing, micro-deliverables **TLS-001–TLS-071** |
+| [planning/examples/meimei.app.example.json](planning/examples/meimei.app.example.json) | Example **meimei.app** manifest (MM-KERNEL-201); schema in `schemas/meimei.app.manifest.v1.json` |
+| [data/kernel/apps/README.md](../data/kernel/apps/README.md) | Kernel **external app registry** local state (`registry.json` — MM-KERNEL-202) |
 | [model-routing-spec.md](architecture/model-routing-spec.md) | Brain-muscle model routing architecture |
 | [naming-conventions.md](architecture/naming-conventions.md) | File naming and code conventions |
 | [project-vocabulary-v1.md](architecture/project-vocabulary-v1.md) | Standardized project terminology |

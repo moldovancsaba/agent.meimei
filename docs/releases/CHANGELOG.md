@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 2026-03-30 — HTTPS: doc contract CI + topology TLS-042/043 + handbook
+
+- **`scripts/validate-https-doc-contract.mjs`** + **`npm run https:validate-docs`** (in **`npm run ci`**) — locks ADR-003, topology, runbook, README, miniapp ingress, health JSON shape.
+- **`public_https.termination`** on **`GET /api/health`**; topology expanded for **`X-Forwarded-Proto`** and cookies (**N/A**); kernel handbook + completion-plan **OpenClaw URL** waiver (**TLS-052**).
+
+## 2026-03-30 — HTTPS: ADR-003 accepted, topology, operator runbook, health JSON
+
+- **ADR-003** Accepted — `docs/architecture/adr/ADR-003-tls-termination-v1.md` — default TLS via **`meimei-domain`** reverse proxy; Node upstream HTTP on loopback.
+- **`docs/architecture/meimei-https-topology.v1.md`** — canonical **`https://meimei.localhost:8443/dashboard/`**, env table, optional HTTP→HTTPS redirect.
+- **`dashboard/server.mjs`** — boot logs distinguish upstream vs public HTTPS; **`GET /api/health`** includes **`listen`**, **`public_https`**, **`transport`**; optional **`MEIMEI_DASHBOARD_*`** bind hardening.
+- **`scripts/meimei-domain.mjs`** — **`MEIMEI_DOMAIN_HTTP_REDIRECT=1`** → **301** on **`127.0.0.1:8080`** (port configurable).
+- **Smoke / probe:** **`MEIMEI_SMOKE_HTTPS`**, **`MEIMEI_PROBE_TLS`**, **`npm run dashboard:smoke:https`**, **`npm run dashboard:probe:tls`**.
+- **Docs:** runbook, README launch list, **`miniapp-contract-v1.md`** ingress section, mac-mini checklist, **`meimei-https-full-integration-program`** changelog.
+
+## 2026-03-30 — Kernel: external app POST dispatch (MM-KERNEL-501, opt-in)
+
+- **`dashboard/lib/kernel-external-app-dispatch.mjs`** — when **`MEIMEI_KERNEL_EXTERNAL_APPS=1`**, `server.mjs` dispatches **`POST /api/functions/<pathSuffix>`** for enabled registry apps via dynamic **`import()`** (after static routes).
+- **`npm run kernel:external-dispatch:selftest`** — CI; env **`MEIMEI_KERNEL_APP_REGISTRY`** respected (same as registry CLI).
+
+## 2026-03-30 — Kernel: external app registry + manifest validate (separation program)
+
+- **`dashboard/lib/kernel-app-registry.mjs`** — register/list/enable/disable/remove (tombstone + immutable `app_id`); optional audit events.
+- **`dashboard/lib/meimei-app-manifest-validate.mjs`** — shared manifest validation; **`scripts/validate-meimei-app-manifest.mjs`** uses it.
+- **`scripts/meimei-kernel-app-registry.mjs`**, **`npm run kernel:app-registry`**; **`kernel:app-registry:selftest`** in **`npm run ci`**.
+- **`data/kernel/apps/registry.json`** gitignored; **`data/kernel/apps/README.md`**. Docs: program + audit trail event types.
+
+## 2026-03-30 — Checklist Node: monitor trace rows (`checklist_trace_v1`, `0.8.15`)
+
+- **`dashboard/lib/checklist-meimei-trace.mjs`** — after successful Node **`/jobs`** ingest and feedback regeneration, appends **completed** `meimei_jobs` rows (`payload_kind: checklist_trace_v1`) for **`GET /api/meimei/monitor/feed`** (**R6**). Inference stays in-process (no worker queue).
+- **`dashboard/lib/meimei-job-queue.mjs`** — routing meta + monitor queries + **`appendCompletedLedgerRow`** for completed-only rows.
+- **`dashboard/lib/meimei-monitor-feed.mjs`** — intent/hint for **`checklist_trace_v1`**.
+- **`checklist-bridge-http.mjs`** / **`checklist-node/engine.mjs`** — pass **`repoRoot`** and optional **`x-meimei-trace-id`** as **`clientTraceId`** into management and job processing.
+- **Docs:** **`adapter-contract.v1.md`**, **`functions/checklist.md`**, **`miniapp-platform-audit.v1.md`**, **`meimei-repo-boundaries.v1.md`**.
+- **Version:** package **0.8.15**; **`@aligned`** headers **0.8.15** on aligned modules.
+
 ## 2026-03-30 — OpenClaw routing preview in Node + what-next contract (`0.8.14`)
 
 - **`dashboard/lib/openclaw-routing-preview.mjs`** — deterministic routing preview (parity with **`scripts/oc-agent --route-only`**); **`previewModelRouting`** in **`server.mjs`** uses it by default. Set **`MEIMEI_ROUTING_PREVIEW_LEGACY_OC_AGENT=1`** to restore the bash/`openclaw` subprocess path.

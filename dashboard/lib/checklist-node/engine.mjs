@@ -3,7 +3,7 @@
  * Set MEIMEI_CHECKLIST_ENGINE=python to use the checklist-repo HTTP worker instead.
  *
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 import path from "node:path";
 import { processJobPayload } from "./jobs.mjs";
@@ -47,10 +47,11 @@ function errBuf(status, obj) {
 }
 
 /**
- * @param {{ repoRoot: string; method: string; pathWithQuery: string; body: Buffer; contentType?: string }} opts
+ * @param {{ repoRoot: string; method: string; pathWithQuery: string; body: Buffer; contentType?: string; clientTraceId?: string|null }} opts
  */
 export async function runNodeChecklistBridge(opts) {
-  const { repoRoot, method, pathWithQuery, body } = opts;
+  const { repoRoot, method, pathWithQuery, body, clientTraceId = null } = opts;
+  const traceCtx = { repoRoot, clientTraceId };
   const pathname = (pathWithQuery.split("?")[0] || "/").replace(/\/+$/, "") || "/";
   const dbPath = resolveChecklistSqlitePath(repoRoot);
 
@@ -66,7 +67,7 @@ export async function runNodeChecklistBridge(opts) {
       return errBuf(400, { error: "worker_job_failed", detail: "invalid JSON body" });
     }
     try {
-      const out = await processJobPayload(dbPath, payload);
+      const out = await processJobPayload(dbPath, payload, traceCtx);
       return jsonBuf(out);
     } catch (e) {
       return errBuf(400, {
@@ -93,7 +94,7 @@ export async function runNodeChecklistBridge(opts) {
       }
     }
     try {
-      const r = await handleManagementRequest(dbPath, method, pathname, payload);
+      const r = await handleManagementRequest(dbPath, method, pathname, payload, traceCtx);
       return {
         statusCode: r.status,
         headers: { "content-type": "application/json; charset=utf-8" },

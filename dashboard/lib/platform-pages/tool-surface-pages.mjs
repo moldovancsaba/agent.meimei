@@ -3,7 +3,7 @@
  * Injected deps keep `dashboard/server.mjs` thin (Phase 0).
  *
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderRoutingPage(layoutDoc, d) {
@@ -74,8 +74,9 @@ export function renderRoutingPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.aiRoutingLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="tools">
   <div class="shell">
     ${routingFlow}
   </div>
@@ -287,8 +288,9 @@ export function renderApiChannelAdapterPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.apiAdapterLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="tools">
   <div class="shell">
     ${adapterFlow}
   </div>
@@ -441,8 +443,9 @@ export function renderAiSdrAnalyticsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.aiSdrAnalyticsLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">${layout}</div>
   <script>
     const api651 = "${d.escapeHtml(d.aiSdrAnalyticsApiRoute)}";
@@ -473,7 +476,7 @@ export function renderAiSdrAnalyticsPage(layoutDoc, d) {
         const maxC = Math.max(1, series.reduce(function (m, x) { return Math.max(m, x.count || 0); }, 0));
         const bars = series.map(function (x) {
           const h = Math.round((x.count / maxC) * 100);
-          return "<div class=\\"bar651-wrap\\" title=\\"" + esc(x.date + ": " + x.count) + "\\"><div class=\\"bar651\\" style=\\"height:" + h + "%\\"></div><span class=\\"bar651-lbl\\">" + esc((x.date || "").slice(5)) + "</span></div>";
+          return "<div class=\\"bar651-wrap\\" title=\\"" + esc(x.date + ": " + x.count) + "\\"><div class=\\"bar651\\" data-pct=\\"" + h + "\\"></div><span class=\\"bar651-lbl\\">" + esc((x.date || "").slice(5)) + "</span></div>";
         }).join("");
         const rs = d.recentSdr || [];
         const recentRows = rs.map(function (e) {
@@ -493,17 +496,20 @@ export function renderAiSdrAnalyticsPage(layoutDoc, d) {
           "<div class=\\"stat651\\"><span class=\\"stat651-n\\">" + esc(String(w.totalItems ?? 0)) + "</span><span class=\\"stat651-l\\">Workflow items</span></div>",
           "</div>",
           "<p class=\\"muted u-mt12\\">Workflow by status: " + wfStat + "</p>",
-          "<h3 class=\\"u-mt12\\" style=\\"font-size:1rem;\\">SDR events / day (14d)</h3>",
+          "<h3 class=\\"u-mt12 ds-heading-chart\\">SDR events / day (14d)</h3>",
           "<div class=\\"bars651\\">" + (bars || "<span class=\\"muted\\">No events in window.</span>") + "</div>",
-          "<div class=\\"route-grid u-mt12\\" style=\\"display:grid;grid-template-columns:1fr 1fr;gap:1rem;\\">",
-          "<div><h4 class=\\"muted\\">By event type</h4><table class=\\"wf-table\\" style=\\"width:100%;font-size:12px;\\"><tbody>" + (typeRows || "<tr><td class=\\"muted\\">—</td></tr>") + "</tbody></table></div>",
-          "<div><h4 class=\\"muted\\">By campaign</h4><table class=\\"wf-table\\" style=\\"width:100%;font-size:12px;\\"><tbody>" + (campRows || "<tr><td class=\\"muted\\">—</td></tr>") + "</tbody></table></div>",
+          "<div class=\\"ds-grid-2 u-mt12\\">",
+          "<div><h4 class=\\"muted\\">By event type</h4><table class=\\"wf-table\\"><tbody>" + (typeRows || "<tr><td class=\\"muted\\">—</td></tr>") + "</tbody></table></div>",
+          "<div><h4 class=\\"muted\\">By campaign</h4><table class=\\"wf-table\\"><tbody>" + (campRows || "<tr><td class=\\"muted\\">—</td></tr>") + "</tbody></table></div>",
           "</div>",
-          "<h3 class=\\"u-mt12\\" style=\\"font-size:1rem;\\">Recent SDR events</h3>",
-          "<table class=\\"wf-table\\" style=\\"width:100%;font-size:12px;\\"><thead><tr><th>Time</th><th>Type</th><th>To</th><th>Note</th></tr></thead><tbody>" + (recentRows || "<tr><td colspan=4 class=\\"muted\\">None</td></tr>") + "</tbody></table>",
-          "<h3 class=\\"u-mt12\\" style=\\"font-size:1rem;\\">Recent workflow rows</h3>",
-          "<table class=\\"wf-table\\" style=\\"width:100%;font-size:12px;\\"><thead><tr><th>Status</th><th>Source</th><th>Label</th><th>Id</th></tr></thead><tbody>" + (wfRows || "<tr><td colspan=4 class=\\"muted\\">None</td></tr>") + "</tbody></table>"
+          "<h3 class=\\"u-mt12 ds-heading-chart\\">Recent SDR events</h3>",
+          "<table class=\\"wf-table\\"><thead><tr><th>Time</th><th>Type</th><th>To</th><th>Note</th></tr></thead><tbody>" + (recentRows || "<tr><td colspan=4 class=\\"muted\\">None</td></tr>") + "</tbody></table>",
+          "<h3 class=\\"u-mt12 ds-heading-chart\\">Recent workflow rows</h3>",
+          "<table class=\\"wf-table\\"><thead><tr><th>Status</th><th>Source</th><th>Label</th><th>Id</th></tr></thead><tbody>" + (wfRows || "<tr><td colspan=4 class=\\"muted\\">None</td></tr>") + "</tbody></table>"
         ].join("");
+        el.querySelectorAll(".bar651[data-pct]").forEach(function (node) {
+          node.style.setProperty("--p", node.getAttribute("data-pct") || "0");
+        });
       } catch (e) {
         el.innerHTML = "<p class=\\"muted\\">" + esc(e.message || String(e)) + "</p>";
       }
@@ -530,7 +536,7 @@ export function renderSupabaseConnectorPage(layoutDoc, d) {
         <p class="lede u-mb12">Issue <strong>#${issue631}</strong> — PostgREST bridge for <a href="${d.escapeHtml(d.leadEnrichmentRoute)}">Lead Enrichment</a> (<code>source: supabase</code>). <a href="https://github.com/moldovancsaba/mvp-factory-control/issues/631" target="_blank" rel="noopener noreferrer">#631</a></p>
         <p class="muted u-mb12">Environment: <code>MEIMEI_SUPABASE_URL</code> and <code>MEIMEI_SUPABASE_SERVICE_ROLE</code> (or <code>MEIMEI_SUPABASE_ANON_KEY</code>). Never commit keys.</p>
         <div id="sbStatus631" class="result-card u-mb12"><p class="muted u-m0">Checking…</p></div>
-        <h2 style="font-size:1.05rem;">Health</h2>
+        <h2 class="ds-section-title-sm">Health</h2>
         <div class="route-form u-mb12">
           <div class="field">
             <label for="sbTableHealth">Table (optional)</label>
@@ -540,7 +546,7 @@ export function renderSupabaseConnectorPage(layoutDoc, d) {
             <button type="button" class="button secondary" id="btn631Health">Ping REST</button>
           </div>
         </div>
-        <h2 style="font-size:1.05rem;">Preview rows</h2>
+        <h2 class="ds-section-title-sm">Preview rows</h2>
         <div class="route-form u-mb12">
           <div class="field">
             <label for="sbTable">Table</label>
@@ -558,7 +564,7 @@ export function renderSupabaseConnectorPage(layoutDoc, d) {
             <button type="button" class="good" id="btn631Preview">Fetch</button>
           </div>
         </div>
-        <pre id="sbPreview631" class="result-card" style="white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;">(no fetch yet)</pre>
+        <pre id="sbPreview631" class="result-card ds-pre-scroll">(no fetch yet)</pre>
       </section>
     </main>`;
   const layout = d.buildLayoutFlowHtml(layoutDoc, d.miniappPageKey("supabase-connector"), { topbar, main }, d.escapeAttr);
@@ -569,8 +575,9 @@ export function renderSupabaseConnectorPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.supabaseConnectorLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="tools">
   <div class="shell">${layout}</div>
   <script>
     const api631 = "${d.escapeHtml(d.supabaseConnectorApiRoute)}";
@@ -642,19 +649,19 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
         <p class="lede u-mb12">Issue <strong>#${issue726}</strong> — Vercel-style CRUD for API keys, tokens, URLs, and local OpenClaw / MeiMei settings.</p>
         <p class="muted u-mb12">Storage: <code>data/meimei-environment.v1.json</code> (600 perms, gitignored). Entries with environment checkboxes are applied to <code>process.env</code> when <code>MEIMEI_ENV_PROFILE</code> matches (default <code>development</code>). Empty checkboxes = all three. Optional strict saves: <code>MEIMEI_ENV_STRICT_KEY_NAMES=1</code> (see <code>docs/architecture/meimei-env-ui-contract.v1.md</code>).</p>
         <p class="muted u-mb12">Active profile: <strong id="activeProf726">—</strong> · Suggestions: <code>config/meimei-env-catalog.v1.json</code></p>
-        <div id="formCard726" class="result-card u-mb12" style="display:none;">
-          <h2 id="formTitle726" style="font-size:1.1rem;">Add</h2>
+        <div id="formCard726" class="result-card u-mb12" hidden>
+          <h2 id="formTitle726" class="ds-section-title">Add</h2>
           <div class="field">
             <label for="envKey726">Name</label>
-            <input type="text" id="envKey726" placeholder="OPENAI_API_KEY" autocomplete="off" style="max-width:28rem;width:100%;box-sizing:border-box;" />
-            <p id="envKey726warn" class="env726-naming-warn" role="status"></p>
+            <input type="text" id="envKey726" class="ds-input-medium" placeholder="OPENAI_API_KEY" autocomplete="off" />
+            <p id="envKey726warn" class="ds-env-naming-warn" role="status"></p>
           </div>
           <div class="field">
             <label for="envVal726">Value</label>
-            <textarea id="envVal726" rows="4" placeholder="Secret or URL" style="width:100%;max-width:40rem;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;"></textarea>
+            <textarea id="envVal726" class="ds-code-input ds-text-sm" rows="4" placeholder="Secret or URL"></textarea>
           </div>
-          <p class="muted u-mb8" style="font-size:12px;">Environments</p>
-          <div class="u-mb12" style="display:flex;flex-wrap:wrap;gap:12px;">
+          <p class="muted u-mb8 ds-text-sm">Environments</p>
+          <div class="u-mb12 ds-toolbar ds-toolbar--gap-md">
             <label class="muted"><input type="checkbox" id="envTprod726" checked /> Production</label>
             <label class="muted"><input type="checkbox" id="envTprev726" checked /> Preview</label>
             <label class="muted"><input type="checkbox" id="envTdev726" checked /> Development</label>
@@ -665,10 +672,10 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
             <button type="button" class="button secondary" id="btnCancel726">Cancel</button>
           </div>
         </div>
-        <div class="route-actions u-mb12" style="flex-wrap:wrap;align-items:center;">
+        <div class="route-actions u-mb12 ds-toolbar">
           <button type="button" class="good" id="btnAdd726">Add variable</button>
-          <span class="muted" style="font-size:13px;">Export</span>
-          <select id="exportTarget726" class="button secondary" style="padding:8px 12px;">
+          <span class="muted ds-text-md">Export</span>
+          <select id="exportTarget726" class="ds-select-inline">
             <option value="">All environments</option>
             <option value="production">Production only</option>
             <option value="preview">Preview only</option>
@@ -676,9 +683,9 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
           </select>
           <button type="button" class="button secondary" id="btnExport726">Copy .env</button>
         </div>
-        <div id="catalog726" class="result-card u-mb12" style="font-size:12px;"></div>
+        <div id="catalog726" class="result-card u-mb12 ds-catalog-dense"></div>
         <div id="table726" class="result-card"><p class="muted u-m0">Loading…</p></div>
-        <textarea id="exportOut726" readonly class="u-mt12" style="display:none;width:100%;min-height:100px;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:11px;border-radius:12px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px;"></textarea>
+        <textarea id="exportOut726" readonly class="u-mt12 ds-export-textarea" hidden></textarea>
       </section>
     </main>`;
   const layout = d.buildLayoutFlowHtml(
@@ -694,12 +701,9 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.environmentVariablesLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
-  <style>
-    .env726-naming-warn { margin-top: 6px; font-size: 12px; color: var(--warn); display: none; max-width: 40rem; line-height: 1.35; }
-    .env726-key-flag { color: var(--warn); font-size: 11px; margin-left: 6px; font-weight: 600; }
-  </style>
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="tools">
   <div class="shell">${layout}</div>
   <script>
     var api726 = "${d.escapeHtml(d.environmentVariablesApiRoute)}";
@@ -737,11 +741,11 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
       if (!el || !keyInput) return;
       var key = keyInput.value.trim();
       if (!key || !env726KeyNeedsWarn(key)) {
-        el.style.display = "none";
+        el.classList.remove("is-visible");
         el.textContent = "";
         return;
       }
-      el.style.display = "block";
+      el.classList.add("is-visible");
       el.textContent =
         "Recommendation: prefix with your app name (e.g. MYAPP_SECRET_KEY). Underscore-separated uppercase names match the platform convention.";
     }
@@ -760,7 +764,7 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
     }
 
     function showForm(edit) {
-      document.getElementById("formCard726").style.display = "block";
+      document.getElementById("formCard726").hidden = false;
       document.getElementById("formTitle726").textContent = edit ? "Edit variable" : "Add variable";
       document.getElementById("envKey726").readOnly = !!edit;
       if (!edit) {
@@ -773,7 +777,7 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
     }
 
     function hideForm() {
-      document.getElementById("formCard726").style.display = "none";
+      document.getElementById("formCard726").hidden = true;
     }
 
     async function loadCatalog() {
@@ -885,7 +889,7 @@ export function renderEnvironmentVariablesPage(layoutDoc, d) {
         alert(r.d.error || "Export failed");
         return;
       }
-      ta.style.display = "block";
+      ta.hidden = false;
       ta.value = r.d.text || "";
       ta.select();
       try { document.execCommand("copy"); } catch (e) {}

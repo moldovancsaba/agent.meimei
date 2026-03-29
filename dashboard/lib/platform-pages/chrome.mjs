@@ -2,7 +2,7 @@
  * Shared dashboard chrome — global nav, flashcards, list helper.
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K2
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 /**
@@ -37,11 +37,11 @@ export function renderFlashcard(
  * @param {string} activePage
  * @param {{
  *   escapeHtml: (s: string) => string,
- *   openclawChatUrl: string,
- *   openclawLogoPath: string,
- *   dashboardLogoPath: string,
- *   knowmoreLogoPath: string,
- *   adminLogoPath: string,
+ *   navIconAppsPath: string,
+ *   navIconToolsPath: string,
+ *   navIconDashboardPath: string,
+ *   navIconKnowmorePath: string,
+ *   navIconAdminPath: string,
  *   appsRoute: string,
  *   toolsRoute: string,
  *   homeRoute: string,
@@ -63,28 +63,24 @@ export function renderGlobalNav(activePage, d) {
         Menu
       </button>
       <div id="${navId}" class="nav-actions" data-nav-actions>
-        <a class="nav-chip openclaw" href="${d.escapeHtml(d.openclawChatUrl)}">
-          <img src="${d.escapeHtml(d.openclawLogoPath)}" alt="OpenClaw logo" />
-          <span>OpenClaw</span>
-        </a>
-        <a class="nav-chip ${activePage === "apps" ? "active" : ""}" href="${d.escapeHtml(d.appsRoute)}">
-          <img src="${d.escapeHtml(d.dashboardLogoPath)}" alt="Apps logo" />
+        <a class="nav-chip nav-dest-apps ${activePage === "apps" ? "active" : ""}" href="${d.escapeHtml(d.appsRoute)}">
+          <img src="${d.escapeHtml(d.navIconAppsPath)}" alt="" width="24" height="24" />
           <span>Apps</span>
         </a>
-        <a class="nav-chip ${activePage === "tools" ? "active" : ""}" href="${d.escapeHtml(d.toolsRoute)}">
-          <img src="${d.escapeHtml(d.dashboardLogoPath)}" alt="Tools logo" />
+        <a class="nav-chip nav-dest-tools ${activePage === "tools" ? "active" : ""}" href="${d.escapeHtml(d.toolsRoute)}">
+          <img src="${d.escapeHtml(d.navIconToolsPath)}" alt="" width="24" height="24" />
           <span>Tools</span>
         </a>
-        <a class="nav-chip ${activePage === "dashboard" ? "active" : ""}" href="${d.escapeHtml(d.homeRoute)}">
-          <img src="${d.escapeHtml(d.dashboardLogoPath)}" alt="Dashboard logo" />
+        <a class="nav-chip nav-dest-dashboard ${activePage === "dashboard" ? "active" : ""}" href="${d.escapeHtml(d.homeRoute)}">
+          <img src="${d.escapeHtml(d.navIconDashboardPath)}" alt="" width="24" height="24" />
           <span>Dashboard</span>
         </a>
-        <a class="nav-chip ${activePage === "knowmore" ? "active" : ""}" href="${d.escapeHtml(d.knowmoreRoute)}">
-          <img src="${d.escapeHtml(d.knowmoreLogoPath)}" alt="knowmore logo" />
+        <a class="nav-chip nav-dest-knowmore ${activePage === "knowmore" ? "active" : ""}" href="${d.escapeHtml(d.knowmoreRoute)}">
+          <img src="${d.escapeHtml(d.navIconKnowmorePath)}" alt="" width="24" height="24" />
           <span>knowmore</span>
         </a>
-        <a class="nav-chip ${activePage === "admin" ? "active" : ""}" href="${d.escapeHtml(d.adminRoute)}">
-          <img src="${d.escapeHtml(d.adminLogoPath)}" alt="Admin logo" />
+        <a class="nav-chip nav-dest-admin ${activePage === "admin" ? "active" : ""}" href="${d.escapeHtml(d.adminRoute)}">
+          <img src="${d.escapeHtml(d.navIconAdminPath)}" alt="" width="24" height="24" />
           <span>Admin</span>
         </a>
       </div>`;

@@ -38,8 +38,9 @@ Use this before declaring the second Mac mini ready for daily operation.
 ### 5. Dashboard and proxy
 
 - [ ] `./scripts/meimei-domain install` succeeds
-- [ ] `http://127.0.0.1:<defaults.port>/` returns `200` (see `config/dashboard-surface.v1.json`)
-- [ ] `https://meimei.localhost:8443/dashboard/` returns `200`
+- [ ] **Upstream (optional debug):** `http://127.0.0.1:<defaults.port>/` returns `200` (see `config/dashboard-surface.v1.json`)
+- [ ] **Product gate:** `https://meimei.localhost:8443/dashboard/` returns `200` (canonical operator surface — [ADR-003](../architecture/adr/ADR-003-tls-termination-v1.md))
+- [ ] `GET https://meimei.localhost:8443/dashboard/api/health` returns JSON with `public_https.operator_url` (or use `MEIMEI_PROBE_TLS=1 npm run dashboard:probe:tls` with `NODE_EXTRA_CA_CERTS` if needed)
 - [ ] The dashboard root loads the miniapp catalog
 
 ### 6. Function checks

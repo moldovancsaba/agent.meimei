@@ -2,7 +2,7 @@
  * Platform UI — Lead enrichment & lead outreach (main + settings GET shells).
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K1b
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderLeadEnrichmentPage(layoutDoc, d) {
@@ -53,18 +53,18 @@ export function renderLeadEnrichmentPage(layoutDoc, d) {
           <div class="field">
             <label for="input649">Input <span id="inputLabel">(Profile URL, Email, Domain, or Phone)</span></label>
             <input type="text" id="input649" data-input placeholder="https://linkedin.com/in/example or john@company.com" />
-            <textarea id="crmJson649" rows="8" style="display:none;width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px 14px;" placeholder='{"crmProvider":"hubspot","externalId":"...","email":"...","notes":"...","customFields":{}}'></textarea>
-            <textarea id="supabaseJson649" rows="8" style="display:none;width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,10,20,0.72);color:var(--text);padding:12px 14px;" placeholder='{"table":"leads","id":"uuid","idColumn":"id"} or {"table":"leads","match":{"email":"a@b.com"}}'></textarea>
+            <textarea id="crmJson649" class="ds-json-textarea ds-json-textarea--tall" rows="8" hidden placeholder='{"crmProvider":"hubspot","externalId":"...","email":"...","notes":"...","customFields":{}}'></textarea>
+            <textarea id="supabaseJson649" class="ds-json-textarea ds-json-textarea--tall" rows="8" hidden placeholder='{"table":"leads","id":"uuid","idColumn":"id"} or {"table":"leads","match":{"email":"a@b.com"}}'></textarea>
           </div>
           <div class="route-actions">
             <button type="button" class="good" data-submit>Enrich Lead</button>
           </div>
         </div>
-        <h2 class="u-mt12" style="font-size:1.1rem;">Workflow (#650)</h2>
+        <h2 class="u-mt12 ds-section-title">Workflow (#650)</h2>
         <p class="muted u-mb12">Queue leads locally (<code>data/lead-enrichment-workflow.v1.json</code>, gitignored). <strong>Run</strong> uses the same enrich pipeline as above; <strong>Outreach</strong> opens Lead outreach with the profile pre-filled.</p>
         <div class="field u-mb12">
           <label for="wfLabel649">Workflow label (optional)</label>
-          <input type="text" id="wfLabel649" placeholder="e.g. Acme — webinar" style="width:100%;max-width:28rem;box-sizing:border-box;" />
+          <input type="text" id="wfLabel649" class="ds-input-medium" placeholder="e.g. Acme — webinar" />
         </div>
         <div class="route-actions u-mb12">
           <button type="button" class="button secondary" id="wfEnqueue649">Enqueue current form</button>
@@ -87,8 +87,9 @@ export function renderLeadEnrichmentPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.leadEnrichmentLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${layout}
   </div>
@@ -111,9 +112,9 @@ export function renderLeadEnrichmentPage(layoutDoc, d) {
       const source = sourceInput.value;
       const isCrm = source === "crm";
       const isSupabase = source === "supabase";
-      if (dataInput) dataInput.style.display = (isCrm || isSupabase) ? "none" : "block";
-      if (crmJson) crmJson.style.display = isCrm ? "block" : "none";
-      if (supabaseJson) supabaseJson.style.display = isSupabase ? "block" : "none";
+      if (dataInput) dataInput.hidden = isCrm || isSupabase;
+      if (crmJson) crmJson.hidden = !isCrm;
+      if (supabaseJson) supabaseJson.hidden = !isSupabase;
       const placeholders = {
         linkedin: "https://linkedin.com/in/example",
         email: "john@company.com",
@@ -268,7 +269,7 @@ export function renderLeadEnrichmentPage(layoutDoc, d) {
         wfTable649.innerHTML = "<p class=\\"muted u-m0\\">Queue is empty. Use <strong>Enqueue current form</strong> or enrich a lead first.</p>";
         return;
       }
-      const header = "<table class=\\"wf-table\\" style=\\"width:100%;border-collapse:collapse;font-size:13px;\\"><thead><tr><th align=\\"left\\">Status</th><th align=\\"left\\">Source</th><th align=\\"left\\">Label</th><th align=\\"left\\">Updated</th><th align=\\"left\\">Actions</th></tr></thead><tbody>";
+      const header = "<table class=\\"wf-table ds-text-md\\"><thead><tr><th align=\\"left\\">Status</th><th align=\\"left\\">Source</th><th align=\\"left\\">Label</th><th align=\\"left\\">Updated</th><th align=\\"left\\">Actions</th></tr></thead><tbody>";
       const rows = items.map(function (it) {
         let actions = "";
         if (it.status === "queued" || it.status === "failed") {
@@ -281,8 +282,8 @@ export function renderLeadEnrichmentPage(layoutDoc, d) {
         if (it.status === "enriched") {
           actions += " <button type=\\"button\\" class=\\"good\\" data-wf-action=\\"outreach\\" data-wf-id=\\"" + escapeHtml(it.id) + "\\">Outreach</button>";
         }
-        const hint = it.lastError ? "<div class=\\"muted\\" style=\\"font-size:11px;margin-top:4px;\\">" + escapeHtml(String(it.lastError).slice(0, 120)) + "</div>" : "";
-        return "<tr><td>" + escapeHtml(it.status) + hint + "</td><td>" + escapeHtml(it.source) + "</td><td>" + escapeHtml(it.label || "—") + "</td><td class=\\"muted\\">" + escapeHtml((it.updatedAt || "").slice(0, 19)) + "</td><td style=\\"white-space:normal;\\">" + actions + "</td></tr>";
+        const hint = it.lastError ? "<div class=\\"muted ds-hint-error\\">" + escapeHtml(String(it.lastError).slice(0, 120)) + "</div>" : "";
+        return "<tr><td>" + escapeHtml(it.status) + hint + "</td><td>" + escapeHtml(it.source) + "</td><td>" + escapeHtml(it.label || "—") + "</td><td class=\\"muted\\">" + escapeHtml((it.updatedAt || "").slice(0, 19)) + "</td><td class=\\"ds-td-wrap\\">" + actions + "</td></tr>";
       }).join("");
       wfTable649.innerHTML = header + rows + "</tbody></table>";
     }
@@ -487,8 +488,9 @@ export function renderLeadEnrichmentSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.leadEnrichmentLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${layout}
   </div>
@@ -548,7 +550,7 @@ export function renderLeadOutreachPage(layoutDoc, d) {
         <p class="lede u-mb12">Issue <strong>#${d.leadOutreachIssueId}</strong> — Hyper-personalized cold email campaigns. Addon <strong>#654</strong>: SDR layer (Mail draft, outbound log, analytics, tracking).</p>
         <p class="muted u-mb12">Enrich leads first in <a href="${d.escapeHtml(d.leadEnrichmentRoute)}">Lead Enrichment (#649)</a>; use <strong>CRM</strong> source for <a href="https://github.com/moldovancsaba/mvp-factory-control/issues/632" target="_blank" rel="noopener noreferrer">#632</a> connector-shaped records.</p>
         <div id="outreachOverview" class="result-card u-mb12"><p class="muted u-m0">Loading overview…</p></div>
-        <h2 class="u-mt12" style="font-size:1.1rem;">Draft one touch</h2>
+        <h2 class="u-mt12 ds-section-title">Draft one touch</h2>
         <div class="route-form">
           <div class="field">
             <label for="camp653">Campaign name</label>
@@ -566,7 +568,7 @@ export function renderLeadOutreachPage(layoutDoc, d) {
             <button type="button" class="good" id="draft653">Draft email touch</button>
           </div>
         </div>
-        <h2 class="u-mt12" style="font-size:1.1rem;">Send &amp; log (#654)</h2>
+        <h2 class="u-mt12 ds-section-title">Send &amp; log (#654)</h2>
         <p class="muted u-mb12">Logs to <code>data/sdr-outbound.jsonl</code> (gitignored). On macOS with Mail, opens a draft for you to review and send.</p>
         <div class="route-form">
           <div class="field">
@@ -585,12 +587,12 @@ export function renderLeadOutreachPage(layoutDoc, d) {
             <button type="button" class="good" id="btnSdrSend">Log &amp; open Mail draft</button>
           </div>
         </div>
-        <h2 class="u-mt12" style="font-size:1.1rem;">SDR analytics</h2>
+        <h2 class="u-mt12 ds-section-title">SDR analytics</h2>
         <div class="route-actions u-mb12">
           <button type="button" class="button secondary" id="btnSdrAnalytics">Refresh analytics</button>
         </div>
         <div id="sdrAnalytics654" class="result-card u-mb12"><p class="muted u-m0">Load to see counts and recent events.</p></div>
-        <h2 class="u-mt12" style="font-size:1.1rem;">Track outcome</h2>
+        <h2 class="u-mt12 ds-section-title">Track outcome</h2>
         <div class="route-form">
           <div class="field">
             <label for="trackType654">Type (optional)</label>
@@ -621,8 +623,9 @@ export function renderLeadOutreachPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.leadOutreachLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">${layout}</div>
   <script>
     const api = "${d.escapeHtml(d.leadOutreachApiRoute)}";
@@ -690,7 +693,7 @@ export function renderLeadOutreachPage(layoutDoc, d) {
           "<div class=\\"result-card\\">",
           "<h3>Draft touch</h3>",
           "<p><strong>Subject:</strong> " + esc(dr.subjectLine || "") + "</p>",
-          "<pre style=\\"white-space:pre-wrap;font-size:13px;\\">" + esc(dr.body || "") + "</pre>",
+          "<pre class=\\"ds-pre-body\\">" + esc(dr.body || "") + "</pre>",
           "<p class=\\"muted u-mt12\\">Subject and body copied to <strong>Send &amp; log</strong> — add recipient, then <strong>Log &amp; open Mail draft</strong>.</p>",
           "</div>"
         ].join("");
@@ -791,8 +794,9 @@ export function renderLeadOutreachSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.leadOutreachLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">${layout}</div>
 </body>
 </html>`;

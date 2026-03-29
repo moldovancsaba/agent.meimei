@@ -4,6 +4,7 @@
 import crypto from "node:crypto";
 import { getChecklistDb } from "./db.mjs";
 import { inferenceCallOllamaJson } from "../meimei-inference-client.mjs";
+import { recordChecklistInferenceTrace } from "../checklist-meimei-trace.mjs";
 import { normalizeRecommendedTasks, persistChecklistAndCards } from "./checklist-persist.mjs";
 
 const SIGNAL_TYPES = new Set([
@@ -57,8 +58,9 @@ function validateJobRequest(jr) {
 /**
  * @param {string} dbPath
  * @param {object} payload { job_request, source_package }
+ * @param {{ repoRoot?: string, clientTraceId?: string|null }} [ctx]
  */
-export async function processJobPayload(dbPath, payload) {
+export async function processJobPayload(dbPath, payload, ctx = {}) {
   validateJobRequest(payload.job_request);
   const jr = payload.job_request;
   const sp = payload.source_package;
@@ -217,6 +219,15 @@ ${rawText.slice(0, 14000)}`;
     pipelineDetail: { engine: "meimei-node", observation_count: seenIds.size }
   });
   job_result.app_id = String(jr.app_id);
+
+  recordChecklistInferenceTrace(ctx.repoRoot, {
+    traceId: ctx.clientTraceId || llm.meta?.trace_id,
+    jobKind: "native_ingest",
+    projectId,
+    jobId,
+    model: llm.meta?.modelUsed ?? null,
+    observationCount: seenIds.size
+  });
 
   return {
     job_result,

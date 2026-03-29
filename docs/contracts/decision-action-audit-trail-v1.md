@@ -49,6 +49,9 @@ Create append-only, hash-chained audit records for routing decisions, approvals,
 - `policy-decision`
 - `routing-decision`
 - `delivery-state`
+- `kernel-app-registered` — external app registered (`dashboard/lib/kernel-app-registry.mjs`; `eventId` = `app_id`)
+- `kernel-app-updated` — same `install_path` re-registered (manifest refresh)
+- `kernel-app-removed` — app removed to tombstone (id not reused)
 
 ## Validation
 

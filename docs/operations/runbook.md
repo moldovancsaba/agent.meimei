@@ -71,11 +71,24 @@ Escalate to OC when:
 
 ## Local Dashboard
 
-- Run `npm run dashboard` from the repo root.
+### Canonical operator URL (HTTPS)
+
+- **Browser and operator tooling** should use **`https://meimei.localhost:8443/dashboard/`** when the TLS proxy is running (**`./scripts/meimei-domain`** / LaunchAgent stack). This is the **product** surface ([ADR-003](../architecture/adr/ADR-003-tls-termination-v1.md), [topology](../architecture/meimei-https-topology.v1.md)).
+- **One-time certs:** `npm run cert:install` (or `scripts/meimei-cert install`) — material under **`~/.openclaw/certs/meimei.localhost.{crt,key}`**; installs trust on macOS where supported.
+- **Optional HTTP→HTTPS redirect:** `MEIMEI_DOMAIN_HTTP_REDIRECT=1` when starting `meimei-domain` listens on **`127.0.0.1:8080`** (override with **`MEIMEI_DOMAIN_HTTP_REDIRECT_PORT`**) and **301**s to the **`https://meimei.localhost:8443`** equivalent.
+
+### Upstream Node (HTTP on loopback)
+
+- `npm run dashboard` starts **Node `http.createServer`** on **`127.0.0.1:<defaults.port>`** (commonly **45285**) — **upstream HTTP** on loopback only, not the canonical URL. Boot logs print both upstream and **public HTTPS** hint.
+- **Hardening (optional):** `MEIMEI_DASHBOARD_LOOPBACK_ONLY=1` forces bind **`127.0.0.1`**. `MEIMEI_DASHBOARD_DISALLOW_LAN_BIND=1` coerces **`0.0.0.0`/`::`** to **`127.0.0.1`** unless **`MEIMEI_DASHBOARD_ALLOW_LAN_BIND=1`**.
+
+### Operations
+
+- Run `npm run dashboard` from the repo root (or rely on LaunchAgents after `meimei-domain install`).
 - After `git pull`, reload launchd services so new code runs: `npm run dashboard:reload` (or `./scripts/meimei-domain restart` when using `meimei.localhost:8443`).
 - **LaunchAgent namespace:** MeiMei-owned jobs use `com.agent.meimei.dashboard-*` (see `docs/operations/meimei-platform-launchd.v1.md`). To retire old `ai.openclaw.meimei.dashboard-*` plists: `./scripts/meimei-platform-migrate.sh` (dry run), then `./scripts/meimei-platform-migrate.sh --force` and `./scripts/meimei-domain install`.
 - **Headless Mac mini / closet server:** Auto-login, power recovery, sleep, Ollama at login — **`docs/operations/mac-headless-server.md`**. Backlog handoff: **`docs/operations/handoff-roadmap-headless-server.v1.md`**.
-- Open `http://127.0.0.1:<defaults.port>` in a browser (`defaults.port` in `config/dashboard-surface.v1.json`, commonly `45285`).
+- **CLI / Node smoke against HTTPS:** set **`NODE_EXTRA_CA_CERTS=$HOME/.openclaw/certs/meimei.localhost.crt`** (or trust via keychain) so **`fetch`** accepts the local cert. Examples: **`MEIMEI_SMOKE_HTTPS=1 npm run dashboard:smoke:https`**; **`MEIMEI_PROBE_TLS=1 npm run dashboard:probe:tls`**.
 - Use the settings form to update the repo-local OpenClaw config.
 - Use the operations panel to run status, skills, doctor, and launch checks.
 - **Page layout** (grid columns, block order, row breaks): **Admin → Page layout**; spec and CSS classes in `design-system-v1.md` (**Global layout system**); data in `config/page-layout.v1.json`.

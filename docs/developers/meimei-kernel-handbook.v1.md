@@ -6,7 +6,8 @@
 **Normative audit:** [meimei-kernel-code-audit.v1.md](../architecture/meimei-kernel-code-audit.v1.md) (inventory, contracts, governance, line anchors).  
 **Boundaries:** [meimei-repo-boundaries.v1.md](../architecture/meimei-repo-boundaries.v1.md).  
 **Inference contract:** [inference-route.v1.md](../api/inference-route.v1.md).  
-**Product runtime map:** [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
+**Product runtime map:** [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).  
+**HTTPS topology:** [meimei-https-topology.v1.md](../architecture/meimei-https-topology.v1.md) — canonical **`https://meimei.localhost:8443/dashboard/`** vs upstream Node HTTP; [ADR-003](../architecture/adr/ADR-003-tls-termination-v1.md).
 
 ---
 
@@ -94,6 +95,8 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 ## 6. HTTP entry and dispatch
 
 **Entry:** `http.createServer` begins near **line 1170** in [`dashboard/server.mjs`](../../dashboard/server.mjs) (~2181 lines as of package **0.8.12** / K2); **`server.listen`** near **line 2177**. Line numbers drift with edits — use `grep -n 'createServer\|server.listen'` after large merges.
+
+**HTTPS (operator contract):** Browsers and operators should use the **TLS reverse proxy** (`scripts/meimei-domain.mjs` → **`https://meimei.localhost:8443/dashboard/`**). The Node process is **upstream HTTP on loopback** only — see [meimei-https-topology.v1.md](../architecture/meimei-https-topology.v1.md). **`GET /api/health`** returns **`public_https.operator_url`** and **`listen.url`** for probes.
 
 **Dispatch order (summary)** — see audit §5 for rationale:
 

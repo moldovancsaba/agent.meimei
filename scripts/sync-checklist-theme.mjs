@@ -46,14 +46,17 @@ if (patchLayout) {
       'import "./globals.css";\nimport "./meimei-checklist-theme.css";'
     );
   }
-  if (!txt.includes('data-theme="green"')) {
+  if (!txt.includes('data-theme="apps"') && !txt.includes('data-theme="green"')) {
     txt = txt.replace(
       "<body className={`${display.variable} ${body.variable}`}>",
-      '<body data-theme="green" className={`meimei-shell ${display.variable} ${body.variable}`}>'
+      '<body data-theme="apps" className={`meimei-shell ${display.variable} ${body.variable}`}>'
     );
+  }
+  if (txt.includes('data-theme="green"')) {
+    txt = txt.replace(/data-theme="green"/g, 'data-theme="apps"');
   }
   fs.writeFileSync(layoutPath, txt);
   console.log("Patched", layoutPath);
 } else {
-  console.log("\nNext: add to app/layout.tsx after globals.css:\n  import \"./meimei-checklist-theme.css\";\nAnd on <body>: data-theme=\"green\" className={... + \" meimei-shell\"}\nOr re-run with --patch-layout");
+  console.log("\nNext: add to app/layout.tsx after globals.css:\n  import \"./meimei-checklist-theme.css\";\nAnd on <body>: data-theme=\"apps\" className={... + \" meimei-shell\"}\nOr re-run with --patch-layout");
 }

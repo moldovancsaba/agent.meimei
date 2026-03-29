@@ -32,6 +32,14 @@ import {
 } from "./lib/page-layout.mjs";
 import { buildAdminLayoutEditorScript } from "./lib/admin-layout-editor.mjs";
 import {
+  buildEffectiveFromAdminPost,
+  buildOperatorChromeStylesheet,
+  getEffectiveChrome,
+  navPathsForBrowser,
+  persistMinimizedChrome,
+  resetOperatorChrome
+} from "./lib/operator-chrome.mjs";
+import {
   checkOllamaHealth,
   listModels,
   parseJsonResponse,
@@ -150,6 +158,7 @@ import { handleMeimeiInferenceRoute } from "./lib/inference-route.mjs";
 import { startMeimeiJobWorker } from "./lib/meimei-job-worker.mjs";
 import { createMeimeiJobQueue } from "./lib/meimei-job-queue.mjs";
 import { formatMonitorFeedRows } from "./lib/meimei-monitor-feed.mjs";
+import { tryKernelExternalAppPost } from "./lib/kernel-external-app-dispatch.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -158,6 +167,28 @@ loadSyncAndApplyMeimeiEnv(repoRoot);
 const meimeiJobQueueRead = createMeimeiJobQueue(repoRoot);
 const publicDir = path.join(repoRoot, "public");
 const surface = loadDashboardSurfaceSync();
+
+/** Align with `scripts/meimei-domain.mjs` default so miniapp paths work when the request still has a public mount prefix. */
+function stripDashboardMountPrefix(pathname) {
+  const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
+  const prefix = raw === "/" ? "" : raw;
+  if (!prefix) return pathname;
+  if (pathname === prefix) return "/";
+  if (pathname.startsWith(`${prefix}/`)) {
+    const rest = pathname.slice(prefix.length);
+    return rest.startsWith("/") ? rest : `/${rest}`;
+  }
+  return pathname;
+}
+
+/** Browser-visible path for a normalized dashboard path (adds MEIMEI_PUBLIC_PREFIX e.g. /dashboard). */
+function browserPathForNormalized(normPath) {
+  const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
+  if (!raw || raw === "/") return normPath;
+  if (normPath === "/") return raw;
+  return `${raw}${normPath.startsWith("/") ? normPath : `/${normPath}`}`;
+}
+
 const operatorScriptPaths = resolveOperatorScripts(surface, repoRoot);
 const launchScript = operatorScriptPaths.launch;
 const statusScript = operatorScriptPaths.status;
@@ -287,15 +318,34 @@ const meimeiInferenceRoute = "/api/meimei/route";
 const meimeiMonitorFeedApiRoute = "/api/meimei/monitor/feed";
 /** Browser path after MEIMEI_PUBLIC_PREFIX strip — System Monitor ("Queue Explorer") UI. */
 const systemMonitorRoute = "/system-monitor";
-const designSystemCssPath = surface.designSystemCssPath;
+const designSystemCssPath = browserPathForNormalized(surface.designSystemCssPath);
+const operatorChromeCssPath = browserPathForNormalized("/styles/operator-chrome.css");
+const operatorChromeApiRoute = surface.api.operatorChrome || "/api/operator/chrome";
 const staticPrefixes = surface.staticPrefixes;
-const listenHost = surface.server.bindHost;
-const openclawChatUrl = process.env[surface.envKeys.openclawChatUrl] || surface.defaults.openclawChatUrl;
-const dashboardLogoPath = surface.logos.dashboard;
-const knowmoreLogoPath = surface.logos.knowmore;
-const adminLogoPath = surface.logos.admin;
-const openclawLogoPath = surface.logos.openclaw;
+const listenHostConfigured = surface.server.bindHost;
 
+function resolveDashboardListenHost() {
+  let host = listenHostConfigured;
+  if (process.env.MEIMEI_DASHBOARD_LOOPBACK_ONLY === "1") {
+    host = "127.0.0.1";
+  }
+  if (process.env.MEIMEI_DASHBOARD_DISALLOW_LAN_BIND === "1" && (host === "0.0.0.0" || host === "::")) {
+    if (process.env.MEIMEI_DASHBOARD_ALLOW_LAN_BIND === "1") {
+      return host;
+    }
+    console.warn(
+      "meimei dashboard: bind host 0.0.0.0/:: coerced to 127.0.0.1 (MEIMEI_DASHBOARD_DISALLOW_LAN_BIND=1; set MEIMEI_DASHBOARD_ALLOW_LAN_BIND=1 to keep LAN bind)"
+    );
+    host = "127.0.0.1";
+  }
+  return host;
+}
+
+const listenHost = resolveDashboardListenHost();
+
+const publicHttpsHost = String(process.env.MEIMEI_PUBLIC_HOST || "meimei.localhost").trim() || "meimei.localhost";
+const publicHttpsPort = String(process.env.MEIMEI_PUBLIC_TLS_PORT || "8443").trim() || "8443";
+const publicPrefixForHint = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "") || "/dashboard";
 const knowmorePack = loadKnowmoreReleasesSync();
 const knowmoreReleases = knowmorePack.releases;
 const knowmoreBoardUrl = knowmorePack.boardUrl;
@@ -407,13 +457,17 @@ function decodeHtmlEntities(value) {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number.parseInt(dec, 10)));
 }
 
+function htmlTagBlockRegex(tagName) {
+  return new RegExp(`<${tagName}[\\s\\S]*?<\\/${tagName}>`, "gi");
+}
+
 function stripHtmlToText(html) {
   const cleaned = String(html || "")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, " ")
+    .replace(htmlTagBlockRegex("script"), " ")
+    .replace(htmlTagBlockRegex("style"), " ")
+    .replace(htmlTagBlockRegex("noscript"), " ")
+    .replace(htmlTagBlockRegex("svg"), " ")
+    .replace(htmlTagBlockRegex("iframe"), " ")
     .replace(/<(header|footer|nav|aside)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<[^>]+>/g, " ");
 
@@ -794,41 +848,21 @@ async function summarizeUrlSource(inputUrl) {
   };
 }
 
-/** Align with `scripts/meimei-domain.mjs` default so miniapp paths work when the request still has a public mount prefix. */
-function stripDashboardMountPrefix(pathname) {
-  const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
-  const prefix = raw === "/" ? "" : raw;
-  if (!prefix) return pathname;
-  if (pathname === prefix) return "/";
-  if (pathname.startsWith(`${prefix}/`)) {
-    const rest = pathname.slice(prefix.length);
-    return rest.startsWith("/") ? rest : `/${rest}`;
-  }
-  return pathname;
-}
-
-/** Browser-visible path for a normalized dashboard path (adds MEIMEI_PUBLIC_PREFIX e.g. /dashboard). */
-function browserPathForNormalized(normPath) {
-  const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
-  if (!raw || raw === "/") return normPath;
-  if (normPath === "/") return raw;
-  return `${raw}${normPath.startsWith("/") ? normPath : `/${normPath}`}`;
-}
-
 function resolveMiniappRoute(pathname) {
   const idMatch = pathname.match(/^\/(\d+)(?:\/[^/]+)?$/);
   if (!idMatch) return null;
   return miniappIssueRoute.get(Number(idMatch[1])) || null;
 }
 
+function shellStyleDeps() {
+  return { designSystemCssPath, operatorChromeCssPath };
+}
+
 function dashboardChromeDeps() {
+  const effective = getEffectiveChrome(surface, repoRoot);
   return {
     escapeHtml,
-    openclawChatUrl,
-    openclawLogoPath,
-    dashboardLogoPath,
-    knowmoreLogoPath,
-    adminLogoPath,
+    ...navPathsForBrowser(effective, browserPathForNormalized),
     appsRoute,
     toolsRoute,
     homeRoute,
@@ -853,7 +887,7 @@ function homeAdminPageDeps() {
   return {
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     renderGlobalNav,
     renderGlobalNavScript,
@@ -866,6 +900,7 @@ function homeAdminPageDeps() {
     buildAdminLayoutEditorScript,
     apiConfigRoute,
     apiRunRoute,
+    operatorChromeApiRoute,
     listenHost,
     port
   };
@@ -876,7 +911,10 @@ function renderPage(state, lastResult, layoutDoc) {
 }
 
 function renderAdminPage(state, lastResult, layoutDoc) {
-  return renderAdminPageHomeAdmin(state, lastResult, layoutDoc, homeAdminPageDeps());
+  return renderAdminPageHomeAdmin(state, lastResult, layoutDoc, {
+    ...homeAdminPageDeps(),
+    operatorChromeEffective: getEffectiveChrome(surface, repoRoot)
+  });
 }
 
 /** Deps for `dashboard/lib/platform-pages/catalog-pages.mjs` (Apps / Tools / knowmore GET). */
@@ -887,7 +925,7 @@ function catalogPageUiDeps() {
     renderFlashcard,
     toSummary160,
     escapeHtml,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     renderGlobalNav,
     renderGlobalNavScript,
     browserPathForNormalized,
@@ -927,7 +965,7 @@ function readerPageDeps() {
     whatNextIssueId,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -966,7 +1004,7 @@ function gtmPageDeps() {
     leadOutreachIssueId,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -1002,7 +1040,7 @@ function referenceAppPageDeps() {
     systemMonitorRoute,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -1020,7 +1058,7 @@ function systemMonitorPageDeps() {
   return {
     toolsRoute,
     meimeiMonitorFeedApiRoute,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     escapeHtml,
     buildLayoutFlowHtml,
     escapeAttr,
@@ -1047,7 +1085,7 @@ function opsToolPageDeps() {
     missionControlApiRoute,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -1084,7 +1122,7 @@ function routingSettingsPageDeps() {
     apiAccessLabel,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -1122,7 +1160,7 @@ function toolSurfacePageDeps() {
     MEIMEI_ENV_SYSTEM_ALLOWLIST,
     escapeHtml,
     escapeAttr,
-    designSystemCssPath,
+    ...shellStyleDeps(),
     buildLayoutFlowHtml,
     miniappPageKey
   };
@@ -1188,11 +1226,20 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && normalizedPath === healthApiRoute) {
       const rssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+      const upstreamListen = `http://${listenHost}:${port}`;
+      const publicPath = publicPrefixForHint === "/" ? "/" : `${publicPrefixForHint}/`;
       sendJson(res, 200, {
         ok: true,
         uptime: Math.floor(process.uptime()),
         memory: `${rssMb}MB`,
-        status: "listening"
+        status: "listening",
+        transport: "node-http",
+        listen: { url: upstreamListen, host: listenHost, port },
+        public_https: {
+          operator_url: `https://${publicHttpsHost}:${publicHttpsPort}${publicPath}`,
+          termination: "meimei-domain-reverse-proxy",
+          note: "Canonical browser URL when scripts/meimei-domain TLS proxy is running; listen.url is upstream only."
+        }
       });
       return;
     }
@@ -1263,6 +1310,20 @@ const server = http.createServer(async (req, res) => {
       ) {
         return;
       }
+    }
+
+    if ((req.method === "GET" || req.method === "HEAD") && normalizedPath === "/styles/operator-chrome.css") {
+      const css = buildOperatorChromeStylesheet(getEffectiveChrome(surface, repoRoot));
+      res.writeHead(200, {
+        "content-type": "text/css; charset=utf-8",
+        "cache-control": "no-store, max-age=0"
+      });
+      if (req.method === "HEAD") {
+        res.end();
+        return;
+      }
+      res.end(css);
+      return;
     }
 
     if ((req.method === "GET" || req.method === "HEAD")
@@ -1583,7 +1644,7 @@ const server = http.createServer(async (req, res) => {
         checklistLabel,
         checklistApiRoute,
         appsRoute,
-        designSystemCssPath,
+        ...shellStyleDeps(),
         escapeHtml,
         escapeAttr,
         buildLayoutFlowHtml,
@@ -1651,6 +1712,42 @@ const server = http.createServer(async (req, res) => {
         const body = await readJson(req);
         await savePageLayout(body);
         sendJson(res, 200, { ok: true, layout: getLayoutDoc() });
+      } catch (error) {
+        sendJson(res, 400, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && normalizedPath === operatorChromeApiRoute) {
+      sendJson(res, 200, {
+        ok: true,
+        effective: getEffectiveChrome(surface, repoRoot)
+      });
+      return;
+    }
+
+    if (req.method === "POST" && normalizedPath === operatorChromeApiRoute) {
+      try {
+        const body = (await readJson(req)) || {};
+        if (body.reset === true) {
+          resetOperatorChrome(repoRoot);
+          sendJson(res, 200, {
+            ok: true,
+            message: "Operator chrome reset to design-system defaults.",
+            effective: getEffectiveChrome(surface, repoRoot)
+          });
+        } else {
+          const effective = buildEffectiveFromAdminPost(body);
+          persistMinimizedChrome(repoRoot, effective, surface);
+          sendJson(res, 200, {
+            ok: true,
+            message: "Operator chrome saved.",
+            effective: getEffectiveChrome(surface, repoRoot)
+          });
+        }
       } catch (error) {
         sendJson(res, 400, {
           ok: false,
@@ -2115,6 +2212,14 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST") {
+      const ext = await tryKernelExternalAppPost(repoRoot, normalizedPath, req, readJson);
+      if (ext) {
+        sendJson(res, ext.status, ext.payload);
+        return;
+      }
+    }
+
     res.writeHead(404, {
       "content-type": "text/plain; charset=utf-8",
       "cache-control": "no-store, max-age=0"
@@ -2187,7 +2292,12 @@ const { handleInbound: handleImessageInbound } = createImessageAdapter({
 });
 
 server.listen(port, listenHost, () => {
-  console.log(`agent.meimei dashboard listening on http://${listenHost}:${port}`);
+  const upstreamUrl = `http://${listenHost}:${port}`;
+  console.log(`agent.meimei dashboard listening on ${upstreamUrl} (upstream HTTP — not the canonical operator URL)`);
+  if (process.env.MEIMEI_LOG_PUBLIC_HTTPS_HINT !== "0") {
+    const pub = `${publicHttpsHost}:${publicHttpsPort}${publicPrefixForHint === "/" ? "" : publicPrefixForHint}/`;
+    console.log(`agent.meimei public HTTPS (when meimei-domain is running): https://${pub}`);
+  }
   startMeimeiJobWorker({ repoRoot });
   startReferenceApp2Inbox({ repoRoot });
 });

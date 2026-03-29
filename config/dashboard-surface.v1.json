@@ -15,7 +15,8 @@
     "run": "/api/run",
     "telemetrySummary": "/api/telemetry/summary",
     "imessageInbound": "/api/channels/imessage/inbound",
-    "pageLayout": "/api/page-layout"
+    "pageLayout": "/api/page-layout",
+    "operatorChrome": "/api/operator/chrome"
   },
   "staticPrefixes": ["/images/", "/styles/"],
   "designSystemCssPath": "/styles/design-system.css",
@@ -24,6 +25,13 @@
     "knowmore": "/images/logo_knowmore.png",
     "admin": "/images/logo_admin.png",
     "openclaw": "/images/logo_openclaw.png"
+  },
+  "navIcons": {
+    "apps": "/images/icon_circle/apps_icon_circle.png",
+    "tools": "/images/icon_circle/tools_icon_circle.png",
+    "dashboard": "/images/icon_circle/dashboard_icon_circle.png",
+    "knowmore": "/images/icon_circle/knowmore_icon_circle.png",
+    "admin": "/images/icon_circle/admin_icon_circle.png"
   },
   "envKeys": {
     "openclawConfigPath": "OPENCLAW_CONFIG_PATH",

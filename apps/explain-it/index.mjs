@@ -51,8 +51,8 @@ async function handleApi(req, body, repoRoot) {
     const html = await fetchResult.text();
     // Extract text from HTML (simplified)
     text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(new RegExp("<" + "script[\\s\\S]*?<\\/script>", "gi"), "")
+      .replace(new RegExp("<" + "style[\\s\\S]*?<\\/style>", "gi"), "")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim()

@@ -2,7 +2,7 @@
  * Platform UI — Inbox, Memory, Mission Control (main + settings GET shells).
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K1a
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderInboxPage(layoutDoc, d) {
@@ -53,8 +53,9 @@ export function renderInboxPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.inboxLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${layout}
   </div>
@@ -229,8 +230,9 @@ export function renderInboxSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.inboxLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${layout}
   </div>
@@ -293,17 +295,17 @@ export function renderMemoryPage(layoutDoc, d) {
         <h1>${d.escapeHtml(d.memoryLabel)}</h1>
         <p class="lede u-mb12">Issue <strong>#${d.memoryIssueId}</strong> — Business Brain. MeiMei's identity, mission, values, and operating principles.</p>
         <div class="ds-flashcard-grid">
-          <div class="ds-flashcard" data-layer="identity" data-view="identity" style="cursor: pointer;">
+          <div class="ds-flashcard ds-flashcard--interactive" data-layer="identity" data-view="identity">
             <div class="ds-flashcard-kind">Level 1</div>
             <div class="ds-flashcard-title">Identity</div>
             <div class="ds-flashcard-content">Core identity — name, mission, values, tone, operating principles.</div>
           </div>
-          <div class="ds-flashcard" data-layer="context" data-view="context" style="cursor: pointer;">
+          <div class="ds-flashcard ds-flashcard--interactive" data-layer="context" data-view="context">
             <div class="ds-flashcard-kind">Level 2</div>
             <div class="ds-flashcard-title">Context</div>
             <div class="ds-flashcard-content">Working context — current projects, priorities, stakeholders.</div>
           </div>
-          <div class="ds-flashcard" data-layer="events" data-view="events" style="cursor: pointer;">
+          <div class="ds-flashcard ds-flashcard--interactive" data-layer="events" data-view="events">
             <div class="ds-flashcard-kind">Level 3</div>
             <div class="ds-flashcard-title">Events</div>
             <div class="ds-flashcard-content">Running log — day-to-day events, decisions, outcomes.</div>
@@ -325,8 +327,9 @@ export function renderMemoryPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.memoryLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>
@@ -461,8 +464,9 @@ export function renderMemorySettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.memoryLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>
@@ -545,8 +549,9 @@ export function renderMissionControlPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.missionControlLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>
@@ -682,8 +687,9 @@ export function renderMissionControlSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.missionControlLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="blue">
+<body data-theme="tools">
   <div class="shell">
     ${layout}
   </div>

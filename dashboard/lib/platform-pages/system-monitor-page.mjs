@@ -1,7 +1,7 @@
 /**
  * Platform UI — System monitor (queue explorer) GET HTML.
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 /**
@@ -18,23 +18,15 @@ export function renderSystemMonitorPage(layoutDoc, d) {
       <section class="route-card">
         <h1 class="u-mt0">Queue explorer</h1>
         <p class="lede u-mb12">Read-only <strong>Milestone H</strong> view of <code>meimei_jobs</code> — <code>app_task</code> and <code>inference_v1</code> in one stream. Click a row to show the full <code>trace_id</code> lineage (request → inference → reply). Large Claim Check bodies are <strong>not</strong> loaded; only the artifact path is shown.</p>
-        <p class="muted u-mb12" style="font-size:13px;">Polls <code>${d.escapeHtml(d.meimeiMonitorFeedApiRoute)}</code> every ~2.5s. No mutations.</p>
-        <div class="route-actions u-mb12" style="flex-wrap:wrap;gap:10px;align-items:center;">
-          <span id="smFilterLabel" class="muted" style="font-size:13px;">Newest jobs (global).</span>
-          <button type="button" class="button secondary" id="smClearTrace" style="display:none;">Clear trace filter</button>
+        <p class="muted u-mb12 ds-text-md">Polls <code>${d.escapeHtml(d.meimeiMonitorFeedApiRoute)}</code> every ~2.5s. No mutations.</p>
+        <div class="route-actions u-mb12 ds-toolbar">
+          <span id="smFilterLabel" class="muted ds-text-md">Newest jobs (global).</span>
+          <button type="button" class="button secondary" id="smClearTrace" hidden>Clear trace filter</button>
         </div>
-        <div id="smError" class="result-card u-mb12" style="display:none;border-color:#b91c1c;"></div>
+        <div id="smError" class="result-card u-mb12 ds-result-danger" hidden></div>
         <div id="smFeed" class="sm-feed"></div>
       </section>
-    </main>
-    <style>
-      .sm-feed { max-height:70vh; overflow-y:auto; border:1px solid var(--line, #334155); border-radius:12px; padding:8px; background:rgba(4,10,20,0.35); }
-      .sm-line-wrap { margin:6px 0; }
-      .sm-line { padding:8px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent; font-family:ui-monospace,monospace;font-size:13px;line-height:1.45; }
-      .sm-line:hover { background:rgba(255,255,255,0.06); }
-      .sm-line--focus { outline:1px solid rgba(59,130,246,0.55); }
-      .sm-artifact { margin:2px 0 0 8px; font-size:12px; color:var(--muted,#94a3b8); font-family:ui-monospace,monospace; }
-    </style>`;
+    </main>`;
   const layout = d.buildLayoutFlowHtml(
     layoutDoc,
     d.miniappPageKey("system-monitor"),
@@ -49,8 +41,9 @@ export function renderSystemMonitorPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>System monitor - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green" data-page="system-monitor">
+<body data-theme="tools" data-page="system-monitor">
   <div class="shell">${layout}</div>
   <script>
     (function () {
@@ -69,11 +62,11 @@ export function renderSystemMonitorPage(layoutDoc, d) {
       function setError(msg) {
         if (!errEl) return;
         if (!msg) {
-          errEl.style.display = "none";
+          errEl.hidden = true;
           errEl.textContent = "";
           return;
         }
-        errEl.style.display = "block";
+        errEl.hidden = false;
         errEl.textContent = msg;
       }
 
@@ -104,7 +97,7 @@ export function renderSystemMonitorPage(layoutDoc, d) {
                 ? ("Trace lineage: " + traceFilter)
                 : "Newest jobs (global).";
             }
-            if (clearBtn) clearBtn.style.display = traceFilter ? "inline-block" : "none";
+            if (clearBtn) clearBtn.hidden = !traceFilter;
             loadFeed();
           });
           line.addEventListener("keydown", function (ev) {
@@ -148,7 +141,7 @@ export function renderSystemMonitorPage(layoutDoc, d) {
           traceFilter = null;
           focusJobId = null;
           if (lblEl) lblEl.textContent = "Newest jobs (global).";
-          clearBtn.style.display = "none";
+          clearBtn.hidden = true;
           loadFeed();
         });
       }

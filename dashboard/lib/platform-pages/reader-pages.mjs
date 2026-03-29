@@ -2,7 +2,7 @@
  * Platform UI — What next, URL summary (explain-it), daily briefing, explain-it settings GET shells.
  * @see docs/architecture/meimei-kernel-completion-plan.v1.md Phase K1c
  * @version 1.0.0
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 export function renderUrlSummaryPage(layoutDoc, d) {
@@ -65,8 +65,9 @@ export function renderUrlSummaryPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.explainItLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${urlFlow}
   </div>
@@ -309,8 +310,9 @@ export function renderDailyBriefingPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.dailyBriefingLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${briefingFlow}
   </div>
@@ -547,10 +549,11 @@ export function renderWhatNextPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.whatNextLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
-    <div class="layout-flow" style="--layout-cols-sm:1;--layout-cols-md:2;--layout-cols-lg:3">
+    <div class="layout-flow ds-layout-flow-123">
       <div class="layout-box layout-span-md-2 layout-span-lg-3" data-layout-box="topbar">${topbar}</div>
       <div class="layout-box layout-span-md-2 layout-span-lg-3" data-layout-box="main">${main}</div>
     </div>
@@ -698,8 +701,9 @@ export function renderWhatNextSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.whatNextLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     <div class="topbar">
       <a class="button secondary" href="${d.escapeHtml(d.appsRoute)}">&larr; Back to Apps</a>
@@ -876,7 +880,7 @@ export function renderExplainItSettingsPage(layoutDoc, d) {
           <div class="field-group">
             <div class="field-row">
               <label for="rss-url">Feed URL:</label>
-              <input type="url" id="rss-url" placeholder="https://example.com/feed.xml" style="flex:1" />
+              <input type="url" id="rss-url" class="ds-input-flex" placeholder="https://example.com/feed.xml" />
             </div>
           </div>
 
@@ -909,8 +913,9 @@ export function renderExplainItSettingsPage(layoutDoc, d) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${d.escapeHtml(d.explainItLabel)} Settings - agent.meimei</title>
   <link rel="stylesheet" href="${d.escapeHtml(d.designSystemCssPath)}" />
+  <link rel="stylesheet" href="${d.escapeHtml(d.operatorChromeCssPath)}" />
 </head>
-<body data-theme="green">
+<body data-theme="apps">
   <div class="shell">
     ${layout}
   </div>

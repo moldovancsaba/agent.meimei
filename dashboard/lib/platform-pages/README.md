@@ -14,3 +14,5 @@ Large **GET** HTML builders for dashboard catalog surfaces. **`dashboard/server.
 - **`home-admin-pages.mjs`** — Home (`/`) shell, admin/settings page, layout editor section (injects `renderGlobalNav` / `renderGlobalNavScript` from server — re-exported from **`chrome.mjs`**).
 
 Rules: **no** imports from `apps/*`; shared helpers come from `dashboard/lib/*`. See [`meimei-repo-boundaries.v1.md`](../../docs/architecture/meimei-repo-boundaries.v1.md) §3, §6.
+
+**Styling:** Do not add `style="..."` attributes or `<style>` blocks in these modules. Use shared primitives and tokens in [`public/styles/design-system.css`](../../public/styles/design-system.css) (`ds-*` classes, `[hidden]`, theme variables). `npm run ui:lint-inline-styles` enforces this for this folder, [`checklist-local-integration.mjs`](../checklist-local-integration.mjs), [`page-layout.mjs`](../page-layout.mjs) (only the allowed `buildLayoutFlowHtml` `--layout-cols-*` inline on `.layout-flow`), [`server.mjs`](../../server.mjs), and the standalone [`checklist`](../../../apps/checklist/index.mjs) / [`explain-it`](../../../apps/explain-it/index.mjs) app shells.

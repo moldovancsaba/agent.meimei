@@ -1,6 +1,6 @@
 # MeiMei kernel completion plan — v1
 
-**Status:** active plan (from repo state **2026-03-30**, package **`agent-meimei` ~0.8.14**).  
+**Status:** active plan (from repo state **2026-03-30**, package **`agent-meimei` ~0.8.15**).  
 **Goal:** A **clear kernel** (runtime + contracts + shared libraries) with **all product surfaces** owned as **modules** (apps, tools, platform GET shells, integrations) — not a growing monolith in `dashboard/server.mjs`.  
 **Companion docs:** [`meimei-repo-boundaries.v1.md`](meimei-repo-boundaries.v1.md) (layers + allowlist), [`meimei-system-vision-and-platform-audit.v3.md`](meimei-system-vision-and-platform-audit.v3.md) (vision + theory + application layer), [`meimei-kernel-code-audit.v1.md`](meimei-kernel-code-audit.v1.md) (evidence-based kernel baseline + inventory), [`../developers/meimei-kernel-handbook.v1.md`](../developers/meimei-kernel-handbook.v1.md) (integration handbook), [`meimei-platform-alignment-roadmap.v1.md`](meimei-platform-alignment-roadmap.v1.md) (Phases A–E), [`miniapp-platform-audit.v1.md`](../compliance/miniapp-platform-audit.v1.md) (R1–R8 scorecard).
 
@@ -117,7 +117,8 @@ Not required for “clean monorepo kernel,” but available if you need stronger
 |------|---------|
 | **Packages** | `@meimei/kernel` vs `@meimei/miniapp-*` npm workspaces; same contracts. |
 | **Processes** | Separate worker/dashboard already partially true; split HTTP services only if SRE/security demands. |
-| **Dynamic loading** | `import()` registry modules — requires stable manifest and tests. |
+| **Dynamic loading** | `import()` registry modules — requires stable manifest and tests. **Program:** [`../planning/kernel-app-separation-and-https-program.v1.md`](../planning/kernel-app-separation-and-https-program.v1.md); **ADR:** [`adr/ADR-001-app-runtime-v1.md`](adr/ADR-001-app-runtime-v1.md). **Partial delivery:** manifest + registry + **opt-in** external POST dispatch (**`MEIMEI_KERNEL_EXTERNAL_APPS=1`**, **`kernel-external-app-dispatch.mjs`**); default-off until migration (**MM-KERNEL-603**). |
+| **OpenClaw chat default URL** | **`config/dashboard-surface.v1.json`** → **`defaults.openclawChatUrl`** may remain **`http://127.0.0.1:18789/...`** (local OpenClaw gateway). **Accepted risk:** gateway is loopback-only in default install; **not** the MeiMei dashboard ingress. Revisit when the gateway exposes HTTPS (**TLS-052**). |
 
 ---
 
@@ -126,6 +127,9 @@ Not required for “clean monorepo kernel,” but available if you need stronger
 | Check | Purpose |
 |-------|---------|
 | **`meimei-apps-cross-import-check.mjs`** | Add **`import()`** / dynamic patterns when/if used. |
+| **`validate-meimei-app-manifest.mjs`** | External app **`meimei.app.json`** shape (**MM-KERNEL-201**). |
+| **`meimei-kernel-external-dispatch-selftest.mjs`** | Registry **`import()`** dispatch (**MM-KERNEL-501**, opt-in env). |
+| **`validate-https-doc-contract.mjs`** | Core HTTPS docs + health JSON shape (**TLS-061** baseline). |
 | **`meimei-server-size-check.mjs`** (optional) | Fail CI if `server.mjs` exceeds N lines or contains `function renderFooPage` with body > M lines (tune after K1). |
 | **Audit JSON export** | Optional validator: no **Red** without `acceptedRisk` field. |
 

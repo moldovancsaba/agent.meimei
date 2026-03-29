@@ -157,8 +157,8 @@ async function captureSnapshot(repoRoot, competitor) {
     
     const html = await response.text();
     const plainText = html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(new RegExp("<" + "script[\\s\\S]*?<\\/script>", "gi"), "")
+      .replace(new RegExp("<" + "style[\\s\\S]*?<\\/style>", "gi"), "")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim()

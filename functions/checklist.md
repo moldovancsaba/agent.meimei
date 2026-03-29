@@ -34,7 +34,13 @@ Hosted **consultant-followup-web** talks to the Mac via the dashboard HTTP bridg
 
 ### LLM (kernel K3)
 
-Legacy miniapp JSON paths (`apps/checklist/index.mjs` — insights, recommendations) and **`checklist-node/jobs.mjs`** / **`regenerate.mjs`** use **`dashboard/lib/meimei-inference-client.mjs`** (same inference plane as `POST /api/meimei/route`). **R1** (heavy work on `meimei_jobs`) and **R6** (trace through queue) remain improvement areas for the Checklist product, not the raw Ollama client.
+Legacy miniapp JSON paths (`apps/checklist/index.mjs` — insights, recommendations) and **`checklist-node/jobs.mjs`** / **`regenerate.mjs`** use **`dashboard/lib/meimei-inference-client.mjs`** (same inference plane as `POST /api/meimei/route`).
+
+### System Monitor trace (R6)
+
+After each successful Node **`/jobs`** ingest and feedback regeneration, **`checklist-meimei-trace.mjs`** appends a **completed** `meimei_jobs` row with **`payload_kind: checklist_trace_v1`** (see **`adapter-contract.v1.md`**). Operators see it on **`GET /api/meimei/monitor/feed`**. Optional: send **`x-meimei-trace-id`** on bridge requests to align with other MeiMei flows.
+
+**R1** (async offload of heavy ingest to a pending worker loop) remains a future refactor if burst load requires it.
 
 ## R3 / R4 — integration HTTP vs inter-app bus (Phase B)
 

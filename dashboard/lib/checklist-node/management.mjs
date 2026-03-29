@@ -17,9 +17,10 @@ function parsePath(pathname) {
 }
 
 /**
+ * @param {{ repoRoot?: string, clientTraceId?: string|null }} [ctx]
  * @returns {Promise<{ status: number, body: object }>}
  */
-export async function handleManagementRequest(dbPath, method, pathname, body) {
+export async function handleManagementRequest(dbPath, method, pathname, body, ctx = {}) {
   const parsed = parsePath(pathname);
   if (!parsed) return { status: 404, body: { error: "not_found" } };
   const { projectId, parts } = parsed;
@@ -165,7 +166,7 @@ export async function handleManagementRequest(dbPath, method, pathname, body) {
 
   if (resource === "tasks" && method === "POST" && parts.length === 4 && parts[3] === "feedback") {
     try {
-      const out = await applyTaskFeedbackV2(dbPath, { ...body, project_id: projectId });
+      const out = await applyTaskFeedbackV2(dbPath, { ...body, project_id: projectId }, ctx);
       return { status: 200, body: out };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -183,7 +184,7 @@ export async function handleManagementRequest(dbPath, method, pathname, body) {
 
   if (resource === "task-feedback" && method === "POST" && parts.length === 3) {
     try {
-      const r = await processTaskFeedback(dbPath, projectId, body);
+      const r = await processTaskFeedback(dbPath, projectId, body, ctx);
       return {
         status: 200,
         body: { job_result: r.job_result, workspace: r.workspace }
@@ -232,7 +233,7 @@ export async function handleManagementRequest(dbPath, method, pathname, body) {
         competitor: row.competitor,
         region: row.region
       }
-    });
+    }, ctx);
     return {
       status: 200,
       body: {

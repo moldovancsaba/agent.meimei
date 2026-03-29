@@ -2,7 +2,7 @@
  * Deterministic OpenClaw routing preview — parity with `scripts/oc-agent --route-only`.
  * No LLM, no `openclaw` binary. Used by `previewModelRouting` in `server.mjs` (kernel R2 closure).
  * @see scripts/oc-agent (select_route, infer_task_type, infer_cost_target, select_fallback)
- * @aligned package agent-meimei 0.8.14
+ * @aligned package agent-meimei 0.8.15
  */
 
 function lowercase(s) {

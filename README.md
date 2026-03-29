@@ -137,8 +137,8 @@ Use one of these from the repo root:
 - `./scripts/oc-launch`
 - `make status`
 - `make launch`
-- `npm run dashboard` then open `http://127.0.0.1:45285` (or whatever `defaults.port` is in `config/dashboard-surface.v1.json`)
-- `./scripts/meimei-domain` then open `https://meimei.localhost:8443/dashboard/`
+- **Preferred:** `./scripts/meimei-domain` (or LaunchAgents) then open **`https://meimei.localhost:8443/dashboard/`** — canonical HTTPS surface ([`docs/architecture/meimei-https-topology.v1.md`](docs/architecture/meimei-https-topology.v1.md))
+- `npm run dashboard` then open **`http://127.0.0.1:<port>`** only for **upstream** debugging (`defaults.port` in `config/dashboard-surface.v1.json`, often **45285**); not the operator contract URL
 - `npm run setup` for the one-step local domain start/open flow
 - `npm run bootstrap` for the full target-machine bootstrap and verification flow
 - `npm run config:seed` to render the live OpenClaw config from the repo seed

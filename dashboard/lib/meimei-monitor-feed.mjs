@@ -44,6 +44,13 @@ function safeParseJson(s) {
 }
 
 function inferIntentAndHint(kind, parsed) {
+  if (kind === "checklist_trace_v1") {
+    const c = parsed && typeof parsed === "object" && parsed.checklist ? parsed.checklist : null;
+    const jk = c && c.job_kind != null ? String(c.job_kind).slice(0, 48) : "checklist";
+    const pid = c && c.project_id != null ? String(c.project_id).slice(0, 32) : "";
+    const hint = pid ? `project=${pid}` : "";
+    return { intent: jk, hint };
+  }
   if (kind !== "app_task" && kind !== "inference_v1") {
     const k = kind != null && String(kind).trim() ? String(kind).trim() : "unknown_kind";
     return { intent: k, hint: "" };

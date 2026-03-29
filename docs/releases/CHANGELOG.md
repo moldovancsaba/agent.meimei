@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-03-29 — Kernel program: status rollup doc + façade HTTP capability gate test
+
+- **`kernel-app-separation-and-https-program.v1.md`** — **Current status (rollup)** table (T1–T6), CI hook list, remaining epics.
+- **`kernel:facades:http:selftest`** — asserts **403 `capability_denied`** for **checklist** builtin on `GET …/fs/roots` (real `app_id`, no `filesystem.scoped`).
+
 ## 2026-03-29 — MM-KERNEL-303d: filesystem roots façade + façade HTTP smoke
 
 - **`dashboard/lib/kernel-app-fs-roots.mjs`** — `GET /api/meimei/v1/apps/{id}/fs/roots`: **`policy.filesystem.roots`** jailed to **`install_path`**, shallow directory sample, **`realpath`**-aligned containment.

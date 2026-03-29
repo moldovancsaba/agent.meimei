@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Spawns dashboard briefly; asserts app façade routing returns JSON (404 for unknown app).
+ * Spawns dashboard briefly: unknown app → 404; real builtin without cap → 403 capability_denied.
  */
 import { spawn } from "node:child_process";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { builtinStableAppId } from "../dashboard/lib/kernel-builtin-apps.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
@@ -87,8 +88,20 @@ async function main() {
       await cleanup(1);
       fail(`expected 404 unknown_app, got ${res.status} ${JSON.stringify(j)}`);
     }
+
+    const checklistId = builtinStableAppId("checklist");
+    const res2 = await fetch(`http://127.0.0.1:${port}/api/meimei/v1/apps/${checklistId}/fs/roots`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    const j2 = await res2.json().catch(() => ({}));
+    if (res2.status !== 403 || j2.error !== "capability_denied") {
+      console.error(log.slice(-3000));
+      await cleanup(1);
+      fail(`expected 403 capability_denied for checklist fs/roots, got ${res2.status} ${JSON.stringify(j2)}`);
+    }
+
     await cleanup(0);
-    ok("kernel-facades-http selftest (unknown app 404)");
+    ok("kernel-facades-http selftest (404 unknown + 403 builtin capability gate)");
   } catch (e) {
     console.error(log.slice(-4000));
     await cleanup(1);

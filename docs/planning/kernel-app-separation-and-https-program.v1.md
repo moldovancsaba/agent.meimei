@@ -11,6 +11,21 @@ Decouple MeiMei **applications** from the **kernel** so each app can live in its
 
 **v1 scope decision (locked):** [ADR-001](../architecture/adr/ADR-001-app-runtime-v1.md) — operator-only, same-machine install; **in-process dynamic load** as default; sidecars deferred.
 
+## Current status (rollup)
+
+| Theme | IDs | State | Notes |
+|-------|-----|--------|--------|
+| **T1 HTTPS** | MM-TLS-*, ADR-003 | **Delivered** (CI + topology) | `meimei-https-e2e-ci`, operator runbook; façade clients use same TLS edge. |
+| **T2 Registry / identity** | 201–203, 301 | **Delivered** | Manifest schema, `kernel-app-registry.mjs`, tombstoned `app_id`, optional auth + audit. |
+| **T3 Policy + façades** | 302, 303a–d | **Delivered** | `schemas/meimei.app.policy.v1.json`, `POST/GET …/v1/apps/{id}/…` (inference, jobs enqueue, env, **fs/roots** read-only listing). |
+| **T4 SDK + dispatch** | 401–402, 501, 603 | **Delivered** | `@meimei/sdk` workspace, contract + HTTP smoke selftests; dynamic `POST /api/functions/…`; no static `apps/*` in `server.mjs`. |
+| **T5 Migration** | 601, 604, 602 | **Partial** | **601** merged Apps/Tools catalog; **604** snapshot script only — `functions/registry.v1.json` still operator SoT for legacy rows; **602** SDK-only pilot, no reference-app extracted yet. |
+| **T6 Governance** | 502, 701–703 | **Delivered** (502 = strategy doc) | Shells ADR note, threat model, `kernel-apps.v1.md` runbook, monitor `app_id` filter + row field. |
+
+**CI hooks (kernel-related):** `kernel:validate-app-manifest`, `kernel:validate-app-policy`, `kernel:app-registry:selftest`, `kernel:policy:selftest`, `kernel:external-dispatch:selftest`, `kernel:sdk:selftest`, `kernel:fs-roots:selftest`, `kernel:facades:http:selftest`, `kernel:registry:snapshot` (manual / audit).
+
+**Largest remaining epics:** generated or mirrored **`registry.v1.json` (604)**; optional **job status/query façade** for 303b; **file read** API beyond fs/roots listing; **rate limits** in policy (302 stretch).
+
 ---
 
 ## Program taxonomy

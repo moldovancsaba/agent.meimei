@@ -1,4 +1,5 @@
 import http from "node:http";
+import https from "node:https";
 import dns from "node:dns/promises";
 import { readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -484,44 +485,22 @@ async function processSupabaseConnector(body = {}) {
   return { ok: false, error: "Unknown action. Use overview, health, or preview_fetch." };
 }
 
-const DEFAULT_MEIMEI_CHECKLIST_APP_URL = "https://agent-chappie.doneisbetter.com/checklist";
-
-function isChecklistEmbedDisabled() {
-  const v = String(process.env.MEIMEI_CHECKLIST_EMBED_DISABLED || "").trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
-
-/**
- * Base URL for the checklist Next.js operator UI (iframe + “open in new tab”).
- * - If MEIMEI_CHECKLIST_EMBED_DISABLED=1 → null (MeiMei shows runtime only; no remote/local iframe).
- * - Else MEIMEI_CHECKLIST_APP_URL if set (use http://127.0.0.1:PORT/checklist for local `next dev`).
- * - Else default hosted demo URL.
- */
-function checklistEmbedBaseUrl() {
-  if (isChecklistEmbedDisabled()) return null;
-  const raw = String(process.env.MEIMEI_CHECKLIST_APP_URL || "").trim();
-  if (raw) return raw.replace(/\/+$/, "");
-  return DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
-}
-
 /** Agent.Chappie — MeiMei shell + HTTP bridge to local Python worker (SQLite, BI); online Next app + Neon unchanged. */
 async function processChecklist(body = {}) {
   const action = String(body.action || "overview");
-  const embedUrl = checklistEmbedBaseUrl();
-  const defaultHosted = DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
-  const appUrl = embedUrl ?? defaultHosted;
   const runtime = await getAgentChappieRuntimeSummary(repoRoot, port);
   const bridgeBase = AGENT_CHAPPIE_BRIDGE_PREFIX;
+  const upstream = checklistUpstreamOrigin();
+  const pathPrefix = checklistUpstreamPathPrefix();
   if (action === "overview") {
     return {
       ok: true,
       title: "Checklist (Agent.Chappie)",
       summary:
-        "MeiMei is the **local** dashboard (runtime panel + SQLite bridge). The checklist **operator UI** is the separate Next.js app — embedded below only if enabled. Point MEIMEI_CHECKLIST_APP_URL at local `next dev` to avoid the hosted site; set MEIMEI_CHECKLIST_EMBED_DISABLED=1 to hide the iframe entirely.",
-      appUrl,
-      checklistIframeSrc: embedUrl,
-      embedDisabled: isChecklistEmbedDisabled(),
-      defaultHostedChecklistUrl: defaultHosted,
+        "The checklist **Next.js operator UI** is reverse-proxied from this path to your local dev server (default `http://127.0.0.1:3000` + `/checklist`). Set `MEIMEI_CHECKLIST_LOCAL_UPSTREAM` / `MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX` if needed; set `MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none` to disable proxy and show the runtime shell only.",
+      checklistLocalUpstream: upstream,
+      checklistUpstreamPathPrefix: pathPrefix,
+      checklistBrowserPath: browserPathForNormalized(checklistPublicPath),
       openPath: checklistPublicPath,
       repo: "https://github.com/moldovancsaba/checklist",
       runtime,
@@ -536,6 +515,10 @@ async function processChecklist(body = {}) {
         command: "npm run agent-chappie:queue-consumer",
         env: ["APP_QUEUE_BASE_URL", "WORKER_QUEUE_SHARED_SECRET", "MEIMEI_AGENT_CHAPPIE_ENGINE=node (default)"],
         themeSync: "npm run agent-chappie:sync-checklist-theme with CHECKLIST_WEB_APP set"
+      },
+      weeklyPipeline: {
+        path: `${pathPrefix.replace(/\/$/, "")}/original-checklist`,
+        note: "Mongo + Playwright weekly pipeline in Next. LLM via ORIGINAL_PIPELINE_MEIMEI_GATEWAY_URL → this dashboard /api/llm/gateway/generate. See integrations/agent-chappie-checklist/README.md."
       }
     };
   }
@@ -1302,6 +1285,164 @@ function stripDashboardMountPrefix(pathname) {
   return pathname;
 }
 
+/** Browser-visible path for a normalized dashboard path (adds MEIMEI_PUBLIC_PREFIX e.g. /dashboard). */
+function browserPathForNormalized(normPath) {
+  const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
+  if (!raw || raw === "/") return normPath;
+  if (normPath === "/") return raw;
+  return `${raw}${normPath.startsWith("/") ? normPath : `/${normPath}`}`;
+}
+
+/**
+ * Origin of the local checklist Next.js server (reverse proxy). Default http://127.0.0.1:3000.
+ * Set MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none|false|0|off to disable proxy (runtime shell page only).
+ */
+function checklistUpstreamOrigin() {
+  const raw = String(process.env.MEIMEI_CHECKLIST_LOCAL_UPSTREAM ?? "").trim();
+  const lower = raw.toLowerCase();
+  if (lower === "none" || lower === "false" || lower === "0" || lower === "off") return null;
+  const u = raw || "http://127.0.0.1:3000";
+  return u.replace(/\/+$/, "");
+}
+
+/** Path prefix on the Next app (must match next.config basePath), default /checklist */
+function checklistUpstreamPathPrefix() {
+  let p = String(process.env.MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX ?? "/checklist").trim();
+  if (!p.startsWith("/")) p = `/${p}`;
+  return p.replace(/\/+$/, "") || "/checklist";
+}
+
+function browserPathForChecklist() {
+  return browserPathForNormalized(checklistPublicPath).replace(/\/+$/, "") || checklistPublicPath;
+}
+
+function rewriteSetCookiePathForChecklist(cookie, meiBrowserBase) {
+  return cookie.replace(/;\s*path=(\/checklist)(\/[^;]*|)(?=[;]|$)/gi, (_m, _base, sub) => {
+    const suffix = sub || "";
+    return `; path=${meiBrowserBase}${suffix}`;
+  });
+}
+
+function rewriteChecklistLocationHeader(loc, req, meiBrowserBase) {
+  const origin = checklistUpstreamOrigin();
+  if (!origin) return loc;
+  try {
+    const abs = new URL(loc, `${origin}/`);
+    const upOrigin = new URL(origin);
+    const upPrefix = checklistUpstreamPathPrefix();
+    if (abs.origin !== upOrigin.origin) return loc;
+    if (!abs.pathname.startsWith(upPrefix)) return loc;
+    const rest = abs.pathname.slice(upPrefix.length) || "";
+    const meiPath = `${meiBrowserBase}${rest}`;
+    const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
+    const host = String(req.headers.host || "127.0.0.1").split(",")[0].trim();
+    return `${proto}://${host}${meiPath}${abs.search}`;
+  } catch {
+    return loc;
+  }
+}
+
+function filterChecklistProxyResponseHeaders(rawHeaders, req, meiBrowserBase) {
+  const out = {};
+  const skip = new Set(["connection", "transfer-encoding", "content-length"]);
+  for (const key of Object.keys(rawHeaders)) {
+    const kl = key.toLowerCase();
+    if (skip.has(kl)) continue;
+    const v = rawHeaders[key];
+    if (v === undefined) continue;
+    if (kl === "set-cookie") {
+      const arr = Array.isArray(v) ? v : [v];
+      out["set-cookie"] = arr.map((c) => rewriteSetCookiePathForChecklist(String(c), meiBrowserBase));
+    } else if (kl === "location") {
+      out[key] = rewriteChecklistLocationHeader(String(v), req, meiBrowserBase);
+    } else {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
+function copyRequestHeadersForProxy(req, hostHeader) {
+  const out = {};
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v == null) continue;
+    const kl = k.toLowerCase();
+    if (kl === "host" || kl === "connection") continue;
+    out[k] = Array.isArray(v) ? v.join(", ") : v;
+  }
+  out.host = hostHeader;
+  return out;
+}
+
+/**
+ * Reverse-proxy checklist miniapp paths to local Next.js (full app, not an iframe).
+ * @returns {Promise<boolean>} true if the request was handled (including errors written to res)
+ */
+async function tryProxyChecklistRequest(req, res, incomingUrl, normalizedPath) {
+  const origin = checklistUpstreamOrigin();
+  if (!origin) return false;
+  if (!(normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`))) {
+    return false;
+  }
+  const methods = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
+  if (!methods.includes(req.method)) return false;
+
+  const up = new URL(origin);
+  const pathPrefix = checklistUpstreamPathPrefix();
+  let tail = "";
+  if (normalizedPath === checklistPublicPath || normalizedPath === `${checklistPublicPath}/`) {
+    tail = "";
+  } else {
+    tail = normalizedPath.slice(checklistPublicPath.length);
+    if (!tail.startsWith("/")) tail = `/${tail}`;
+  }
+  const upstreamPath = tail === "" || tail === "/" ? `${pathPrefix}/` : `${pathPrefix}${tail}`;
+  const pathWithQuery = upstreamPath + (incomingUrl.search || "");
+
+  const lib = up.protocol === "https:" ? https : http;
+  const defPort = up.protocol === "https:" ? 443 : 80;
+  const portNum = up.port ? Number(up.port) : defPort;
+  const hostHeader =
+    portNum === defPort ? up.hostname : `${up.hostname}:${portNum}`;
+
+  const meiBrowserBase = browserPathForChecklist();
+  const headers = copyRequestHeadersForProxy(req, hostHeader);
+
+  return new Promise((resolve) => {
+    const opts = {
+      protocol: up.protocol,
+      hostname: up.hostname,
+      port: up.port ? Number(up.port) : undefined,
+      method: req.method,
+      path: pathWithQuery,
+      headers
+    };
+    const preq = lib.request(opts, (pres) => {
+      const rh = filterChecklistProxyResponseHeaders(pres.headers, req, meiBrowserBase);
+      res.writeHead(pres.statusCode ?? 502, rh);
+      pres.pipe(res);
+      pres.on("end", () => resolve(true));
+    });
+    preq.on("error", () => {
+      if (!res.headersSent) {
+        res.writeHead(502, {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store, max-age=0"
+        });
+        res.end(
+          "Checklist upstream unreachable. Start Next.js in consultant-followup-web (e.g. npm run dev on port 3000 with basePath /checklist), or set MEIMEI_CHECKLIST_LOCAL_UPSTREAM. Disable proxy with MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none to see the MeiMei runtime shell instead.\n"
+        );
+      }
+      resolve(true);
+    });
+    if (req.method === "GET" || req.method === "HEAD") {
+      preq.end();
+    } else {
+      req.pipe(preq);
+    }
+  });
+}
+
 function resolveMiniappRoute(pathname) {
   const idMatch = pathname.match(/^\/(\d+)(?:\/[^/]+)?$/);
   if (!idMatch) return null;
@@ -1635,19 +1776,6 @@ function renderAppsPage(layoutDoc) {
       <div class="ds-flashcard-grid">${cardsHtml}</div>
     </section>
   </div>
-  <style>
-    .ds-flashcard { position: relative; display: block; }
-    .ds-flashcard-settings {
-      position: absolute;
-      top: 0.75rem;
-      right: 0.75rem;
-      font-size: 1rem;
-      color: var(--color-text-muted, #6b7280);
-      text-decoration: none;
-      line-height: 1;
-    }
-    .ds-flashcard-settings:hover { color: var(--color-primary, #059669); }
-  </style>
   <script>
     ${renderGlobalNavScript()}
   </script>
@@ -1685,19 +1813,6 @@ function renderToolsPage(layoutDoc) {
       <div class="ds-flashcard-grid">${cardsHtml}</div>
     </section>
   </div>
-  <style>
-    .ds-flashcard { position: relative; display: block; }
-    .ds-flashcard-settings {
-      position: absolute;
-      top: 0.75rem;
-      right: 0.75rem;
-      font-size: 1rem;
-      color: var(--color-text-muted, #6b7280);
-      text-decoration: none;
-      line-height: 1;
-    }
-    .ds-flashcard-settings:hover { color: var(--color-primary, #059669); }
-  </style>
   <script>
     ${renderGlobalNavScript()}
   </script>
@@ -2846,20 +2961,6 @@ function renderWhatNextPage(layoutDoc) {
       <div class="layout-box layout-span-md-2 layout-span-lg-3" data-layout-box="main">${main}</div>
     </div>
   </div>
-  <style>
-    .schedule-section, .sources-section { margin: 1.5rem 0; }
-    .schedule-section h3, .sources-section h3 { font-size: 0.875rem; color: var(--color-text-muted, #6b7280); margin-bottom: 0.5rem; }
-    .schedule-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-    .toggle-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
-    .toggle-label input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
-    .schedule-label { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; }
-    .sources-grid { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .source-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 9999px; cursor: pointer; transition: all 0.15s; }
-    .source-chip:has(input:checked) { background: var(--color-primary, #059669); color: white; border-color: var(--color-primary, #059669); }
-    .source-chip input { display: none; }
-    .action-row { margin-top: 1.5rem; }
-    .action-row button { min-width: 200px; }
-  </style>
   <script>
     const scheduleToggle = document.getElementById("scheduleToggle");
     const scheduleTime = document.querySelector("[data-schedule-time]");
@@ -2995,51 +3096,25 @@ function renderWhatNextPage(layoutDoc) {
 </html>`;
 }
 
-function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
-  const baseRaw = checklistEmbedBaseUrl();
-  const base = baseRaw ? baseRaw.replace(/\/+$/, "") : "";
-  const suf = String(pathSuffix || "");
-  const embedSrc =
-    !baseRaw || !base
-      ? null
-      : suf && suf !== "/"
-        ? `${base}${suf.startsWith("/") ? suf : `/${suf}`}`
-        : base;
-  const defaultHosted = DEFAULT_MEIMEI_CHECKLIST_APP_URL.replace(/\/+$/, "");
+function renderChecklistLocalShellPage(layoutDoc) {
   const publicPrefixRaw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
   const urlDashPrefix = publicPrefixRaw === "/" ? "" : publicPrefixRaw;
   const meiOriginDisplay = `http://127.0.0.1:${port}${urlDashPrefix}`;
   const meiChecklistUrlDisplay = `${meiOriginDisplay}${checklistPublicPath.startsWith("/") ? "" : "/"}${checklistPublicPath}`;
+  const upPrefix = checklistUpstreamPathPrefix();
   const topbar = `<div class="topbar">
       <a class="button secondary" href="${escapeHtml(appsRoute)}">&larr; Back to Apps</a>
       <span class="title">${escapeHtml(checklistLabel)}</span>
     </div>`;
-  const embedSection =
-    embedSrc != null
-      ? `<section class="route-card checklist-embed-card">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Checklist operator UI (embedded)</h2>
-        <p class="lede u-mb12">Loaded from <code class="route-code">MEIMEI_CHECKLIST_APP_URL</code> (or the default hosted URL). This is <strong>not</strong> MeiMei itself — MeiMei is the panel above. For a <strong>local</strong> Next app, set e.g. <code class="route-code">MEIMEI_CHECKLIST_APP_URL=http://127.0.0.1:3000/checklist</code> and restart the dashboard. <a href="${escapeHtml(embedSrc)}" target="_blank" rel="noopener noreferrer">Open in new tab</a>.</p>
-        <div class="checklist-embed-wrap">
-          <iframe
-            class="checklist-embed-frame"
-            title="${escapeHtml(checklistLabel)}"
-            src="${escapeHtml(embedSrc)}"
-            loading="lazy"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-            referrerpolicy="no-referrer-when-downgrade"
-          ></iframe>
-        </div>
-      </section>`
-      : `<section class="route-card checklist-embed-card">
-        <h2 class="u-mt0" style="font-size:1.15rem;">Checklist operator UI (iframe off)</h2>
-        <p class="lede u-mb12">You set <code class="route-code">MEIMEI_CHECKLIST_EMBED_DISABLED=1</code>. MeiMei stays the <strong>local</strong> runtime only (bridge + SQLite + queue consumer). Open the Next.js checklist app in another window, or unset that env and set <code class="route-code">MEIMEI_CHECKLIST_APP_URL</code> to <code class="route-code">http://127.0.0.1:PORT/checklist</code> to embed local <code class="route-code">next dev</code> here instead of <a href="${escapeHtml(defaultHosted)}" target="_blank" rel="noopener noreferrer">the hosted demo</a>.</p>
-        <p class="muted u-m0">Global MeiMei admin/settings: <a href="${escapeHtml(adminRoute)}">${escapeHtml(adminRoute)}</a> · Checklist local monitor in Next: <code class="route-code">LOCAL_ADMIN_ENABLED=1</code> → <code class="route-code">/admin</code> on the same origin as the checklist app.</p>
+  const proxyHint = `<section class="route-card u-mb12">
+        <h2 class="u-mt0" style="font-size:1.15rem;">Full checklist UI</h2>
+        <p class="lede u-mb12">You are on the <strong>fallback shell</strong> because <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM=none</code> (or equivalent). To load the real Next.js checklist <em>at this URL</em>, remove that setting: MeiMei will reverse-proxy to <code class="route-code">http://127.0.0.1:3000${escapeHtml(upPrefix)}</code> by default (set <code class="route-code">MEIMEI_CHECKLIST_LOCAL_UPSTREAM</code> for another origin). The checklist app must use the same path prefix (<code class="route-code">MEIMEI_CHECKLIST_UPSTREAM_PATH_PREFIX</code>, default <code class="route-code">${escapeHtml(upPrefix)}</code> → Next <code class="route-code">basePath</code>).</p>
       </section>`;
   const main = `<main class="hero">
       <section class="route-card u-mb12">
         <h2 class="u-mt0" style="font-size:1.15rem;">Local runtime (MeiMei)</h2>
-        <p class="muted u-mb12">This page is served by the <strong>MeiMei dashboard</strong> on your machine. The <strong>Node engine</strong> uses SQLite in <code class="route-code">data/agent-chappie/</code> and LLM via <code class="route-code">/api/llm/gateway/generate</code>. The bridge <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> is what the checklist Next app calls when it talks to your Mac. Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> for the legacy checklist-repo worker instead.</p>
-        <p class="muted u-mb12"><strong>MeiMei home:</strong> <code class="route-code">${escapeHtml(`${meiOriginDisplay}/`)}</code> · <strong>Checklist miniapp (this shell):</strong> <code class="route-code">${escapeHtml(meiChecklistUrlDisplay)}</code> (use your real host/port or TLS proxy if different).</p>
+        <p class="muted u-mb12">The <strong>Node engine</strong> uses SQLite in <code class="route-code">data/agent-chappie/</code> and LLM via <code class="route-code">/api/llm/gateway/generate</code>. The bridge <code class="route-code">${escapeHtml(AGENT_CHAPPIE_BRIDGE_PREFIX)}</code> is what the checklist Next app calls when it talks to your Mac. Set <code class="route-code">MEIMEI_AGENT_CHAPPIE_ENGINE=python</code> for the legacy checklist-repo worker instead.</p>
+        <p class="muted u-mb12"><strong>MeiMei home:</strong> <code class="route-code">${escapeHtml(`${meiOriginDisplay}/`)}</code> · <strong>This route:</strong> <code class="route-code">${escapeHtml(meiChecklistUrlDisplay)}</code></p>
         <div id="checklist-runtime-panel" class="result-card">
           <p class="muted u-m0" id="checklist-runtime-loading">Loading runtime status…</p>
         </div>
@@ -3048,7 +3123,7 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
           <button type="button" class="button secondary" id="checklist-ensure-worker">Ensure worker</button>
         </div>
       </section>
-      ${embedSection}
+      ${proxyHint}
     </main>`;
   const layout = buildLayoutFlowHtml(layoutDoc, miniappPageKey("checklist"), { topbar, main }, escapeAttr);
   return `<!doctype html>
@@ -3063,12 +3138,6 @@ function renderChecklistEmbedPage(layoutDoc, pathSuffix = "") {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .checklist-embed-card { display: flex; flex-direction: column; min-height: calc(100vh - 10rem); }
-    .checklist-embed-wrap { flex: 1; display: flex; flex-direction: column; min-height: min(720px, 72vh); }
-    .checklist-embed-frame { flex: 1; width: 100%; min-height: 480px; border: 1px solid var(--line); border-radius: 14px; background: rgba(4, 10, 20, 0.72); }
-    .route-code { font-size: 0.85em; }
-  </style>
   <script>
     (function () {
       const checklistApi = ${JSON.stringify(checklistApiRoute)};
@@ -3528,26 +3597,6 @@ function renderLeadEnrichmentPage(layoutDoc) {
     });
     refreshWorkflow();
   </script>
-  <style>
-    .route-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-    .lead-profile { padding: 1rem; background: var(--color-surface, #f9fafb); border-radius: 0.5rem; }
-    .profile-header { display: flex; align-items: center; gap: 0.75rem; }
-    .profile-header h4 { margin: 0; }
-    .priority-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; text-transform: uppercase; font-weight: 600; }
-    .priority-badge.high { background: #fee2e2; color: #991b1b; }
-    .priority-badge.medium { background: #fef3c7; color: #92400e; }
-    .priority-badge.low { background: #dbeafe; color: #1e40af; }
-    .profile-title { margin: 0.5rem 0; color: var(--color-text, #374151); }
-    .profile-meta { margin: 0; color: var(--color-text-muted, #6b7280); font-size: 0.875rem; }
-    .profile-links { margin-top: 0.75rem; display: flex; gap: 1rem; }
-    .profile-links a { color: var(--color-primary, #059669); }
-    .signals-list { display: flex; flex-direction: column; gap: 0.5rem; }
-    .signal-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface, #f9fafb); border-radius: 0.25rem; }
-    .signal-type { font-weight: 600; min-width: 120px; }
-    .signal-detail { flex: 1; color: var(--color-text, #374151); }
-    .signal-confidence { font-size: 0.75rem; color: var(--color-text-muted, #6b7280); }
-    .audit-info { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border, #e5e7eb); }
-  </style>
 </body>
 </html>`;
 }
@@ -3645,17 +3694,6 @@ function renderLeadEnrichmentSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .settings-form .muted { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; margin-bottom: 1rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; min-width: 150px; }
-    .field-row select, .field-row input { flex: 1; padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-lead-enrichment-config';
 
@@ -4059,16 +4097,6 @@ function renderAiSdrAnalyticsPage(layoutDoc) {
     document.getElementById("btn651Refresh")?.addEventListener("click", loadMetrics);
     loadMetrics();
   </script>
-  <style>
-    .stat-grid651 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 8px; }
-    .stat651 { background: rgba(4,10,20,0.5); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
-    .stat651-n { display: block; font-size: 1.5rem; font-weight: 700; }
-    .stat651-l { font-size: 12px; color: var(--muted); }
-    .bars651 { display: flex; align-items: flex-end; gap: 6px; height: 140px; margin-top: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-    .bar651-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-    .bar651 { width: 100%; max-width: 20px; background: var(--good, #059669); border-radius: 4px 4px 0 0; min-height: 2px; }
-    .bar651-lbl { font-size: 9px; color: var(--muted); margin-top: 4px; transform: rotate(-45deg); white-space: nowrap; }
-  </style>
 </body>
 </html>`;
 }
@@ -4245,14 +4273,6 @@ function renderEnvironmentVariablesPage(layoutDoc) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(environmentVariablesLabel)} - agent.meimei</title>
   <link rel="stylesheet" href="${escapeHtml(designSystemCssPath)}" />
-  <style>
-    .env726-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .env726-table th, .env726-table td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
-    .env726-pill { display:inline-block; font-size:10px; padding:2px 8px; border-radius:999px; margin:2px 4px 2px 0; background:rgba(5,150,105,0.15); color:var(--text); }
-    .env726-pill.off { opacity:0.35; }
-    .env726-actions button { margin-right:6px; margin-bottom:4px; }
-    .env726-chip { font-size:11px; padding:4px 8px; margin:2px; cursor:pointer; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--text); }
-  </style>
 </head>
 <body data-theme="green">
   <div class="shell">${layout}</div>
@@ -4573,22 +4593,6 @@ function renderInboxPage(layoutDoc) {
     refreshBtn?.addEventListener("click", loadInbox);
     loadInbox();
   </script>
-  <style>
-    .message-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    .inbox-stats { display: flex; gap: 1rem; padding: 0.75rem; background: var(--color-surface, #f9fafb); border-radius: 0.5rem; margin-bottom: 0.5rem; }
-    .inbox-stats .unread-count { font-weight: 600; color: var(--color-primary, #059669); }
-    .message-item { padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; transition: background 0.15s; }
-    .message-item:hover { background: var(--color-surface, #f9fafb); }
-    .message-item.unread { border-left: 3px solid var(--color-primary, #059669); }
-    .message-item.priority-high { border-left: 3px solid #dc2626; }
-    .message-header { display: flex; justify-content: space-between; margin-bottom: 0.25rem; }
-    .message-from { font-weight: 600; }
-    .message-date { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; }
-    .message-subject { font-weight: 500; margin-bottom: 0.25rem; }
-    .message-preview { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .message-actions { margin-top: 0.5rem; display: flex; gap: 0.5rem; }
-    .button.small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
-  </style>
 </body>
 </html>`;
 }
@@ -4667,20 +4671,6 @@ function renderInboxSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; min-width: 180px; }
-    .field-row input { flex: 1; padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #059669); }
-    .field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-inbox-config';
 
@@ -4913,20 +4903,6 @@ function renderMemorySettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; min-width: 180px; }
-    .field-row input { flex: 1; padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #0ea5e9); }
-    .field-checkbox input { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-memory-config';
     function loadConfig() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
@@ -5102,21 +5078,6 @@ function renderMissionControlPage(layoutDoc) {
     timeInput?.addEventListener("change", loadDashboard);
     loadDashboard();
   </script>
-  <style>
-    .mission-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card { padding: 1rem; background: var(--color-surface, #f9fafb); border-radius: 0.5rem; text-align: center; }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--color-primary, #0ea5e9); }
-    .stat-label { font-size: 0.75rem; color: var(--color-text-muted, #6b7280); margin-top: 0.25rem; }
-    .runs-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    .run-item { padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .run-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .run-id { font-weight: 600; font-family: monospace; }
-    .run-details { display: flex; gap: 1rem; font-size: 0.875rem; color: var(--color-text-muted, #6b7280); }
-    .pill { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 600; }
-    .status-ok { background: #dcfce7; color: #166534; }
-    .status-failed { background: #fee2e2; color: #991b1b; }
-    .status-pending { background: #fef3c7; color: #92400e; }
-  </style>
 </body>
 </html>`;
 }
@@ -5163,20 +5124,6 @@ function renderMissionControlSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; min-width: 180px; }
-    .field-row input, .field-row select { flex: 1; padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #0ea5e9); }
-    .field-checkbox input { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-mission-control-config';
     function loadConfig() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
@@ -5302,28 +5249,6 @@ function renderWhatNextSettingsPage(layoutDoc) {
       </section>
     </main>
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .settings-form .muted { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; margin-bottom: 1rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #059669); }
-    .field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .field-checkbox small { display: block; color: var(--color-text-muted, #6b7280); font-size: 0.75rem; margin-top: 0.25rem; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; }
-    .field-row input[type="time"] { padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
-    .service-card { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .service-icon { font-size: 1.5rem; }
-    .service-name { font-weight: 500; flex: 1; }
-    .service-status { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; background: var(--color-surface, #f3f4f6); color: var(--color-text-muted, #6b7280); }
-    .service-status.connected { background: #dcfce7; color: #166534; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     function escapeHtml(value) {
       return String(value)
@@ -5454,22 +5379,6 @@ function renderExplainItSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .settings-form .muted { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; margin-bottom: 1rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #059669); }
-    .field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .field-checkbox small { display: block; color: var(--color-text-muted, #6b7280); font-size: 0.75rem; margin-top: 0.25rem; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; }
-    .field-row input { padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-explain-it-config';
 
@@ -5603,22 +5512,6 @@ function renderAIRoutingSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .settings-form .muted { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; margin-bottom: 1rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #0ea5e9); }
-    .field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .field-checkbox small { display: block; color: var(--color-text-muted, #6b7280); font-size: 0.75rem; margin-top: 0.25rem; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; min-width: 120px; }
-    .field-row select { flex: 1; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-ai-routing-config';
 
@@ -5748,22 +5641,6 @@ function renderApiAccessSettingsPage(layoutDoc) {
   <div class="shell">
     ${layout}
   </div>
-  <style>
-    .settings-form { margin-top: 2rem; }
-    .settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
-    .settings-form .muted { color: var(--color-text-muted, #6b7280); font-size: 0.875rem; margin-bottom: 1rem; }
-    .field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
-    .field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; cursor: pointer; }
-    .field-checkbox:hover { border-color: var(--color-primary, #0ea5e9); }
-    .field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
-    .field-checkbox span { font-weight: 500; }
-    .field-checkbox small { display: block; color: var(--color-text-muted, #6b7280); font-size: 0.75rem; margin-top: 0.25rem; }
-    .field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.5rem; }
-    .field-row label { font-weight: 500; }
-    .field-row input { padding: 0.5rem; border: 1px solid var(--color-border, #e5e7eb); border-radius: 0.25rem; width: 100px; }
-    .actions { margin-top: 2rem; }
-    .actions button { min-width: 150px; }
-  </style>
   <script>
     const STORAGE_KEY = 'meimei-api-access-config';
 
@@ -6060,6 +5937,10 @@ const server = http.createServer(async (req, res) => {
     const normalizedPath = stripDashboardMountPrefix(
       url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "")
     );
+
+    if (normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`)) {
+      if (await tryProxyChecklistRequest(req, res, url, normalizedPath)) return;
+    }
 
     if ((req.method === "GET" || req.method === "HEAD")
       && pathStartsWithStaticPrefix(normalizedPath, staticPrefixes)) {
@@ -6441,16 +6322,18 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (
-      req.method === "GET" &&
+      (req.method === "GET" || req.method === "HEAD") &&
       (normalizedPath === checklistPublicPath || normalizedPath.startsWith(`${checklistPublicPath}/`))
     ) {
-      const suffix =
-        normalizedPath === checklistPublicPath ? "" : normalizedPath.slice(checklistPublicPath.length);
-      const html = renderChecklistEmbedPage(getLayoutDoc(), suffix);
+      const html = renderChecklistLocalShellPage(getLayoutDoc());
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-store, max-age=0"
       });
+      if (req.method === "HEAD") {
+        res.end();
+        return;
+      }
       res.end(html);
       return;
     }

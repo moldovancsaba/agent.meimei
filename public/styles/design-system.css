@@ -470,3 +470,66 @@ ul { margin: 0; padding-left: 18px; line-height: 1.65; }
 .ds-markdown table { width: 100%; border-collapse: collapse; margin: 1em 0; }
 .ds-markdown th, .ds-markdown td { padding: 8px 12px; border: 1px solid var(--line); text-align: left; }
 .ds-markdown th { background: var(--panel-2); font-weight: 600; }
+
+/* Settings form components */
+.settings-form { margin-top: 2rem; }
+.settings-form h3 { margin-top: 2rem; margin-bottom: 0.5rem; font-size: 1.125rem; }
+.settings-form p.sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1rem; }
+.field-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
+.field-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: 14px; }
+.field-row label { font-weight: 500; min-width: 180px; }
+.field-row input, .field-row select { flex: 1; }
+.field-checkbox { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--line); border-radius: 14px; cursor: pointer; }
+.field-checkbox:hover { border-color: var(--accent); }
+.field-checkbox input[type="checkbox"] { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; }
+.field-checkbox span { font-weight: 500; }
+.field-checkbox small { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; }
+
+/* Flashcard settings overlay */
+.ds-flashcard { position: relative; display: block; }
+.ds-flashcard-settings { position: absolute; top: 0.75rem; right: 0.75rem; font-size: 1rem; color: var(--muted); text-decoration: none; line-height: 1; }
+.ds-flashcard-settings:hover { color: var(--accent); }
+
+/* Stats grid and cards (Mission Control, AI SDR Analytics) */
+.ds-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.ds-stat-card { padding: 1rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; text-align: center; }
+.ds-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.ds-stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+
+/* Message list (Inbox) */
+.message-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.inbox-stats { display: flex; gap: 1rem; padding: 0.75rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 0.5rem; }
+.inbox-stats .unread-count { font-weight: 600; color: var(--accent); }
+.message-item { padding: 1rem; border: 1px solid var(--line); border-radius: 14px; cursor: pointer; transition: background 0.15s; }
+.message-item:hover { background: var(--panel-2); }
+.message-item.unread { border-left: 3px solid var(--accent); }
+.message-item.priority-high { border-left: 3px solid var(--danger); }
+.message-header { display: flex; justify-content: space-between; margin-bottom: 0.25rem; }
+.message-from { font-weight: 600; }
+.message-date { color: var(--muted); font-size: 0.875rem; }
+.message-subject { font-weight: 500; margin-bottom: 0.25rem; }
+.message-preview { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message-actions { margin-top: 0.5rem; display: flex; gap: 0.5rem; }
+.button.small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+
+/* Run items (Mission Control) */
+.runs-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.run-item { padding: 1rem; border: 1px solid var(--line); border-radius: 14px; }
+.run-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.run-id { font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.run-details { display: flex; gap: 1rem; font-size: 0.875rem; color: var(--muted); }
+
+/* Schedule section */
+.schedule-section, .sources-section { margin: 1.5rem 0; }
+.schedule-section h3, .sources-section h3 { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; }
+.schedule-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.toggle-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.toggle-label input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+.schedule-label { color: var(--muted); font-size: 0.875rem; }
+.sources-grid { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.source-chip { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; transition: all 0.15s; }
+.source-chip:has(input:checked) { background: var(--accent); color: var(--text); border-color: var(--accent); }
+.source-chip input { display: none; }
+
+/* Route code (Checklist Local Shell) */
+.route-code { font-size: 0.85em; }

@@ -1,244 +1,225 @@
-# MeiMei kernel handbook — v1
+# MeiMei kernel — technical handbook
 
-**Status:** technical reference for developers.  
-**Stack:** Node.js **ESM** (`.mjs`), **≥22.5** per [`package.json`](../../package.json).  
-**Related:** [meimei-kernel-code-audit.v1.md](../architecture/meimei-kernel-code-audit.v1.md), [meimei-repo-boundaries.v1.md](../architecture/meimei-repo-boundaries.v1.md), [inference-route.v1.md](../api/inference-route.v1.md), [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
+**Document revision:** v1.1  
+**Audience:** Software architects and senior engineers integrating, extending, or reviewing the MeiMei platform core.  
+**Runtime:** Node.js **ESM** (`.mjs`), engines **≥22.5** per [`package.json`](../../package.json).  
+**Normative audit:** [meimei-kernel-code-audit.v1.md](../architecture/meimei-kernel-code-audit.v1.md) (inventory, contracts, governance, line anchors).  
+**Boundaries:** [meimei-repo-boundaries.v1.md](../architecture/meimei-repo-boundaries.v1.md).  
+**Inference contract:** [inference-route.v1.md](../api/inference-route.v1.md).  
+**Product runtime map:** [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
 
 ---
 
 ## Table of contents
 
-1. [Terminology](#1-terminology)
-2. [Boot and process model](#2-boot-and-process-model)
-3. [Configuration surface](#3-configuration-surface)
-4. [HTTP routing model](#4-http-routing-model)
-5. [Registry and function contracts](#5-registry-and-function-contracts)
-6. [Inference API (`POST /api/meimei/route`)](#6-inference-api-post-apimeimeiroute)
-7. [Job queue and worker](#7-job-queue-and-worker)
-8. [LLM primitives (`llm.mjs`)](#8-llm-primitives-llmmjs)
-9. [Integrating another platform](#9-integrating-another-platform)
-10. [Debugging and observability](#10-debugging-and-observability)
-11. [Known limitations and honesty](#11-known-limitations-and-honesty)
+1. [Purpose and scope](#1-purpose-and-scope)
+2. [Terminology](#2-terminology)
+3. [Architectural invariants](#3-architectural-invariants)
+4. [Boot and process model](#4-boot-and-process-model)
+5. [Configuration](#5-configuration)
+6. [HTTP entry and dispatch](#6-http-entry-and-dispatch)
+7. [Registry](#7-registry)
+8. [Inference API](#8-inference-api)
+9. [Job queue and worker](#9-job-queue-and-worker)
+10. [Persistence layout](#10-persistence-layout)
+11. [LLM library (`llm.mjs`) vs inference route](#11-llm-library-llmmjs-vs-inference-route)
+12. [Integrating external platforms](#12-integrating-external-platforms)
+13. [Observability](#13-observability)
+14. [v1 scope and boundaries](#14-v1-scope-and-boundaries)
 
 ---
 
-## 1. Terminology
+## 1. Purpose and scope
 
-| Term | Meaning |
-|------|---------|
-| **Kernel** | Shared runtime: HTTP entry [`dashboard/server.mjs`](../../dashboard/server.mjs), allowlisted [`dashboard/lib/*`](../architecture/meimei-repo-boundaries.v1.md) modules, env store, jobs, inference route, static design system. **Not** a separate npm package today. |
-| **Module (miniapp / tool)** | One row in [`functions/registry.v1.json`](../../functions/registry.v1.json) with implementation in [`apps/<id>/index.mjs`](../../apps). |
-| **Platform UI** | Home, admin, catalog HTML — often `render*` in server or [`dashboard/lib/platform-pages/`](../../dashboard/lib/platform-pages). |
-| **Integration** | External products (e.g. Checklist web) via [`integrations/*`](../../integrations) and bridge modules. |
+This handbook explains **how the kernel behaves** and **which contracts are stable** for reuse. It does not replace the per-function markdown in [`functions/`](../../functions) or the compliance audit’s full product surface map.
 
-**Mental model:** Kernel **routes and delegates**; modules **own product rules**.
+**Stable integration seams (recommended)**
 
----
+- `POST /api/meimei/route` — OpenAI Chat Completions–shaped request/response; see §8.  
+- Job spooler patterns — enqueue and observe via SQLite-backed APIs documented in [adapter-contract.v1.md](../architecture/adapter-contract.v1.md) and the audit §4.2–4.3.
 
-## 2. Boot and process model
+**Unstable or product-coupled**
 
-1. **Entry:** `npm start` / `npm run dashboard` → `node dashboard/server.mjs`.
-2. **Repo root:** Derived from module paths (`import.meta.url`) and runtime helpers from [`dashboard/lib/runtime.mjs`](../../dashboard/lib/runtime.mjs).
-3. **Registry:** [`loadRegistrySync()`](../../dashboard/lib/miniapp-registry.mjs) reads `functions/registry.v1.json` at startup.
-4. **Job worker:** [`startMeimeiJobWorker`](../../dashboard/lib/meimei-job-worker.mjs) runs **in the same process** as the HTTP server unless `MEIMEI_JOB_WORKER=0`.
-
-There is no mandatory second process for inference; scale-out patterns are **not** part of v1 kernel docs.
+- Large sections of [`dashboard/server.mjs`](../../dashboard/server.mjs) HTML generators (being extracted per kernel completion plan).  
+- Individual miniapp business rules in [`apps/*`](../../apps).
 
 ---
 
-## 3. Configuration surface
+## 2. Terminology
 
-| Layer | Location | Role |
-|-------|----------|------|
-| Dashboard surface | [`dashboard/lib/dashboard-surface.mjs`](../../dashboard/lib/dashboard-surface.mjs) + [`config/dashboard-surface.v1.json`](../../config/dashboard-surface.v1.json) | Listen target, path prefixes, health route, knowmore pointers |
-| Listen normalization | [`config/dashboard-listen-normalize.mjs`](../../config/dashboard-listen-normalize.mjs) | Bind address normalization |
-| Page layout | [`dashboard/lib/page-layout.mjs`](../../dashboard/lib/page-layout.mjs) | Merged layout doc, flow HTML, miniapp page keys |
-| Operator env | [`dashboard/lib/meimei-env-store.mjs`](../../dashboard/lib/meimei-env-store.mjs) | Persisted JSON `data/meimei-environment.v1.json`, catalog `config/meimei-env-catalog.v1.json` |
-| Inference | Env `OLLAMA_HOST`, `MEIMEI_INFERENCE_MAX_CONTEXT` | Ollama base URL, context token guard |
-
----
-
-## 4. HTTP routing model
-
-All traffic hits **one** `http.createServer` callback in [`dashboard/server.mjs`](../../dashboard/server.mjs) (~L3581+). Processing order is **sequential if-statements** (not a framework router).
-
-**Typical buckets (conceptual):**
-
-1. **Liveness** — `GET` health JSON (fast).
-2. **Monitor** — `GET /api/meimei/monitor/feed` — job lineage for System monitor UI.
-3. **Inference** — `POST /api/meimei/route` — OpenAI-shaped body → [`handleMeimeiInferenceRoute`](../../dashboard/lib/inference-route.mjs).
-4. **Checklist** — Proxy / bridge paths (integration).
-5. **Static** — Files under [`public/`](../../public) with path traversal guard.
-6. **JSON APIs** — `/api/*` including LLM cache, env store, miniapp `POST` delegates.
-7. **HTML** — `render*` functions + layout merge for dashboard pages.
-
-**Path normalization:** `stripDashboardMountPrefix` supports reverse-proxy mounted paths; see server implementation for the exact prefix rules.
-
-**Adding a route:** Prefer a **new module** (`apps/*` or `dashboard/lib/*`) and a **short** branch in `server.mjs` that only parses the body and delegates — per [meimei-repo-boundaries.v1.md §4](../architecture/meimei-repo-boundaries.v1.md).
+| Term | Definition |
+|------|------------|
+| **Kernel** | HTTP entry (`server.mjs`), allowlisted `dashboard/lib/*` modules, registry projection, env store, job spooler + inference worker, static design system delivery — as delimited in [meimei-repo-boundaries.v1.md](../architecture/meimei-repo-boundaries.v1.md). |
+| **Miniapp / tool** | Registry row in `functions/registry.v1.json` with POST handler typically in `apps/<id>/index.mjs`. |
+| **Platform UI** | Operator-facing HTML: home, admin, catalogs — implemented via `render*` chains and `platform-pages/*`. |
+| **Integration** | External products bridged via `integrations/*` and checklist modules. |
 
 ---
 
-## 5. Registry and function contracts
+## 3. Architectural invariants
 
-### 5.1 Machine registry
-
-- **File:** [`functions/registry.v1.json`](../../functions/registry.v1.json)
-- **Validation:** `npm run registry:validate` → [`scripts/validate-function-registry.mjs`](../../scripts/validate-function-registry.mjs)
-
-Each entry includes stable **`id`**, **`route`** (contract path like `/dashboard/<issue>/<slug>`), **`apiPath`**, display metadata, and category (`apps` vs `tools`).
-
-### 5.2 Code resolution
-
-[`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs):
-
-- `parseContractRoute` — validates contract route shape.
-- `serverApiPath` — strips `/dashboard` prefix for the local server’s `/api/...` paths.
-- `buildMiniappIssueRoute` / `buildDashboardCatalog` — UI cards and path maps.
-
-### 5.3 Human specs
-
-Each miniapp should have a matching [`functions/<id>.md`](../../functions) describing actions, env, and transport (R8/R4 patterns).
-
-### 5.4 Cross-app imports
-
-**Forbidden:** `apps/foo` importing `apps/bar`. Enforced by `npm run boundary:check`. Use **queue / bus** patterns from adapter and inter-app docs when needed.
+1. **Layering:** `dashboard/lib` (allowlisted core) does not import one `apps/*` module from another; cross-app work uses queue/bus contracts.  
+2. **Inference contract:** Versioned HTTP+JSON at `/api/meimei/route`; behavior matches [inference-route.v1.md](../api/inference-route.v1.md).  
+3. **Job isolation:** The default in-process worker claims **`inference_v1`** jobs only; **`app_task`** rows are processed by designated adapters.  
+4. **Registry SSOT:** Catalog strings and API paths derive from `registry.v1.json` through `miniapp-registry.mjs`.  
+5. **Platform pages:** Modules under `platform-pages/` do not import `apps/*`.
 
 ---
 
-## 6. Inference API (`POST /api/meimei/route`)
+## 4. Boot and process model
 
-**Canonical spec:** [inference-route.v1.md](../api/inference-route.v1.md).
+| Step | Mechanism |
+|------|-----------|
+| Process start | `npm start` / `npm run dashboard` → `node dashboard/server.mjs` |
+| Repository root | Resolved via `import.meta.url` and [`runtime.mjs`](../../dashboard/lib/runtime.mjs) helpers |
+| Registry load | Synchronous read of [`functions/registry.v1.json`](../../functions/registry.v1.json) via [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) |
+| Job worker | [`startMeimeiJobWorker`](../../dashboard/lib/meimei-job-worker.mjs) runs in the **same Node process** as HTTP unless `MEIMEI_JOB_WORKER=0` |
 
-### 6.1 Minimal mental model
-
-- **Request:** OpenAI Chat Completions JSON: `model`, `messages[]` with string `content`, optional `temperature`, `max_tokens`.
-- **Extensions:** `meimei.traceId`, `meimei.taskCategory` (with `model: "router-auto"`), `meimei.localOnly` (must be true or omitted in v1).
-- **Response:** `choices`, `usage`, `meimei_meta` (`backend_used`, `latency_ms`, `trace_id`, `ollama_model_requested`).
-
-### 6.2 Trace ID
-
-Server resolves trace id in order: header **`x-meimei-trace-id`** → `body.meimei.traceId` → UUID. Logs: `[meimei/route][<traceId>]`.
-
-### 6.3 Error codes (selected)
-
-| Status | Meaning |
-|--------|---------|
-| 400 | Malformed body / messages |
-| 413 | Estimated context exceeds limit |
-| 501 | `stream: true` or `localOnly: false` (not implemented v1) |
-| 502 / 503 | Ollama error or unreachable |
-
-### 6.4 `router-auto`
-
-[`inference-route.mjs`](../../dashboard/lib/inference-route.mjs) maps `meimei.taskCategory` to concrete Ollama tags (e.g. `summarize` → `qwen3.5:0.8b`, `reason` → `llama3:latest`). This is **deterministic**, not an LLM router — align product copy with [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
+There is no separate mandatory worker binary for inference in v1; horizontal scaling is an **external** deployment concern.
 
 ---
 
-## 7. Job queue and worker
+## 5. Configuration
+
+| Layer | Artifacts |
+|-------|-----------|
+| Listen / surface | [`dashboard-surface.mjs`](../../dashboard/lib/dashboard-surface.mjs), [`config/dashboard-surface.v1.json`](../../config/dashboard-surface.v1.json) |
+| Bind normalization | [`config/dashboard-listen-normalize.mjs`](../../config/dashboard-listen-normalize.mjs) |
+| Layout | [`page-layout.mjs`](../../dashboard/lib/page-layout.mjs) |
+| Operator secrets/config | [`meimei-env-store.mjs`](../../dashboard/lib/meimei-env-store.mjs) → `data/meimei-environment.v1.json`; catalog `config/meimei-env-catalog.v1.json` |
+| Inference | `OLLAMA_HOST`, `MEIMEI_INFERENCE_MAX_CONTEXT` |
+
+---
+
+## 6. HTTP entry and dispatch
+
+**Entry:** `http.createServer` begins near **line 1913** in [`dashboard/server.mjs`](../../dashboard/server.mjs) (~2924 lines as of package **0.8.9** / K1c); **`server.listen`** near **line 2920**. Line numbers drift with edits — use `grep -n 'createServer\|server.listen'` after large merges.
+
+**Dispatch order (summary)** — see audit §5 for rationale:
+
+1. Health  
+2. `GET /api/meimei/monitor/feed` (≈ L2847)  
+3. `POST /api/meimei/route` (≈ L2874)  
+4. Checklist integration paths  
+5. Static assets under `public/`  
+6. JSON APIs and `apps/*` POST delegation  
+7. HTML `render*` responses  
+
+**Adding behavior:** introduce a module under `apps/*` or allowlisted `dashboard/lib/*`, then add a **short** branch in `server.mjs` that parses input and delegates — per boundaries §4.
+
+---
+
+## 7. Registry
+
+- **Machine-readable:** [`functions/registry.v1.json`](../../functions/registry.v1.json)  
+- **Validation:** `npm run registry:validate`  
+- **Projection:** [`miniapp-registry.mjs`](../../dashboard/lib/miniapp-registry.mjs) — `parseContractRoute`, `serverApiPath`, catalog builders  
+- **Human contracts:** [`functions/<id>.md`](../../functions)
+
+---
+
+## 8. Inference API
+
+**Specification:** [inference-route.v1.md](../api/inference-route.v1.md).
+
+| Aspect | Detail |
+|--------|--------|
+| Endpoint | `POST /api/meimei/route` |
+| Runner | Ollama OpenAI-compatible chat completions |
+| Trace | Prefer header `x-meimei-trace-id`; else `body.meimei.traceId`; else UUID |
+| Model | Concrete Ollama tag or `router-auto` + `meimei.taskCategory` (deterministic map in `inference-route.mjs`) |
+| Errors | **400** validation, **413** context estimate, **501** unsupported stream/non-local, **502/503** runner |
+
+`router-auto` is a **policy map**, not a neural routing step — document UX accordingly when exposing to end users ([ai-runtime-audit.md](../compliance/ai-runtime-audit.md)).
+
+---
+
+## 9. Job queue and worker
 
 **Contract:** [adapter-contract.v1.md](../architecture/adapter-contract.v1.md).
 
-### 7.1 Storage
+| Component | Role |
+|-----------|------|
+| [`createMeimeiJobQueue`](../../dashboard/lib/meimei-job-queue.mjs) | SQLite spooler API (`enqueueIngress`, claims, monitor listing, party-scoped reads) |
+| [`startMeimeiJobWorker`](../../dashboard/lib/meimei-job-worker.mjs) | Polls inference jobs, invokes inference route, retries, Claim Check spill, optional correlation enqueue |
+| Env | `MEIMEI_JOB_POLL_MS`, `MEIMEI_JOB_MAX_FAILURES`, `MEIMEI_JOB_WORKER` |
 
-- Path: `data/meimei/meimei-jobs.sqlite`
-- Engine: `node:sqlite` with WAL and `busy_timeout`.
-
-### 7.2 Row shape (conceptual)
-
-- **`payload_kind`:** `inference_v1` (worker-handled) or `app_task` (sovereign inbox processors).
-- **`status`:** `pending` → `processing` → `completed` | `failed`.
-- **`trace_id`:** Correlation for monitor feed and Claim Check artifacts.
-
-### 7.3 Worker behavior
-
-[`meimei-job-worker.mjs`](../../dashboard/lib/meimei-job-worker.mjs):
-
-1. Poll `claimNextInferencePending()` (inference-only queue).
-2. Parse JSON payload; call `handleMeimeiInferenceRoute`.
-3. On success, store result JSON; on failure, retry until `MEIMEI_JOB_MAX_FAILURES`.
-4. **Correlation:** Optional enqueue of `app_task` reply (`meimei_correlation` in body) for inter-app flows.
-5. **Large outputs:** Spill to `data/meimei/artifacts/<trace_id>/digest.md` when over 64 KiB (Claim Check).
-
-### 7.4 Demos
-
-- `npm run jobs:demo-enqueue`
-- `npm run jobs:demo-file-drop`
+Full method list and semantics: [kernel audit §4.2–4.4](../architecture/meimei-kernel-code-audit.v1.md#42-job-queue--public-surface-createmeimeijobqueue).
 
 ---
 
-## 8. LLM primitives (`llm.mjs`)
+## 10. Persistence layout
 
-**File:** [`dashboard/lib/llm.mjs`](../../dashboard/lib/llm.mjs).
+| Path | Content |
+|------|---------|
+| `data/meimei/meimei-jobs.sqlite` | Job spooler (WAL) |
+| `data/meimei/artifacts/<trace>/` | Large assistant payloads (Claim Check) |
+| `data/meimei-environment.v1.json` | Operator env store |
 
-| Export (representative) | Role |
-|-------------------------|------|
-| `callOllama` | Raw chat against Ollama with retries/timeouts |
-| `callOllamaJson` | Structured JSON extraction (handles `format: json`, `thinking` quirks) |
-| `parseJsonResponse` / `extractFirstJsonObject` | Defensive JSON extraction from model text |
-| `checkOllamaHealth` / `listModels` | Ops |
-| Routing config helpers | Brain/muscle channel config (used by dashboard APIs) |
-| Cache helpers | LRU prompt cache |
-
-**When to use what:**
-
-- **New adapter / external integration** — Prefer **`POST /api/meimei/route`** so clients speak one OpenAI-shaped contract.
-- **In-repo miniapp** — Migrating from raw `llm.mjs` to inference route is encouraged per kernel completion plan Phase K3 / platform roadmap R2.
-
-**OpenClaw:** Agent turns via `scripts/oc-agent` use a **different** stack; they are **not** replaced by `inference-route` v1. See [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
+Protect these paths with host-level permissions and backup policy.
 
 ---
 
-## 9. Integrating another platform
+## 11. LLM library (`llm.mjs`) vs inference route
 
-### 9.1 Mode A — HTTP consumer (recommended)
+[`dashboard/lib/llm.mjs`](../../dashboard/lib/llm.mjs) provides direct Ollama access, JSON extraction robustness, optional prompt cache, and routing-configuration helpers used across the dashboard.
 
-Treat the dashboard as a **local service**:
+| Use case | Recommendation |
+|----------|------------------|
+| External system on another stack calling MeiMei | **`POST /api/meimei/route`** only |
+| New in-repo adapter code | Prefer inference route; align with kernel completion plan K3 |
+| Legacy miniapp paths | May still call `llm.mjs` until migrated |
 
-1. Ensure Ollama is reachable from the host running MeiMei.
-2. Call **`POST /api/meimei/route`** with the v1 JSON contract.
-3. Propagate **`x-meimei-trace-id`** for supportability.
-4. Terminate TLS and authenticate at your boundary — the kernel does not define a public multi-tenant auth model.
-
-**Pros:** Stable contract, no need to vendor JavaScript. **Cons:** Network hop, same-machine or trusted network typical.
-
-### 9.2 Mode B — Code reuse / vendoring
-
-If you copy kernel code into another repo:
-
-1. **Take:** `inference-route.mjs` + minimal deps, or full allowlisted subset per your lawyer/license.
-2. **Take:** Job queue only if you also ship SQLite schema migrations and worker loop.
-3. **Do not assume:** `server.mjs` — it is product-shaped and large.
-4. **Replace:** `repoRoot` resolution, paths under `data/`, and any `apps/*` you do not want.
-5. **Align:** Node version, ESM, and `fetch` availability.
-
-Document your fork’s **diff** from upstream contracts in your own changelog.
+**OpenClaw** agent execution (`scripts/oc-agent`, gateway) is **orthogonal** to the inference route contract — see [ai-runtime-audit.md](../compliance/ai-runtime-audit.md).
 
 ---
 
-## 10. Debugging and observability
+## 12. Integrating external platforms
 
-| Tool | Use |
-|------|-----|
-| Server logs | `[meimei/route][traceId]` and job worker `[meimei/jobs]` lines |
-| `GET /api/meimei/monitor/feed` | Recent jobs; `trace_id` query for chronological slice |
-| [`dashboard/lib/meimei-monitor-feed.mjs`](../../dashboard/lib/meimei-monitor-feed.mjs) | Row formatting for UI |
-| `./scripts/oc-readiness` | OpenClaw / gateway expectations |
-| `npm run dashboard:probe` | Local dashboard probe |
+### Mode A — HTTP client (preferred)
+
+1. Co-locate or securely network to the host running MeiMei and Ollama.  
+2. Call `POST /api/meimei/route` with the v1 JSON shape.  
+3. Forward `x-meimei-trace-id` for cross-system correlation.  
+4. Apply **your** TLS, authentication, and rate limits at the edge; the v1 kernel contract does not define multi-tenant auth.
+
+### Mode B — Source vendoring
+
+1. Copy only the minimal allowlisted modules (e.g. `inference-route.mjs`) and honor their license.  
+2. Re-implement or inject `repoRoot`, storage paths, and process boundaries.  
+3. If copying the job queue, ship schema migrations and worker semantics unchanged or fork under a new contract version.  
+4. Record divergences from upstream in your own architecture decision records.
 
 ---
 
-## 11. Known limitations and honesty
+## 13. Observability
 
-1. **Inference v1** is **blocking** only — no SSE (`stream: true` → 501).
-2. **No cloud fallback** in v1 — `meimei.localOnly: false` → 501.
-3. **Product surfaces** may use **OpenClaw**, **rules**, or **sample data** — the kernel’s inference route does **not** make those uniform. Read [ai-runtime-audit.md](../compliance/ai-runtime-audit.md) before external messaging.
-4. **`server.mjs` size** — extraction ongoing; use [`meimei-kernel-code-audit.v1.md`](../architecture/meimei-kernel-code-audit.v1.md) for current debt.
-5. **Future packaging** — `@meimei/kernel` workspace is **optional future** per kernel completion plan; handbook describes **current** layout.
+| Mechanism | Use |
+|-----------|-----|
+| Structured log lines | `[meimei/route][<traceId>]`, `[meimei/jobs][<traceId>]` |
+| `GET /api/meimei/monitor/feed` | Operator timeline; `trace_id` query for chronological trace |
+| [`meimei-monitor-feed.mjs`](../../dashboard/lib/meimei-monitor-feed.mjs) | Row formatting for UI and API consumers |
+| `./scripts/oc-readiness` | OpenClaw / gateway readiness (adjacent to agent features) |
+| `npm run dashboard:probe` | Local dashboard reachability |
+
+---
+
+## 14. v1 scope and boundaries
+
+| Item | v1 posture |
+|------|------------|
+| Streaming SSE | Not implemented (`stream: true` → **501**) |
+| Non-local LLM backends via inference route | Not implemented (`localOnly: false` → **501**) |
+| Product-wide uniform LLM backend | Not claimed — multiple backends coexist ([ai-runtime-audit.md](../compliance/ai-runtime-audit.md)) |
+| Packaged `@meimei/kernel` npm module | Future option per kernel completion plan §4 |
+
+The kernel’s strength is **explicit contracts** (inference + jobs) and **enforced modularity** (boundaries CI), not the absence of further refactoring in `server.mjs`.
 
 ---
 
 ## Revision log
 
-| Date | Notes |
-|------|-------|
-| 2026-03-30 | Initial v1 handbook. |
+| Revision | Date | Summary |
+|----------|------|---------|
+| v1.0 | 2026-03-30 | Initial handbook sections. |
+| v1.1 | 2026-03-30 | Aligned with audit v1.1: invariants, persistence, corrected HTTP anchors, professional scope section, integration modes clarified. |

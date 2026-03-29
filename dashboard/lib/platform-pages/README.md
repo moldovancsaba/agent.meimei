@@ -8,5 +8,6 @@ Large **GET** HTML builders for dashboard catalog surfaces. **`dashboard/server.
 - **`reference-app-pages.mjs`** — Reference app 1 & 2 (queue + inter-app bus demo GET shells).
 - **`ops-tool-pages.mjs`** — Inbox, Memory, Mission Control (main + settings GET shells).
 - **`gtm-pages.mjs`** — Lead enrichment, Lead outreach (main + settings GET shells).
+- **`reader-pages.mjs`** — What next (main + settings), Explain it (URL summary + settings), Daily briefing.
 
 Rules: **no** imports from `apps/*`; shared helpers come from `dashboard/lib/*`. See [`meimei-repo-boundaries.v1.md`](../../docs/architecture/meimei-repo-boundaries.v1.md) §3, §6.

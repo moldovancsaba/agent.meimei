@@ -72,19 +72,20 @@ Suggested **file batches** (names indicative):
 | **K1b** ✅ **`0.8.8`** | `platform-pages/gtm-pages.mjs` | `renderLeadEnrichmentPage`, `renderLeadEnrichmentSettingsPage`, `renderLeadOutreachPage`, `renderLeadOutreachSettingsPage` — **delivered** (`gtmPageDeps()` in `server.mjs`) |
 | **K1c** ✅ **`0.8.9`** | `platform-pages/reader-pages.mjs` | `renderWhatNextPage`, `renderWhatNextSettingsPage`, `renderUrlSummaryPage`, `renderDailyBriefingPage`, `renderExplainItSettingsPage` — **delivered** (`readerPageDeps()` in `server.mjs`) |
 | **K1d** ✅ **`0.8.10`** | `platform-pages/routing-settings-pages.mjs` | `renderAIRoutingSettingsPage`, `renderApiAccessSettingsPage` (tool settings only; main routing/adapter pages already in `tool-surface-pages.mjs`) — **delivered** (`routingSettingsPageDeps()` in `server.mjs`) |
-| **K1e** ✅ **`0.8.11`** | `platform-pages/home-admin-pages.mjs` | `renderAdminPage`, `renderAdminLayoutEditorSection`, **`renderPage`** (home shell) — **delivered** (`homeAdminPageDeps()` in `server.mjs`; **`renderGlobalNav`** / **`renderFlashcard`** still in `server.mjs` for catalog — K2) |
+| **K1e** ✅ **`0.8.11`** | `platform-pages/home-admin-pages.mjs` | `renderAdminPage`, `renderAdminLayoutEditorSection`, **`renderPage`** (home shell) — **delivered** (`homeAdminPageDeps()` in `server.mjs`; chrome in **K2**). |
+| **K2** ✅ **`0.8.12`** | `platform-pages/chrome.mjs` | **`renderList`**, **`renderFlashcard`**, **`renderGlobalNav`**, **`renderGlobalNavScript`** — **delivered** (`dashboardChromeDeps()` + thin wrappers in `server.mjs`; **`catalogPageUiDeps()`** / **`homeAdminPageDeps()`** unchanged). |
 
 **Per batch:** mirror the pattern used for **`tool-surface-pages.mjs`**: exported `(layoutDoc, d)` functions; **protect** `${d.*}` template interpolations from naive `d.escapeHtml` rewrites in client `<script>` blocks.
 
 **Exit K1:** `grep '^function render' dashboard/server.mjs` shows only **wrappers** + **shared helpers** you explicitly keep (see K2).
 
-### Phase K2 — **Shared dashboard chrome** (optional consolidation)
+### Phase K2 — **Shared dashboard chrome** ✅ **`0.8.12`**
 
 **Objective:** Decide whether **`renderList`**, **`renderFlashcard`**, **`renderGlobalNav`**, **`renderGlobalNavScript`** stay in `server.mjs` or move to e.g. **`dashboard/lib/platform-pages/chrome.mjs`** (or `dashboard/lib/dashboard-chrome.mjs` on allowlist). (**`renderPage` / `renderAdminPage`** are thin wrappers over **`home-admin-pages.mjs`** as of K1e.)
 
 **Recommendation:** Move shared nav + catalog helpers to **one module** so `server.mjs` trends toward **imports + createServer + route switch** + thin `render*` delegates only.
 
-**Exit K2:** Single file (or two: chrome + server) owns global nav + list/flashcard; **`catalogPageUiDeps()`** passes those into **`catalog-pages.mjs`**; boundaries §3 allowlist updated.
+**Exit K2:** ✅ **`chrome.mjs`** owns global nav + list/flashcard + nav script; **`catalogPageUiDeps()`** / **`homeAdminPageDeps()`** pass the same thin delegates into **`catalog-pages.mjs`** / **`home-admin-pages.mjs`**; boundaries §3 allowlist updated.
 
 ### Phase K3 — **Phase C** (LLM + queue alignment) — *modules stay modules*
 

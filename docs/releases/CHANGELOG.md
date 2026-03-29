@@ -1,8 +1,14 @@
 # CHANGELOG
 
+## 2026-03-30 — Kernel K2: Shared dashboard chrome (`0.8.12`)
+
+- **`dashboard/lib/platform-pages/chrome.mjs`** — **`renderList`**, **`renderFlashcard`**, **`renderGlobalNav`**, **`renderGlobalNavScript`** moved out of `server.mjs`; **`dashboardChromeDeps()`** supplies routes/logos/`escapeHtml`; thin wrappers preserve **`catalogPageUiDeps()`** / **`homeAdminPageDeps()`** call sites.
+- **Docs:** `meimei-repo-boundaries.v1.md` allowlist; **`meimei-kernel-completion-plan.v1.md`** K2 delivered; `platform-pages/README.md`; kernel code audit §3.1/§3.2/§10/§11/§13; **`meimei-kernel-handbook.v1.md`** HTTP line anchors.
+- **Version:** package **0.8.12**; checklist + platform modules **`@aligned package agent-meimei 0.8.12`**.
+
 ## 2026-03-30 — Kernel K1e: Home + admin GET shells (`0.8.11`)
 
-- **`dashboard/lib/platform-pages/home-admin-pages.mjs`** — **`renderPage`** (home), **`renderAdminPage`**, **`renderAdminLayoutEditorSection`** moved out of `server.mjs` (`homeAdminPageDeps()` — injects **`renderGlobalNav`** / **`renderGlobalNavScript`** from server; **`renderFlashcard`** stays in `server.mjs` for catalog per K2).
+- **`dashboard/lib/platform-pages/home-admin-pages.mjs`** — **`renderPage`** (home), **`renderAdminPage`**, **`renderAdminLayoutEditorSection`** moved out of `server.mjs` (`homeAdminPageDeps()` — injects nav helpers from server; shared chrome consolidated in **K2** / **`0.8.12`**).
 - **Docs:** `meimei-repo-boundaries.v1.md` allowlist; **`miniapp-platform-audit.v1.md`** admin row; **`meimei-kernel-completion-plan.v1.md`** K1e delivered; `platform-pages/README.md`, app development guide, kernel code audit metrics.
 - **Version:** package **0.8.11**; checklist + platform modules **`@aligned package agent-meimei 0.8.11`**.
 

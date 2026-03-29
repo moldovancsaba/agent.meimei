@@ -93,13 +93,13 @@ There is no separate mandatory worker binary for inference in v1; horizontal sca
 
 ## 6. HTTP entry and dispatch
 
-**Entry:** `http.createServer` begins near **line 1233** in [`dashboard/server.mjs`](../../dashboard/server.mjs) (~2244 lines as of package **0.8.11** / K1e); **`server.listen`** near **line 2240**. Line numbers drift with edits — use `grep -n 'createServer\|server.listen'` after large merges.
+**Entry:** `http.createServer` begins near **line 1170** in [`dashboard/server.mjs`](../../dashboard/server.mjs) (~2181 lines as of package **0.8.12** / K2); **`server.listen`** near **line 2177**. Line numbers drift with edits — use `grep -n 'createServer\|server.listen'` after large merges.
 
 **Dispatch order (summary)** — see audit §5 for rationale:
 
 1. Health  
-2. `GET /api/meimei/monitor/feed` (≈ L2847)  
-3. `POST /api/meimei/route` (≈ L2874)  
+2. `GET /api/meimei/monitor/feed` (≈ L1188)  
+3. `POST /api/meimei/route` (≈ L1215)  
 4. Checklist integration paths  
 5. Static assets under `public/`  
 6. JSON APIs and `apps/*` POST delegation  

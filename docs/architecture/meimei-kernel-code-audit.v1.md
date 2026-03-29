@@ -109,18 +109,18 @@ Solid lines: kernel inference and job data path. Dotted: product features that i
 
 ### 3.1 HTTP entry — verified anchors (snapshot)
 
-Measurements: **`wc -l dashboard/server.mjs` → 2244 lines.**
+Measurements: **`wc -l dashboard/server.mjs` → 2181 lines** (post-**K2** **`0.8.12`** snapshot).
 
 | Symbol / constant | Approx. line | Role |
 |-------------------|-------------|------|
-| `meimeiInferenceRoute` | 286 | Path constant `/api/meimei/route` |
-| `meimeiMonitorFeedApiRoute` | 288 | Path constant `/api/meimei/monitor/feed` |
-| `http.createServer` | 1233 | Request dispatcher start |
-| `GET` monitor feed branch | 1251 | Delegates to `meimeiJobQueueRead.listMonitorFeed` |
-| `POST` inference branch | 1278 | Trace id resolution, `handleMeimeiInferenceRoute` |
-| `server.listen` | 2240 | Bind after surface normalization |
+| `meimeiInferenceRoute` | 292 | Path constant `/api/meimei/route` |
+| `meimeiMonitorFeedApiRoute` | 294 | Path constant `/api/meimei/monitor/feed` |
+| `http.createServer` | 1170 | Request dispatcher start |
+| `GET` monitor feed branch | 1188 | Delegates to `meimeiJobQueueRead.listMonitorFeed` |
+| `POST` inference branch | 1215 | Trace id resolution, `handleMeimeiInferenceRoute` |
+| `server.listen` | 2177 | Bind after surface normalization |
 
-**`render*` functions:** 34 declarations (`grep '^function render' dashboard/server.mjs`). Product GET HTML delegates to `platform-pages/*` for **K1a–K1e** batches; **`renderList`**, **`renderFlashcard`**, **`renderGlobalNav`**, **`renderGlobalNavScript`** remain in `server.mjs` (catalog + nav — **K2** chrome extraction).
+**`render*` functions:** 33 declarations (`grep '^function render' dashboard/server.mjs`). Product GET HTML delegates to `platform-pages/*` for **K1a–K1e**; shared nav / flashcard / list live in **`platform-pages/chrome.mjs`** (**K2**); `server.mjs` keeps thin **`renderList` / `renderFlashcard` / `renderGlobalNav`** wrappers plus **`renderGlobalNavScript`** import.
 
 ### 3.2 Allowlisted `dashboard/lib/*` modules (boundaries §3)
 
@@ -134,7 +134,7 @@ The following table maps **each allowlisted area** to its primary responsibility
 | Policy / channels | `api-channel-adapter.mjs`, `external-channel-policy-engine.mjs`, `imessage-adapter.mjs`, `reliability-telemetry.mjs`, `audit-trail.mjs` | API channel routing shell, policy, iMessage bridge hooks, telemetry, audit |
 | Legacy inference | `llm.mjs` | Direct Ollama client, JSON robustness, routing config, prompt cache — migration target for hot paths per K3 |
 | Checklist integration | `checklist-api-shell.mjs`, `checklist-local-integration.mjs`, `checklist-bridge-http.mjs`, `checklist-bridge.mjs`, `checklist-node/*` | Shell POST, local proxy, bridge HTTP, Node engine surface |
-| Platform pages | `platform-pages/catalog-pages.mjs`, `system-monitor-page.mjs`, `tool-surface-pages.mjs`, `reference-app-pages.mjs`, `ops-tool-pages.mjs`, `gtm-pages.mjs`, `reader-pages.mjs`, `routing-settings-pages.mjs`, `home-admin-pages.mjs` | Server-side HTML for catalog, monitor, tool UIs, reference demos, ops tools, GTM apps, reader surfaces, routing/API **settings**, home + admin |
+| Platform pages | `platform-pages/chrome.mjs`, `catalog-pages.mjs`, `system-monitor-page.mjs`, `tool-surface-pages.mjs`, `reference-app-pages.mjs`, `ops-tool-pages.mjs`, `gtm-pages.mjs`, `reader-pages.mjs`, `routing-settings-pages.mjs`, `home-admin-pages.mjs` | Shared chrome (**K2**); catalog, monitor, tool UIs, reference demos, ops tools, GTM apps, reader surfaces, routing/API **settings**, home + admin |
 
 ### 3.3 `dashboard/lib/*` present but **not** on the “pure core” allowlist
 
@@ -271,8 +271,8 @@ This separation is not a weakness of the kernel; it is **accurate system documen
 
 | Phase | Objective | Audit assessment |
 |-------|-----------|------------------|
-| **K1** | Extract remaining GET/settings HTML from `server.mjs` | **K1 complete** for planned batches (**K1a–K1e**); **`renderList` / flashcard / global nav** remain for catalog (**K2**). |
-| **K2** | Consolidate shared chrome (nav, list/flashcard) | **Open** — home/admin HTML is in **`home-admin-pages.mjs`**; **`renderGlobalNav`**, **`renderList`**, **`renderFlashcard`** still in `server.mjs` (catalog). |
+| **K1** | Extract remaining GET/settings HTML from `server.mjs` | **K1 complete** for planned batches (**K1a–K1e**). |
+| **K2** | Consolidate shared chrome (nav, list/flashcard) | **Delivered** (**`0.8.12`**) — **`platform-pages/chrome.mjs`**; thin wrappers + **`dashboardChromeDeps()`** in `server.mjs`. |
 | **K3** | Prefer inference route / jobs for LLM alignment (R1/R2) | **Ongoing** — `llm.mjs` remains in active use alongside migration. |
 | **K4** | Trace propagation polish, smoke gates | **Per roadmap** — monitor and correlation foundations exist; CI smoke policies evolve per roadmap. |
 
@@ -282,7 +282,7 @@ This separation is not a weakness of the kernel; it is **accurate system documen
 
 ### 11.1 Measurement method
 
-- **Population:** all `dashboard/lib/**/*.mjs` files (**49** files on 2026-03-30).  
+- **Population:** all `dashboard/lib/**/*.mjs` files (**53** files on 2026-03-30 post-**K2**).  
 - **File-top module banner:** first non-whitespace character begins `/**`.  
 - **`@param` prevalence:** file contains at least one `@param`.  
 - **Limitation:** These metrics do not measure prose quality or architectural accuracy—only structural JSDoc presence.
@@ -291,7 +291,7 @@ This separation is not a weakness of the kernel; it is **accurate system documen
 
 | Scope | Files | File-top `/**` | Files with `@param` |
 |-------|------:|---------------:|--------------------:|
-| `dashboard/lib/**/*.mjs` | 49 | 31 (**63.3%**) | 25 (**51.0%**) |
+| `dashboard/lib/**/*.mjs` | 53 | 35 (**66.0%**) | 26 (**49.1%**) |
 | `apps/**/*.mjs` | 12 | 12 (**100%**) | 1 (**8.3%**) |
 | `dashboard/server.mjs` | 1 | 0 | 0 |
 
@@ -332,3 +332,4 @@ This audit is **complete** relative to its **Document control** scope: kernel bo
 | v1.2 | 2026-03-30 | K1c reader extraction: `server.mjs` **~2924** lines; HTTP anchor refresh; allowlist + K1 table note **reader-pages.mjs**; repository baseline **0.8.9**. |
 | v1.3 | 2026-03-30 | K1d routing settings: `server.mjs` **~2680** lines; HTTP anchor refresh; allowlist + **routing-settings-pages.mjs**; repository baseline **0.8.10**. |
 | v1.4 | 2026-03-30 | K1e home/admin: `server.mjs` **~2244** lines; **34** `render*`; HTTP anchor refresh; allowlist + **home-admin-pages.mjs**; K1 batch table complete; repository baseline **0.8.11**. |
+| v1.5 | 2026-03-30 | K2 chrome: `server.mjs` **~2181** lines; **33** `render*`; **`platform-pages/chrome.mjs`**; HTTP anchor refresh; allowlist + platform table; §10 K2 **delivered**; commentary population **53** `dashboard/lib` `.mjs`; repository baseline **0.8.12**. |

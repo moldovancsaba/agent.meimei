@@ -95,6 +95,12 @@ import {
   renderToolsPage as renderToolsPageCatalog,
   renderKnowmorePage as renderKnowmorePageCatalog
 } from "./lib/platform-pages/catalog-pages.mjs";
+import {
+  renderList as renderListChrome,
+  renderFlashcard as renderFlashcardChrome,
+  renderGlobalNav as renderGlobalNavChrome,
+  renderGlobalNavScript
+} from "./lib/platform-pages/chrome.mjs";
 import { renderSystemMonitorPage as renderSystemMonitorPagePlatform } from "./lib/platform-pages/system-monitor-page.mjs";
 import {
   renderRoutingPage as renderRoutingPageTool,
@@ -458,12 +464,6 @@ function parseMaybeJson(text) {
   return null;
 }
 
-function renderList(items) {
-  const list = Array.isArray(items) ? items.map((item) => String(item).trim()).filter(Boolean) : [];
-  if (!list.length) return "<li class=\"muted\">None</li>";
-  return list.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-}
-
 function summarizeSourceText({ url, title, sourceType, contentText, contextNote, operatorBrainContext = "" }) {
   const sourceSnippet = truncateText(contentText, 12000);
   const brainBlock = operatorBrainContext.trim()
@@ -782,17 +782,6 @@ async function summarizeUrlSource(inputUrl) {
   };
 }
 
-function renderFlashcard({ kind, title, content, href = "", button = false, attrs = "", settingsHref = "" }) {
-  const cardHtml = `<span class="ds-flashcard-kind">${escapeHtml(kind)}</span><h3 class="ds-flashcard-title">${escapeHtml(title)}</h3><div class="ds-flashcard-content">${escapeHtml(content)}</div>`;
-  if (button) {
-    return `<button type="button" class="ds-flashcard"${attrs ? ` ${attrs}` : ""}>${cardHtml}</button>`;
-  }
-  const settingsLink = settingsHref 
-    ? `<a class="ds-flashcard-settings" href="${escapeHtml(settingsHref)}" title="Settings" onclick="event.stopPropagation();">⚙️</a>` 
-    : "";
-  return `<a class="ds-flashcard" href="${escapeHtml(href)}">${cardHtml}${settingsLink}</a>`;
-}
-
 /** Align with `scripts/meimei-domain.mjs` default so miniapp paths work when the request still has a public mount prefix. */
 function stripDashboardMountPrefix(pathname) {
   const raw = String(process.env.MEIMEI_PUBLIC_PREFIX ?? "/dashboard").replace(/\/+$/, "");
@@ -820,84 +809,32 @@ function resolveMiniappRoute(pathname) {
   return miniappIssueRoute.get(Number(idMatch[1])) || null;
 }
 
-function renderGlobalNav(activePage) {
-  const navId = "global-nav-actions";
-  const toggleId = "global-nav-toggle";
-  return `
-      <button
-        id="${toggleId}"
-        class="nav-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="${navId}"
-      >
-        Menu
-      </button>
-      <div id="${navId}" class="nav-actions" data-nav-actions>
-        <a class="nav-chip openclaw" href="${escapeHtml(openclawChatUrl)}">
-          <img src="${escapeHtml(openclawLogoPath)}" alt="OpenClaw logo" />
-          <span>OpenClaw</span>
-        </a>
-        <a class="nav-chip ${activePage === "apps" ? "active" : ""}" href="${escapeHtml(appsRoute)}">
-          <img src="${escapeHtml(dashboardLogoPath)}" alt="Apps logo" />
-          <span>Apps</span>
-        </a>
-        <a class="nav-chip ${activePage === "tools" ? "active" : ""}" href="${escapeHtml(toolsRoute)}">
-          <img src="${escapeHtml(dashboardLogoPath)}" alt="Tools logo" />
-          <span>Tools</span>
-        </a>
-        <a class="nav-chip ${activePage === "dashboard" ? "active" : ""}" href="${escapeHtml(homeRoute)}">
-          <img src="${escapeHtml(dashboardLogoPath)}" alt="Dashboard logo" />
-          <span>Dashboard</span>
-        </a>
-        <a class="nav-chip ${activePage === "knowmore" ? "active" : ""}" href="${escapeHtml(knowmoreRoute)}">
-          <img src="${escapeHtml(knowmoreLogoPath)}" alt="knowmore logo" />
-          <span>knowmore</span>
-        </a>
-        <a class="nav-chip ${activePage === "admin" ? "active" : ""}" href="${escapeHtml(adminRoute)}">
-          <img src="${escapeHtml(adminLogoPath)}" alt="Admin logo" />
-          <span>Admin</span>
-        </a>
-      </div>`;
+function dashboardChromeDeps() {
+  return {
+    escapeHtml,
+    openclawChatUrl,
+    openclawLogoPath,
+    dashboardLogoPath,
+    knowmoreLogoPath,
+    adminLogoPath,
+    appsRoute,
+    toolsRoute,
+    homeRoute,
+    knowmoreRoute,
+    adminRoute
+  };
 }
 
-function renderGlobalNavScript() {
-  return `
-    (function initGlobalNav() {
-      const nav = document.querySelector('[data-nav-actions]');
-      const toggle = document.getElementById('global-nav-toggle');
-      if (!nav || !toggle) return;
+function renderList(items) {
+  return renderListChrome(items, dashboardChromeDeps());
+}
 
-      function closeNav() {
-        nav.classList.remove('is-open');
-        toggle.setAttribute('aria-expanded', 'false');
-      }
+function renderFlashcard(props) {
+  return renderFlashcardChrome(props, dashboardChromeDeps());
+}
 
-      function openNav() {
-        nav.classList.add('is-open');
-        toggle.setAttribute('aria-expanded', 'true');
-      }
-
-      function syncForViewport() {
-        if (window.matchMedia('(min-width: 901px)').matches) {
-          openNav();
-        } else {
-          closeNav();
-        }
-      }
-
-      toggle.addEventListener('click', () => {
-        if (nav.classList.contains('is-open')) {
-          closeNav();
-          return;
-        }
-        openNav();
-      });
-
-      window.addEventListener('resize', syncForViewport);
-      syncForViewport();
-    })();
-  `;
+function renderGlobalNav(activePage) {
+  return renderGlobalNavChrome(activePage, dashboardChromeDeps());
 }
 
 function homeAdminPageDeps() {

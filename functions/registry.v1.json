@@ -389,6 +389,46 @@
       }
     },
     {
+      "id": "daily-briefing",
+      "version": "v1",
+      "category": "apps",
+      "displayName": "Daily Briefing",
+      "description": "AI-powered daily business briefing — scheduled digest via Explain it stack; POST API and /open subroute for operator scripts.",
+      "catalogOrder": 2,
+      "route": "/dashboard/518/Daily_briefing",
+      "api": {
+        "method": "POST",
+        "path": "/dashboard/api/functions/daily-briefing"
+      },
+      "input": {
+        "required": [],
+        "optional": ["action", "sources", "scheduleTime"],
+        "examples": [{}, { "action": "preview" }, { "scheduleTime": "06:00" }]
+      },
+      "output": {
+        "statusField": "ok",
+        "payloadShape": "object",
+        "requiredFields": ["ok"]
+      },
+      "safety": {
+        "untrustedInput": false,
+        "allowedProtocols": ["https"],
+        "notes": [
+          "Uses inference route for generation; subroute POST …/daily-briefing/open for operator open flow.",
+          "Same-origin dashboard clients use kernel.authExempt on the app manifest."
+        ]
+      },
+      "capabilities": {
+        "channels": ["dashboard", "api"],
+        "sideEffects": ["network-fetch", "local-file-write"],
+        "requiresApproval": false
+      },
+      "failureModel": {
+        "clearErrorMessages": true,
+        "fallbackBehavior": "return structured failure payload"
+      }
+    },
+    {
       "id": "ai-routing",
       "version": "v1",
       "category": "tools",

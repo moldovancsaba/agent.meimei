@@ -213,6 +213,7 @@ const R = miniappCfg.routes;
 const explainItRoute = R["explain-it"]?.internalPath || "/516/Explain_it";
 const explainItApiRoute = R["explain-it"]?.apiPath || "/api/functions/explain-it";
 const explainItLabel = R["explain-it"]?.displayName || "Explain it";
+const dailyBriefingPageRoute = R["daily-briefing"]?.internalPath || "/Daily_briefing";
 const checklistRoute = R["checklist"]?.internalPath || "/Checklist";
 const checklistIssueId = R["checklist"]?.issueId ?? 727;
 const checklistPublicPath = `/${checklistIssueId}${checklistRoute}`;
@@ -1465,6 +1466,16 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && resolvedMiniappRoute === explainItRoute) {
       const html = renderUrlSummaryPage(getLayoutDoc());
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, max-age=0"
+      });
+      res.end(html);
+      return;
+    }
+
+    if (req.method === "GET" && resolvedMiniappRoute === dailyBriefingPageRoute) {
+      const html = renderDailyBriefingPage(getLayoutDoc());
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-store, max-age=0"

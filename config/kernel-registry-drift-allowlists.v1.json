@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "description": "MM-KERNEL-604 — exceptions for meimei-kernel-registry-drift-check.mjs (shrink over time).",
+  "registryAppsWithoutDiskManifest": ["reference-app-1", "reference-app-2"],
+  "registryToolsImplementedInKernel": ["ai-routing", "api-access", "environment-variables"],
+  "diskMiniappsDeferredFromRegistry": []
+}

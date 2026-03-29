@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-03-29 — MM-KERNEL-604/602: registry drift CI, daily-briefing contract, migration playbook
+
+- **`functions/registry.v1.json`** — **`daily-briefing`** row (`/dashboard/518/Daily_briefing`); **`apps/daily-briefing/meimei.app.json`** `routes` for catalog/layout.
+- **`dashboard/server.mjs`** — `GET` **`/518/Daily_briefing`** → `renderDailyBriefingPage`.
+- **`npm run kernel:registry:drift-check`**, **`config/kernel-registry-drift-allowlists.v1.json`**, **`packages/README.md`**, **`kernel-apps.v1.md`** (drift + migrate-to-`packages/*`).
+
 ## 2026-03-29 — Docs: full markdown ledger regen (`ARCHITECTURE.md` historical footnote)
 
 - **[`full_comprehensive_detailed_documents_audit.md`](../../full_comprehensive_detailed_documents_audit.md)** — regenerated with **`scripts/generate-full-documents-audit.mjs`** base **`2026-03-29T20:00:00Z`** (per-row UTC audit column); follows **CHANGELOG** §Documentation legacy **`ARCHITECTURE.md`** superseded-path footnote.

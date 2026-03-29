@@ -11,5 +11,6 @@
     "subroutes": [{ "pathSuffix": "daily-briefing/open", "export": "handleOpenPost" }]
   },
   "capabilities": { "required": ["inference"] },
+  "routes": { "dashboardIssueId": 518, "slug": "Daily_briefing" },
   "kernel": { "authExempt": true }
 }

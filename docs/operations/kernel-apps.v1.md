@@ -21,6 +21,10 @@ When `MEIMEI_KERNEL_APP_AUTH=1`, set `X-MeiMei-App-Id` and `X-MeiMei-App-Secret`
 
 - Legacy `functions/registry.v1.json` plus builtins + registry file entries are **merged** for Apps/Tools pages (`kernel-catalog-merge.mjs`).
 
+## Registry vs disk drift (MM-KERNEL-604)
+
+- `npm run kernel:registry:drift-check` — every `apps/<pkg>/meimei.app.json` must have a matching `functions` row with `id === <pkg>`; registry **apps** (except allowlisted) must have that manifest on disk; registry **tools** must have a manifest or be listed as kernel-implemented. Allowlists: `config/kernel-registry-drift-allowlists.v1.json`.
+
 ## Registry snapshot (audit)
 
 - `npm run kernel:registry:snapshot` — JSON to stdout (manifest copies + metadata). Redirect to a secure store if used for compliance.
@@ -29,9 +33,16 @@ When `MEIMEI_KERNEL_APP_AUTH=1`, set `X-MeiMei-App-Id` and `X-MeiMei-App-Secret`
 
 - **`packages/meimei-pilot-external-app`** — `MEIMEI_KERNEL_BASE_URL`, `MEIMEI_PILOT_APP_ID`, optional `MEIMEI_PILOT_APP_SECRET`; `node packages/meimei-pilot-external-app/pilot.mjs` (after `npm install` at repo root).
 
+## Migrate a miniapp toward `packages/*` (MM-KERNEL-602)
+
+1. Create `packages/<name>/` with the same `meimei.app.json` + `index.mjs` surface you had under `apps/<name>/` (no `dashboard/lib/*` imports in external callers — use `@meimei/sdk`).
+2. Run `npm run kernel:validate-app-manifest` on the new tree; `npm run kernel:registry:drift-check` after you update `functions/registry.v1.json` (or register-only external flow).
+3. `npm run kernel:app-registry -- register /absolute/path/to/packages/<name>` — note the printed **`app_id`** for façades and secrets.
+4. Remove the old `apps/<name>/` tree **only after** dashboard POST routes are served via registry/builtins and `npm run ci` is green (see `meimei-dashboard-static-apps-import-check`).
+
 ## CI hooks
 
-- `kernel:policy:selftest`, `kernel:validate-app-policy`, `kernel:sdk:selftest` are part of `npm run ci`.
+- `kernel:registry:drift-check`, `kernel:policy:selftest`, `kernel:validate-app-policy`, `kernel:sdk:selftest` are part of `npm run ci`.
 
 ## See also
 

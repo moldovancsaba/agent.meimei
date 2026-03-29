@@ -19,12 +19,12 @@ Decouple MeiMei **applications** from the **kernel** so each app can live in its
 | **T2 Registry / identity** | 201–203, 301 | **Delivered** | Manifest schema, `kernel-app-registry.mjs`, tombstoned `app_id`, optional auth + audit. |
 | **T3 Policy + façades** | 302, 303a–d | **Delivered** | `schemas/meimei.app.policy.v1.json`, `POST/GET …/v1/apps/{id}/…` (inference, jobs enqueue, env, **fs/roots** read-only listing). |
 | **T4 SDK + dispatch** | 401–402, 501, 603 | **Delivered** | `@meimei/sdk` workspace, contract + HTTP smoke selftests; dynamic `POST /api/functions/…`; no static `apps/*` in `server.mjs`. |
-| **T5 Migration** | 601, 604, 602 | **Partial** | **601** merged Apps/Tools catalog; **604** snapshot script only — `functions/registry.v1.json` still operator SoT for legacy rows; **602** SDK-only pilot, no reference-app extracted yet. |
+| **T5 Migration** | 601, 604, 602 | **Partial** | **601** merged catalog; **604** snapshot + **`npm run kernel:registry:drift-check`** (allowlists in `config/kernel-registry-drift-allowlists.v1.json`); **`daily-briefing`** added to `registry.v1.json` + GET route; **602** migration playbook in `kernel-apps.v1.md` + `packages/README.md`. |
 | **T6 Governance** | 502, 701–703 | **Delivered** (502 = strategy doc) | Shells ADR note, threat model, `kernel-apps.v1.md` runbook, monitor `app_id` filter + row field. |
 
-**CI hooks (kernel-related):** `kernel:validate-app-manifest`, `kernel:validate-app-policy`, `kernel:app-registry:selftest`, `kernel:policy:selftest`, `kernel:external-dispatch:selftest`, `kernel:sdk:selftest`, `kernel:fs-roots:selftest`, `kernel:facades:http:selftest`, `kernel:registry:snapshot` (manual / audit).
+**CI hooks (kernel-related):** `kernel:registry:drift-check`, `kernel:validate-app-manifest`, `kernel:validate-app-policy`, `kernel:app-registry:selftest`, `kernel:policy:selftest`, `kernel:external-dispatch:selftest`, `kernel:sdk:selftest`, `kernel:fs-roots:selftest`, `kernel:facades:http:selftest`, `kernel:registry:snapshot` (manual / audit).
 
-**Largest remaining epics:** generated or mirrored **`registry.v1.json` (604)**; optional **job status/query façade** for 303b; **file read** API beyond fs/roots listing; **rate limits** in policy (302 stretch).
+**Largest remaining epics:** **generate** `registry.v1.json` from manifests (604 stretch); optional **job status/query façade** for 303b; **file read** API beyond fs/roots listing; **rate limits** in policy (302 stretch); **602** — physically move a miniapp to `packages/*` (playbook ready).
 
 ---
 
@@ -478,7 +478,8 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 ### Deliverables
 
-- App lives under `packages/<pilot>/` or separate clone; registration doc; E2E smoke.
+- [x] Operator playbook — [`docs/operations/kernel-apps.v1.md`](../operations/kernel-apps.v1.md) § *Migrate a miniapp toward `packages/*`*; **`packages/README.md`** workspace index.
+- [ ] App lives under `packages/<pilot>/` or separate clone; E2E smoke (optional follow-up PR).
 
 ---
 
@@ -506,6 +507,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 ### Deliverables (incremental)
 
 - [x] **`npm run kernel:registry:snapshot`** — JSON snapshot of registry + manifests for audit / drift detection. **`functions/registry.v1.json`** remains operator SoT for legacy miniapps until full generation exists.
+- [x] **`npm run kernel:registry:drift-check`** — CI ensures `registry.v1.json` ↔ `apps/*/meimei.app.json` parity (`config/kernel-registry-drift-allowlists.v1.json`).
 
 ---
 
@@ -568,6 +570,7 @@ Start with **reference-app-1** or smallest tool to limit blast radius.
 
 | Date | Change |
 |------|--------|
+| 2026-03-29 | **604 drift-check CI**, **daily-briefing** registry + GET route, **602** migration playbook (`kernel-apps.v1.md`, `packages/README.md`). |
 | 2026-03-29 | **303d read-only `fs/roots`:** `kernel-app-fs-roots.mjs`, SDK `readFilesystemRoots`, `kernel:fs-roots:selftest`, `kernel:facades:http:selftest`. |
 | 2026-03-29 | **MM-KERNEL-302–303d, 401–402, 501 policy gate, 502, 601, 604 snapshot, 701–703, pilot SDK package:** façades, merged catalog, monitor `app_id`, workspaces `@meimei/sdk`, CI selftests. |
 | 2026-03-29 | **Doc pass:** dependency graph — **ADR-003 (accepted)** (was marked proposed). |
